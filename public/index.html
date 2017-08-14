@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Dungeon</title>
+    <meta charset="UTF-8">
+    <meta name="description" content="Picking a framework is hard.">
+
+    <!--<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>-->
+    <link href="https://fonts.googleapis.com/css?family=VT323" rel="stylesheet">
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: #000000;
+            height:100%;
+            width:100%;
+            overflow:hidden;
+        }
+
+        #viewDiv {
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="viewDiv"></div>
+
+    <!--
+        Shims to increase likelihood of ES6 support (the build target). Some of the TS defs require it.
+        The intended platforms remain up-to-date versions of Chrome, Firefox, and Edge.
+    -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/es5-shim/4.5.9/es5-shim.min.js"></script>
+    <!--<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/es6-shim/0.35.1/es6-shim.min.js"></script>-->
+
+    <!---<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js"></script>-->
+    <!--<script src="js/lib/pixi.js"></script>-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.3.0/pixi.min.js"></script>
+    <script src="https://code.createjs.com/soundjs-0.6.2.min.js"></script>
+    <script src="https://code.createjs.com/preloadjs-0.6.2.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+    <script src="js/dungeon.js" defer></script>
+
+    <!-- Init -->
+    <script>
+        document.getElementById("viewDiv").focus();
+
+        window.urlArgs = function () {
+            var query_string = {};
+            var query = window.location.search.substring(1);
+            var vars = query.split("&");
+            for (var i=0;i<vars.length;i++) {
+                var pair = vars[i].split("=");
+                // If first entry with this name
+                if (typeof query_string[pair[0]] === "undefined") {
+                    query_string[pair[0]] = pair[1];
+                    // If second entry with this name
+                } else if (typeof query_string[pair[0]] === "string") {
+                    var arr = [ query_string[pair[0]], pair[1] ];
+                    query_string[pair[0]] = arr;
+                    // If third or later entry with this name
+                } else {
+                    query_string[pair[0]].push(pair[1]);
+                }
+            }
+            return query_string;
+        } ();
+    </script>
+</body>
+
+</html>
