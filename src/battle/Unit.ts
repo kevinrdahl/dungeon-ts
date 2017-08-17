@@ -9,8 +9,6 @@ import SparseGrid from '../ds/SparseGrid';
 class PathingNode {
 	public cost = Number.POSITIVE_INFINITY;
 	public tile:Tile = null;
-	public x = -1;
-	public y = -1;
 	public visited:boolean = false;
 
 	/** For BinaryHeap */
@@ -87,18 +85,18 @@ export default class Unit {
 		var nodes: SparseGrid<PathingNode> = new SparseGrid<PathingNode>();
 		this.pathableTiles = new SparseGrid<number>(Number.MAX_VALUE);
 
-		nodes.set(source.x, source.y, source);
+		nodes.set(source.tile.x, source.tile.y, source);
 
 		while (!queue.empty) {
 			var node = queue.pop();
-			this.pathableTiles.set(node.x, node.y, node.cost);
+			this.pathableTiles.set(node.tile.x, node.tile.y, node.cost);
 			node.visited = true;
 			//console.log(node.x + "," + node.y);
 
 			//check the 4 adjacent tiles
 			for (var i = 0; i < 4; i++) {
-				var x = node.x + Unit.adjacentOffsets[i][0];
-				var y = node.y + Unit.adjacentOffsets[i][1];
+				var x = node.tile.x + Unit.adjacentOffsets[i][0];
+				var y = node.tile.y + Unit.adjacentOffsets[i][1];
 
 				//gotta stay in the grid
 				if (x < 0 || x >= width || y < 0 || y >= height) continue;
@@ -138,6 +136,12 @@ export default class Unit {
 	}
 
 	public canTraverseTile(tile:Tile):boolean {
+		//can't enter enemy tiles!
+		var currentUnit = this.battle.getUnitAtPosition(tile.x, tile.y);
+		if (currentUnit && currentUnit.player != this.player) {
+			return false;
+		}
+
 		if (this.isFlying) {
 			return tile.isFlyable;
 		}
@@ -155,6 +159,7 @@ export default class Unit {
 	/** Assumes it CAN traverse this tile! */
 	public getCostToTraverseTile(tile:Tile):number {
 		//TODO: based on unit type, etc etc
+		//maybe make it cost more when adjacent to an enemy
 		if (this.isFlying) {
 			return tile.flyCost;
 		}
@@ -165,8 +170,6 @@ export default class Unit {
 		var node:PathingNode = new PathingNode();
 		var tile = this.battle.level.getTile(x, y);
 		node.tile = tile;
-		node.x = x;
-		node.y = y;
 
 		return node;
 	}

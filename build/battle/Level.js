@@ -15,6 +15,8 @@ var Level = (function () {
         for (var y = 0; y < this.height; y++) {
             for (var x = 0; x < this.width; x++) {
                 var tile = new Tile_1.default();
+                tile.x = x;
+                tile.y = y;
                 if (x == 0 || y == 0 || x == this.width - 1 || y == this.height - 1) {
                     tile.initWall();
                 }

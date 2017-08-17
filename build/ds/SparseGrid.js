@@ -21,6 +21,12 @@ var SparseGrid = (function () {
         }
         return this.defaultValue;
     };
+    SparseGrid.prototype.unset = function (x, y) {
+        var row = this.rows[y];
+        if (row && row.hasOwnProperty(x.toString())) {
+            delete row[x];
+        }
+    };
     SparseGrid.prototype.getAllCoordinates = function () {
         var allCoords = [];
         for (var y in this.rows) {

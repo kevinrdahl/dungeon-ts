@@ -18,6 +18,8 @@ export default class Level {
 		for (var y = 0; y < this.height; y++) {
 			for (var x = 0; x < this.width; x++) {
 				var tile:Tile = new Tile();
+				tile.x = x;
+				tile.y = y;
 				if (x == 0 || y == 0 || x == this.width - 1 || y == this.height - 1) {
 					tile.initWall();
 				} else if (this.width - x < 5 && this.height - y < 5) {

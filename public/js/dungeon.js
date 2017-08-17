@@ -265,6 +265,7 @@ var Unit_1 = require("./Unit");
 var Level_1 = require("./Level");
 var IDObjectGroup_1 = require("../util/IDObjectGroup");
 var BattleDisplay_1 = require("./display/BattleDisplay");
+var SparseGrid_1 = require("../ds/SparseGrid");
 var Battle = (function () {
     /**
      * It's a battle!
@@ -278,6 +279,7 @@ var Battle = (function () {
         this._display = null;
         this._selectedUnit = null;
         this.initialized = false;
+        this.unitPositions = new SparseGrid_1.default(null);
         this._visible = visible;
     }
     Object.defineProperty(Battle.prototype, "visible", {
@@ -331,8 +333,13 @@ var Battle = (function () {
             return;
         this.deselectUnit();
         this._selectedUnit = unit;
-        if (unit)
+        if (unit) {
             unit.onSelect();
+            if (this._display) {
+                this._display.levelDisplay.clearPathing();
+                this._display.levelDisplay.showPathing(unit.pathableTiles);
+            }
+        }
     };
     Battle.prototype.deselectUnit = function () {
         if (!this._selectedUnit)
@@ -340,6 +347,9 @@ var Battle = (function () {
         var unit = this._selectedUnit;
         this._selectedUnit = null;
         unit.onDeselect();
+        if (this._display) {
+            this._display.levelDisplay.clearPathing();
+        }
     };
     Battle.prototype.addPlayer = function (player) {
         this.players.add(player);
@@ -353,17 +363,27 @@ var Battle = (function () {
         player.battle = null;
     };
     Battle.prototype.addUnit = function (unit) {
-        var added = this.units.add(unit);
-        unit.battle = this;
-        if (added) {
-            unit.onAddToBattle();
+        if (this.units.contains(unit)) {
+            return;
         }
+        var currentUnit = this.unitPositions.get(unit.x, unit.y);
+        if (currentUnit) {
+            console.log("Battle: can't add unit " + unit.id + " (unit " + currentUnit.id + " already occupies " + unit.x + ", " + unit.y + ")");
+            return;
+        }
+        this.units.add(unit);
+        this.unitPositions.set(unit.x, unit.y, unit);
+        unit.battle = this;
+        unit.onAddToBattle();
     };
     Battle.prototype.removeUnit = function (unit) {
         this.units.remove(unit);
         if (unit.battle == this) {
             unit.battle = null;
         }
+    };
+    Battle.prototype.getUnitAtPosition = function (x, y) {
+        return this.unitPositions.get(x, y);
     };
     Battle.prototype.initLevel = function () {
         this.level = new Level_1.default();
@@ -380,7 +400,7 @@ var Battle = (function () {
 }());
 exports.default = Battle;
 
-},{"../Game":1,"../util/IDObjectGroup":38,"./Level":6,"./Player":7,"./Unit":9,"./display/BattleDisplay":10}],6:[function(require,module,exports){
+},{"../Game":1,"../ds/SparseGrid":14,"../util/IDObjectGroup":38,"./Level":6,"./Player":7,"./Unit":9,"./display/BattleDisplay":10}],6:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
@@ -398,6 +418,8 @@ var Level = (function () {
         for (var y = 0; y < this.height; y++) {
             for (var x = 0; x < this.width; x++) {
                 var tile = new Tile_1.default();
+                tile.x = x;
+                tile.y = y;
                 if (x == 0 || y == 0 || x == this.width - 1 || y == this.height - 1) {
                     tile.initWall();
                 }
@@ -514,8 +536,6 @@ var PathingNode = (function () {
     function PathingNode() {
         this.cost = Number.POSITIVE_INFINITY;
         this.tile = null;
-        this.x = -1;
-        this.y = -1;
         this.visited = false;
     }
     /** For BinaryHeap */
@@ -585,16 +605,16 @@ var Unit = (function () {
         var queue = new BinaryHeap_1.default(PathingNode.scoreFunc, [source]);
         var nodes = new SparseGrid_1.default();
         this.pathableTiles = new SparseGrid_1.default(Number.MAX_VALUE);
-        nodes.set(source.x, source.y, source);
+        nodes.set(source.tile.x, source.tile.y, source);
         while (!queue.empty) {
             var node = queue.pop();
-            this.pathableTiles.set(node.x, node.y, node.cost);
+            this.pathableTiles.set(node.tile.x, node.tile.y, node.cost);
             node.visited = true;
             //console.log(node.x + "," + node.y);
             //check the 4 adjacent tiles
             for (var i = 0; i < 4; i++) {
-                var x = node.x + Unit.adjacentOffsets[i][0];
-                var y = node.y + Unit.adjacentOffsets[i][1];
+                var x = node.tile.x + Unit.adjacentOffsets[i][0];
+                var y = node.tile.y + Unit.adjacentOffsets[i][1];
                 //gotta stay in the grid
                 if (x < 0 || x >= width || y < 0 || y >= height)
                     continue;
@@ -631,6 +651,11 @@ var Unit = (function () {
         }
     };
     Unit.prototype.canTraverseTile = function (tile) {
+        //can't enter enemy tiles!
+        var currentUnit = this.battle.getUnitAtPosition(tile.x, tile.y);
+        if (currentUnit && currentUnit.player != this.player) {
+            return false;
+        }
         if (this.isFlying) {
             return tile.isFlyable;
         }
@@ -645,6 +670,7 @@ var Unit = (function () {
     /** Assumes it CAN traverse this tile! */
     Unit.prototype.getCostToTraverseTile = function (tile) {
         //TODO: based on unit type, etc etc
+        //maybe make it cost more when adjacent to an enemy
         if (this.isFlying) {
             return tile.flyCost;
         }
@@ -654,8 +680,6 @@ var Unit = (function () {
         var node = new PathingNode();
         var tile = this.battle.level.getTile(x, y);
         node.tile = tile;
-        node.x = x;
-        node.y = y;
         return node;
     };
     Unit.prototype.initDisplay = function () {
@@ -705,6 +729,11 @@ var BattleDisplay = (function (_super) {
     }
     Object.defineProperty(BattleDisplay.prototype, "battle", {
         get: function () { return this._battle; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(BattleDisplay.prototype, "levelDisplay", {
+        get: function () { return this._levelDisplay; },
         enumerable: true,
         configurable: true
     });
@@ -799,11 +828,29 @@ var LevelDisplay = (function (_super) {
         var _this = _super.call(this) || this;
         _this.level = null;
         _this.tileSprites = [];
+        _this.pathingGraphics = new PIXI.Graphics();
         return _this;
     }
     LevelDisplay.prototype.initLevel = function (level) {
         this.level = level;
         this.initTiles();
+        if (!this.pathingGraphics.parent)
+            this.addChild(this.pathingGraphics);
+    };
+    LevelDisplay.prototype.showPathing = function (tiles, color, alpha) {
+        if (color === void 0) { color = 0x0000ff; }
+        if (alpha === void 0) { alpha = 0.3; }
+        this.pathingGraphics.beginFill(color, alpha);
+        var size = Globals_1.default.gridSize;
+        var allCoords = tiles.getAllCoordinates();
+        for (var _i = 0, allCoords_1 = allCoords; _i < allCoords_1.length; _i++) {
+            var coords = allCoords_1[_i];
+            this.pathingGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+        }
+        this.pathingGraphics.endFill();
+    };
+    LevelDisplay.prototype.clearPathing = function () {
+        this.pathingGraphics.clear();
     };
     //TODO TODO TODO make this not garbage (make a tilemap)
     LevelDisplay.prototype.initTiles = function () {
@@ -1166,6 +1213,12 @@ var SparseGrid = (function () {
             return row[x];
         }
         return this.defaultValue;
+    };
+    SparseGrid.prototype.unset = function (x, y) {
+        var row = this.rows[y];
+        if (row && row.hasOwnProperty(x.toString())) {
+            delete row[x];
+        }
     };
     SparseGrid.prototype.getAllCoordinates = function () {
         var allCoords = [];

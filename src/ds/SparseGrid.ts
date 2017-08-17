@@ -25,6 +25,13 @@ export default class SparseGrid<T> {
 		return this.defaultValue;
 	}
 
+	public unset(x:number, y:number) {
+		var row: Object = this.rows[y];
+		if (row && row.hasOwnProperty(x.toString())) {
+			delete row[x];
+		}
+	}
+
 	public getAllCoordinates():Array<Array<number>> {
 		var allCoords: Array<Array<number>> = [];
 

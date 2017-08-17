@@ -6,6 +6,7 @@ var Unit_1 = require("./Unit");
 var Level_1 = require("./Level");
 var IDObjectGroup_1 = require("../util/IDObjectGroup");
 var BattleDisplay_1 = require("./display/BattleDisplay");
+var SparseGrid_1 = require("../ds/SparseGrid");
 var Battle = (function () {
     /**
      * It's a battle!
@@ -19,6 +20,7 @@ var Battle = (function () {
         this._display = null;
         this._selectedUnit = null;
         this.initialized = false;
+        this.unitPositions = new SparseGrid_1.default(null);
         this._visible = visible;
     }
     Object.defineProperty(Battle.prototype, "visible", {
@@ -72,8 +74,13 @@ var Battle = (function () {
             return;
         this.deselectUnit();
         this._selectedUnit = unit;
-        if (unit)
+        if (unit) {
             unit.onSelect();
+            if (this._display) {
+                this._display.levelDisplay.clearPathing();
+                this._display.levelDisplay.showPathing(unit.pathableTiles);
+            }
+        }
     };
     Battle.prototype.deselectUnit = function () {
         if (!this._selectedUnit)
@@ -81,6 +88,9 @@ var Battle = (function () {
         var unit = this._selectedUnit;
         this._selectedUnit = null;
         unit.onDeselect();
+        if (this._display) {
+            this._display.levelDisplay.clearPathing();
+        }
     };
     Battle.prototype.addPlayer = function (player) {
         this.players.add(player);
@@ -94,17 +104,27 @@ var Battle = (function () {
         player.battle = null;
     };
     Battle.prototype.addUnit = function (unit) {
-        var added = this.units.add(unit);
-        unit.battle = this;
-        if (added) {
-            unit.onAddToBattle();
+        if (this.units.contains(unit)) {
+            return;
         }
+        var currentUnit = this.unitPositions.get(unit.x, unit.y);
+        if (currentUnit) {
+            console.log("Battle: can't add unit " + unit.id + " (unit " + currentUnit.id + " already occupies " + unit.x + ", " + unit.y + ")");
+            return;
+        }
+        this.units.add(unit);
+        this.unitPositions.set(unit.x, unit.y, unit);
+        unit.battle = this;
+        unit.onAddToBattle();
     };
     Battle.prototype.removeUnit = function (unit) {
         this.units.remove(unit);
         if (unit.battle == this) {
             unit.battle = null;
         }
+    };
+    Battle.prototype.getUnitAtPosition = function (x, y) {
+        return this.unitPositions.get(x, y);
     };
     Battle.prototype.initLevel = function () {
         this.level = new Level_1.default();

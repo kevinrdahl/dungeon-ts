@@ -3,11 +3,13 @@
 import Level from '../Level';
 import Globals from '../../Globals';
 import Game from '../../Game';
+import SparseGrid from '../../ds/SparseGrid';
 
 export default class LevelDisplay extends PIXI.Container {
 	public level:Level = null;
 
 	private tileSprites:Array<PIXI.Sprite> = []
+	private pathingGraphics:PIXI.Graphics = new PIXI.Graphics();
 
 	constructor() {
 		super();
@@ -16,6 +18,23 @@ export default class LevelDisplay extends PIXI.Container {
 	public initLevel(level:Level) {
 		this.level = level;
 		this.initTiles();
+		if (!this.pathingGraphics.parent) this.addChild(this.pathingGraphics);
+	}
+
+	public showPathing(tiles:SparseGrid<any>, color:number = 0x0000ff, alpha:number = 0.3) {
+		this.pathingGraphics.beginFill(color, alpha);
+
+		var size = Globals.gridSize;
+		var allCoords = tiles.getAllCoordinates();
+		for (var coords of allCoords) {
+			this.pathingGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+		}
+
+		this.pathingGraphics.endFill();
+	}
+
+	public clearPathing() {
+		this.pathingGraphics.clear();
 	}
 
 	//TODO TODO TODO make this not garbage (make a tilemap)

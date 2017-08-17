@@ -31,6 +31,11 @@ var BattleDisplay = (function (_super) {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(BattleDisplay.prototype, "levelDisplay", {
+        get: function () { return this._levelDisplay; },
+        enumerable: true,
+        configurable: true
+    });
     BattleDisplay.prototype.init = function (battle) {
         this._battle = battle;
         this.addChild(this._unitContainer);

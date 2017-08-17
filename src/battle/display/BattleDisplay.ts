@@ -19,6 +19,7 @@ export default class BattleDisplay extends PIXI.Container {
 	private _battle:Battle;
 
 	get battle():Battle { return this._battle;}
+	get levelDisplay():LevelDisplay { return this._levelDisplay; }
 
 	constructor() {
 		super();

@@ -7,8 +7,6 @@ var PathingNode = (function () {
     function PathingNode() {
         this.cost = Number.POSITIVE_INFINITY;
         this.tile = null;
-        this.x = -1;
-        this.y = -1;
         this.visited = false;
     }
     /** For BinaryHeap */
@@ -78,16 +76,16 @@ var Unit = (function () {
         var queue = new BinaryHeap_1.default(PathingNode.scoreFunc, [source]);
         var nodes = new SparseGrid_1.default();
         this.pathableTiles = new SparseGrid_1.default(Number.MAX_VALUE);
-        nodes.set(source.x, source.y, source);
+        nodes.set(source.tile.x, source.tile.y, source);
         while (!queue.empty) {
             var node = queue.pop();
-            this.pathableTiles.set(node.x, node.y, node.cost);
+            this.pathableTiles.set(node.tile.x, node.tile.y, node.cost);
             node.visited = true;
             //console.log(node.x + "," + node.y);
             //check the 4 adjacent tiles
             for (var i = 0; i < 4; i++) {
-                var x = node.x + Unit.adjacentOffsets[i][0];
-                var y = node.y + Unit.adjacentOffsets[i][1];
+                var x = node.tile.x + Unit.adjacentOffsets[i][0];
+                var y = node.tile.y + Unit.adjacentOffsets[i][1];
                 //gotta stay in the grid
                 if (x < 0 || x >= width || y < 0 || y >= height)
                     continue;
@@ -124,6 +122,11 @@ var Unit = (function () {
         }
     };
     Unit.prototype.canTraverseTile = function (tile) {
+        //can't enter enemy tiles!
+        var currentUnit = this.battle.getUnitAtPosition(tile.x, tile.y);
+        if (currentUnit && currentUnit.player != this.player) {
+            return false;
+        }
         if (this.isFlying) {
             return tile.isFlyable;
         }
@@ -138,6 +141,7 @@ var Unit = (function () {
     /** Assumes it CAN traverse this tile! */
     Unit.prototype.getCostToTraverseTile = function (tile) {
         //TODO: based on unit type, etc etc
+        //maybe make it cost more when adjacent to an enemy
         if (this.isFlying) {
             return tile.flyCost;
         }
@@ -147,8 +151,6 @@ var Unit = (function () {
         var node = new PathingNode();
         var tile = this.battle.level.getTile(x, y);
         node.tile = tile;
-        node.x = x;
-        node.y = y;
         return node;
     };
     Unit.prototype.initDisplay = function () {

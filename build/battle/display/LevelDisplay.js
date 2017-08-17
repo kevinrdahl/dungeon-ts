@@ -19,11 +19,29 @@ var LevelDisplay = (function (_super) {
         var _this = _super.call(this) || this;
         _this.level = null;
         _this.tileSprites = [];
+        _this.pathingGraphics = new PIXI.Graphics();
         return _this;
     }
     LevelDisplay.prototype.initLevel = function (level) {
         this.level = level;
         this.initTiles();
+        if (!this.pathingGraphics.parent)
+            this.addChild(this.pathingGraphics);
+    };
+    LevelDisplay.prototype.showPathing = function (tiles, color, alpha) {
+        if (color === void 0) { color = 0x0000ff; }
+        if (alpha === void 0) { alpha = 0.3; }
+        this.pathingGraphics.beginFill(color, alpha);
+        var size = Globals_1.default.gridSize;
+        var allCoords = tiles.getAllCoordinates();
+        for (var _i = 0, allCoords_1 = allCoords; _i < allCoords_1.length; _i++) {
+            var coords = allCoords_1[_i];
+            this.pathingGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+        }
+        this.pathingGraphics.endFill();
+    };
+    LevelDisplay.prototype.clearPathing = function () {
+        this.pathingGraphics.clear();
     };
     //TODO TODO TODO make this not garbage (make a tilemap)
     LevelDisplay.prototype.initTiles = function () {

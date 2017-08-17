@@ -4,6 +4,7 @@ import Unit from './Unit';
 import Level from './Level';
 import IDObjectGroup from '../util/IDObjectGroup';
 import BattleDisplay from './display/BattleDisplay';
+import SparseGrid from '../ds/SparseGrid';
 
 export default class Battle {
 	public players:IDObjectGroup<Player> = new IDObjectGroup<Player>();
@@ -18,6 +19,7 @@ export default class Battle {
 	private _display:BattleDisplay = null;
 	private _selectedUnit:Unit = null;
 	private initialized:boolean = false;
+	private unitPositions:SparseGrid<Unit> = new SparseGrid<Unit>(null);
 
 	/**
 	 * It's a battle!
@@ -68,7 +70,14 @@ export default class Battle {
 
 		this.deselectUnit();
 		this._selectedUnit = unit;
-		if (unit) unit.onSelect();
+		if (unit) {
+			unit.onSelect();
+
+			if (this._display) {
+				this._display.levelDisplay.clearPathing();
+				this._display.levelDisplay.showPathing(unit.pathableTiles);
+			}
+		}
 	}
 
 	public deselectUnit() {
@@ -77,6 +86,10 @@ export default class Battle {
 		var unit = this._selectedUnit;
 		this._selectedUnit = null;
 		unit.onDeselect();
+
+		if (this._display) {
+			this._display.levelDisplay.clearPathing();
+		}
 	}
 
 	public addPlayer(player:Player) {
@@ -93,12 +106,20 @@ export default class Battle {
 	}
 
 	public addUnit(unit:Unit) {
-		var added = this.units.add(unit);
-		unit.battle = this;
-
-		if (added) {
-			unit.onAddToBattle();
+		if (this.units.contains(unit)) {
+			return;
 		}
+
+		var currentUnit = this.unitPositions.get(unit.x, unit.y);
+		if (currentUnit) {
+			console.log("Battle: can't add unit " + unit.id + " (unit " + currentUnit.id + " already occupies " + unit.x + ", " + unit.y + ")");
+			return;
+		}
+
+		this.units.add(unit);
+		this.unitPositions.set(unit.x, unit.y, unit);
+		unit.battle = this;
+		unit.onAddToBattle();
 	}
 
 	public removeUnit(unit:Unit) {
@@ -106,6 +127,10 @@ export default class Battle {
 		if (unit.battle == this) {
 			unit.battle = null;
 		}
+	}
+
+	public getUnitAtPosition(x:number, y:number):Unit {
+		return this.unitPositions.get(x, y);
 	}
 
 	private initLevel() {
