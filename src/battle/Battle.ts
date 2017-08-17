@@ -13,7 +13,7 @@ export default class Battle {
 
 	get visible():boolean { return this._visible; }
 	get display():BattleDisplay { return this._display; }
-	get selectedUnit():Unit { return this.selectedUnit; }
+	get selectedUnit():Unit { return this._selectedUnit; }
 
 	private _visible:boolean;
 	private _display:BattleDisplay = null;
@@ -127,6 +127,21 @@ export default class Battle {
 		if (unit.battle == this) {
 			unit.battle = null;
 		}
+	}
+
+	public hoverTile(x:number, y:number) {
+		if (this.display) {
+			this.display.levelDisplay.clearRoute();
+		}
+
+		if (this.selectedUnit && this.display) {
+			if (this.selectedUnit.x != x || this.selectedUnit.y != y) {
+				if (this.selectedUnit.pathableTiles.contains(x, y)) {
+					var route = this.selectedUnit.getPathToPosition(x, y);
+					this.display.levelDisplay.showRoute(route);
+				}
+			}
+		} 
 	}
 
 	public getUnitAtPosition(x:number, y:number):Unit {

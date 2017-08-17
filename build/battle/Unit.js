@@ -6,12 +6,14 @@ var SparseGrid_1 = require("../ds/SparseGrid");
 var PathingNode = (function () {
     function PathingNode() {
         this.cost = Number.POSITIVE_INFINITY;
+        this.hCost = 0;
         this.tile = null;
         this.visited = false;
+        this.fromNode = null;
     }
     /** For BinaryHeap */
     PathingNode.scoreFunc = function (node) {
-        return node.cost;
+        return node.cost + node.hCost;
     };
     return PathingNode;
 }());
@@ -67,7 +69,12 @@ var Unit = (function () {
             this.battle.deselectUnit();
         }
     };
+    /**
+     * Updates this Unit's public pathableTiles variable, which lists the minimum cost to get to
+     * nearby tiles.
+     */
     Unit.prototype.updatePathing = function () {
+        //It's dijkstra with a priority queue and lazy node discovery.
         var level = this.battle.level;
         var width = level.width;
         var height = level.height;
@@ -121,6 +128,85 @@ var Unit = (function () {
             }
         }
     };
+    Unit.prototype.getPathToPosition = function (targetX, targetY, fromX, fromY) {
+        //A*
+        //todo: add additional heuristic cost based on environment hazards
+        if (fromX === void 0) { fromX = Number.NEGATIVE_INFINITY; }
+        if (fromY === void 0) { fromY = Number.NEGATIVE_INFINITY; }
+        var startTime = performance.now();
+        if (fromX == Number.NEGATIVE_INFINITY)
+            fromX = this.x;
+        if (fromY == Number.NEGATIVE_INFINITY)
+            fromY = this.y;
+        var level = this.battle.level;
+        var width = level.width;
+        var height = level.height;
+        var source = this.getNewPathingNode(fromX, fromY);
+        source.cost = 0;
+        var queue = new BinaryHeap_1.default(PathingNode.scoreFunc, [source]);
+        var nodes = new SparseGrid_1.default();
+        nodes.set(source.tile.x, source.tile.y, source);
+        while (!queue.empty) {
+            var node = queue.pop();
+            if (node.tile.x === targetX && node.tile.y === targetY) {
+                var route = this.traceRoute(node);
+                var endTime = performance.now();
+                console.log("Computed path from " + fromX + "," + fromY + " to " + targetX + "," + targetY + " in " + (endTime - startTime) + "ms");
+                return route;
+            }
+            this.pathableTiles.set(node.tile.x, node.tile.y, node.cost);
+            node.visited = true;
+            //check the 4 adjacent tiles
+            for (var i = 0; i < 4; i++) {
+                var x = node.tile.x + Unit.adjacentOffsets[i][0];
+                var y = node.tile.y + Unit.adjacentOffsets[i][1];
+                //gotta stay in the grid
+                if (x < 0 || x >= width || y < 0 || y >= height)
+                    continue;
+                //get (or create and set) the pathing node
+                var neighbour = nodes.get(x, y);
+                var justDiscoveredNeighbour = false;
+                if (!neighbour) {
+                    neighbour = this.getNewPathingNode(x, y);
+                    //hCost is the line distance
+                    neighbour.hCost = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
+                    nodes.set(x, y, neighbour);
+                    justDiscoveredNeighbour = true;
+                }
+                else if (neighbour.visited) {
+                    //this neighbour already has its shortest route (or has no route)
+                    continue;
+                }
+                //well duh (though this could be subject to change, if some tiles can only be entered from a certain direction)
+                if (!this.canTraverseTile(neighbour.tile)) {
+                    neighbour.visited = true;
+                    continue;
+                }
+                var cost = node.cost + this.getCostToTraverseTile(neighbour.tile);
+                if (cost > this.moveSpeed)
+                    continue;
+                if (cost < neighbour.cost) {
+                    neighbour.cost = cost;
+                    neighbour.fromNode = node;
+                    if (!justDiscoveredNeighbour) {
+                        queue.decrease(neighbour);
+                    }
+                }
+                if (justDiscoveredNeighbour) {
+                    queue.push(neighbour);
+                }
+            }
+        }
+        return null;
+    };
+    Unit.prototype.traceRoute = function (node) {
+        var route = [];
+        while (node != null) {
+            route.push([node.tile.x, node.tile.y]);
+            node = node.fromNode;
+        }
+        return route;
+    };
     Unit.prototype.canTraverseTile = function (tile) {
         //can't enter enemy tiles!
         var currentUnit = this.battle.getUnitAtPosition(tile.x, tile.y);
@@ -164,7 +250,7 @@ var Unit = (function () {
         }
     };
     Unit._nextID = 1;
-    Unit.adjacentOffsets = [[-1, 0], [0, -1], [1, 0], [0, 1]];
+    Unit.adjacentOffsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
     return Unit;
 }());
 exports.default = Unit;

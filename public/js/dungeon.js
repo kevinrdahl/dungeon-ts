@@ -293,7 +293,7 @@ var Battle = (function () {
         configurable: true
     });
     Object.defineProperty(Battle.prototype, "selectedUnit", {
-        get: function () { return this.selectedUnit; },
+        get: function () { return this._selectedUnit; },
         enumerable: true,
         configurable: true
     });
@@ -380,6 +380,19 @@ var Battle = (function () {
         this.units.remove(unit);
         if (unit.battle == this) {
             unit.battle = null;
+        }
+    };
+    Battle.prototype.hoverTile = function (x, y) {
+        if (this.display) {
+            this.display.levelDisplay.clearRoute();
+        }
+        if (this.selectedUnit && this.display) {
+            if (this.selectedUnit.x != x || this.selectedUnit.y != y) {
+                if (this.selectedUnit.pathableTiles.contains(x, y)) {
+                    var route = this.selectedUnit.getPathToPosition(x, y);
+                    this.display.levelDisplay.showRoute(route);
+                }
+            }
         }
     };
     Battle.prototype.getUnitAtPosition = function (x, y) {
@@ -535,12 +548,14 @@ var SparseGrid_1 = require("../ds/SparseGrid");
 var PathingNode = (function () {
     function PathingNode() {
         this.cost = Number.POSITIVE_INFINITY;
+        this.hCost = 0;
         this.tile = null;
         this.visited = false;
+        this.fromNode = null;
     }
     /** For BinaryHeap */
     PathingNode.scoreFunc = function (node) {
-        return node.cost;
+        return node.cost + node.hCost;
     };
     return PathingNode;
 }());
@@ -596,7 +611,12 @@ var Unit = (function () {
             this.battle.deselectUnit();
         }
     };
+    /**
+     * Updates this Unit's public pathableTiles variable, which lists the minimum cost to get to
+     * nearby tiles.
+     */
     Unit.prototype.updatePathing = function () {
+        //It's dijkstra with a priority queue and lazy node discovery.
         var level = this.battle.level;
         var width = level.width;
         var height = level.height;
@@ -650,6 +670,85 @@ var Unit = (function () {
             }
         }
     };
+    Unit.prototype.getPathToPosition = function (targetX, targetY, fromX, fromY) {
+        //A*
+        //todo: add additional heuristic cost based on environment hazards
+        if (fromX === void 0) { fromX = Number.NEGATIVE_INFINITY; }
+        if (fromY === void 0) { fromY = Number.NEGATIVE_INFINITY; }
+        var startTime = performance.now();
+        if (fromX == Number.NEGATIVE_INFINITY)
+            fromX = this.x;
+        if (fromY == Number.NEGATIVE_INFINITY)
+            fromY = this.y;
+        var level = this.battle.level;
+        var width = level.width;
+        var height = level.height;
+        var source = this.getNewPathingNode(fromX, fromY);
+        source.cost = 0;
+        var queue = new BinaryHeap_1.default(PathingNode.scoreFunc, [source]);
+        var nodes = new SparseGrid_1.default();
+        nodes.set(source.tile.x, source.tile.y, source);
+        while (!queue.empty) {
+            var node = queue.pop();
+            if (node.tile.x === targetX && node.tile.y === targetY) {
+                var route = this.traceRoute(node);
+                var endTime = performance.now();
+                console.log("Computed path from " + fromX + "," + fromY + " to " + targetX + "," + targetY + " in " + (endTime - startTime) + "ms");
+                return route;
+            }
+            this.pathableTiles.set(node.tile.x, node.tile.y, node.cost);
+            node.visited = true;
+            //check the 4 adjacent tiles
+            for (var i = 0; i < 4; i++) {
+                var x = node.tile.x + Unit.adjacentOffsets[i][0];
+                var y = node.tile.y + Unit.adjacentOffsets[i][1];
+                //gotta stay in the grid
+                if (x < 0 || x >= width || y < 0 || y >= height)
+                    continue;
+                //get (or create and set) the pathing node
+                var neighbour = nodes.get(x, y);
+                var justDiscoveredNeighbour = false;
+                if (!neighbour) {
+                    neighbour = this.getNewPathingNode(x, y);
+                    //hCost is the line distance
+                    neighbour.hCost = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
+                    nodes.set(x, y, neighbour);
+                    justDiscoveredNeighbour = true;
+                }
+                else if (neighbour.visited) {
+                    //this neighbour already has its shortest route (or has no route)
+                    continue;
+                }
+                //well duh (though this could be subject to change, if some tiles can only be entered from a certain direction)
+                if (!this.canTraverseTile(neighbour.tile)) {
+                    neighbour.visited = true;
+                    continue;
+                }
+                var cost = node.cost + this.getCostToTraverseTile(neighbour.tile);
+                if (cost > this.moveSpeed)
+                    continue;
+                if (cost < neighbour.cost) {
+                    neighbour.cost = cost;
+                    neighbour.fromNode = node;
+                    if (!justDiscoveredNeighbour) {
+                        queue.decrease(neighbour);
+                    }
+                }
+                if (justDiscoveredNeighbour) {
+                    queue.push(neighbour);
+                }
+            }
+        }
+        return null;
+    };
+    Unit.prototype.traceRoute = function (node) {
+        var route = [];
+        while (node != null) {
+            route.push([node.tile.x, node.tile.y]);
+            node = node.fromNode;
+        }
+        return route;
+    };
     Unit.prototype.canTraverseTile = function (tile) {
         //can't enter enemy tiles!
         var currentUnit = this.battle.getUnitAtPosition(tile.x, tile.y);
@@ -693,7 +792,7 @@ var Unit = (function () {
         }
     };
     Unit._nextID = 1;
-    Unit.adjacentOffsets = [[-1, 0], [0, -1], [1, 0], [0, 1]];
+    Unit.adjacentOffsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
     return Unit;
 }());
 exports.default = Unit;
@@ -801,6 +900,7 @@ var BattleDisplay = (function (_super) {
                 break;
             }
         }
+        this.battle.hoverTile(this.mouseGridX, this.mouseGridY);
     };
     return BattleDisplay;
 }(PIXI.Container));
@@ -829,6 +929,7 @@ var LevelDisplay = (function (_super) {
         _this.level = null;
         _this.tileSprites = [];
         _this.pathingGraphics = new PIXI.Graphics();
+        _this.routeGraphics = new PIXI.Graphics();
         return _this;
     }
     LevelDisplay.prototype.initLevel = function (level) {
@@ -836,6 +937,8 @@ var LevelDisplay = (function (_super) {
         this.initTiles();
         if (!this.pathingGraphics.parent)
             this.addChild(this.pathingGraphics);
+        if (!this.routeGraphics.parent)
+            this.addChild(this.routeGraphics);
     };
     LevelDisplay.prototype.showPathing = function (tiles, color, alpha) {
         if (color === void 0) { color = 0x0000ff; }
@@ -851,6 +954,20 @@ var LevelDisplay = (function (_super) {
     };
     LevelDisplay.prototype.clearPathing = function () {
         this.pathingGraphics.clear();
+    };
+    LevelDisplay.prototype.showRoute = function (route, color, alpha) {
+        if (color === void 0) { color = 0x000000; }
+        if (alpha === void 0) { alpha = 0.3; }
+        this.routeGraphics.beginFill(color, alpha);
+        var size = Globals_1.default.gridSize;
+        for (var _i = 0, route_1 = route; _i < route_1.length; _i++) {
+            var coords = route_1[_i];
+            this.routeGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+        }
+        this.routeGraphics.endFill();
+    };
+    LevelDisplay.prototype.clearRoute = function () {
+        this.routeGraphics.clear();
     };
     //TODO TODO TODO make this not garbage (make a tilemap)
     LevelDisplay.prototype.initTiles = function () {
@@ -1193,6 +1310,13 @@ exports.default = BinaryHeap;
 },{}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * Convenience class for an Object of Objects
+ *
+ * I understand that JavaScript Arrays are generally implemented as hash tables anyway,
+ * but on the off chance some platform is different, use this class instead. Speed will
+ * be more or less identical.
+ */
 var SparseGrid = (function () {
     function SparseGrid(defaultValue) {
         if (defaultValue === void 0) { defaultValue = null; }
@@ -1219,6 +1343,9 @@ var SparseGrid = (function () {
         if (row && row.hasOwnProperty(x.toString())) {
             delete row[x];
         }
+    };
+    SparseGrid.prototype.contains = function (x, y) {
+        return this.get(x, y) != this.defaultValue;
     };
     SparseGrid.prototype.getAllCoordinates = function () {
         var allCoords = [];

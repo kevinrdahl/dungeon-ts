@@ -34,7 +34,7 @@ var Battle = (function () {
         configurable: true
     });
     Object.defineProperty(Battle.prototype, "selectedUnit", {
-        get: function () { return this.selectedUnit; },
+        get: function () { return this._selectedUnit; },
         enumerable: true,
         configurable: true
     });
@@ -121,6 +121,19 @@ var Battle = (function () {
         this.units.remove(unit);
         if (unit.battle == this) {
             unit.battle = null;
+        }
+    };
+    Battle.prototype.hoverTile = function (x, y) {
+        if (this.display) {
+            this.display.levelDisplay.clearRoute();
+        }
+        if (this.selectedUnit && this.display) {
+            if (this.selectedUnit.x != x || this.selectedUnit.y != y) {
+                if (this.selectedUnit.pathableTiles.contains(x, y)) {
+                    var route = this.selectedUnit.getPathToPosition(x, y);
+                    this.display.levelDisplay.showRoute(route);
+                }
+            }
         }
     };
     Battle.prototype.getUnitAtPosition = function (x, y) {

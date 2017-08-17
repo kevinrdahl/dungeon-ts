@@ -20,6 +20,7 @@ var LevelDisplay = (function (_super) {
         _this.level = null;
         _this.tileSprites = [];
         _this.pathingGraphics = new PIXI.Graphics();
+        _this.routeGraphics = new PIXI.Graphics();
         return _this;
     }
     LevelDisplay.prototype.initLevel = function (level) {
@@ -27,6 +28,8 @@ var LevelDisplay = (function (_super) {
         this.initTiles();
         if (!this.pathingGraphics.parent)
             this.addChild(this.pathingGraphics);
+        if (!this.routeGraphics.parent)
+            this.addChild(this.routeGraphics);
     };
     LevelDisplay.prototype.showPathing = function (tiles, color, alpha) {
         if (color === void 0) { color = 0x0000ff; }
@@ -42,6 +45,20 @@ var LevelDisplay = (function (_super) {
     };
     LevelDisplay.prototype.clearPathing = function () {
         this.pathingGraphics.clear();
+    };
+    LevelDisplay.prototype.showRoute = function (route, color, alpha) {
+        if (color === void 0) { color = 0x000000; }
+        if (alpha === void 0) { alpha = 0.3; }
+        this.routeGraphics.beginFill(color, alpha);
+        var size = Globals_1.default.gridSize;
+        for (var _i = 0, route_1 = route; _i < route_1.length; _i++) {
+            var coords = route_1[_i];
+            this.routeGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+        }
+        this.routeGraphics.endFill();
+    };
+    LevelDisplay.prototype.clearRoute = function () {
+        this.routeGraphics.clear();
     };
     //TODO TODO TODO make this not garbage (make a tilemap)
     LevelDisplay.prototype.initTiles = function () {

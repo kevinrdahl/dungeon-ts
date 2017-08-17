@@ -10,6 +10,7 @@ export default class LevelDisplay extends PIXI.Container {
 
 	private tileSprites:Array<PIXI.Sprite> = []
 	private pathingGraphics:PIXI.Graphics = new PIXI.Graphics();
+	private routeGraphics:PIXI.Graphics = new PIXI.Graphics();
 
 	constructor() {
 		super();
@@ -19,6 +20,7 @@ export default class LevelDisplay extends PIXI.Container {
 		this.level = level;
 		this.initTiles();
 		if (!this.pathingGraphics.parent) this.addChild(this.pathingGraphics);
+		if (!this.routeGraphics.parent) this.addChild(this.routeGraphics);
 	}
 
 	public showPathing(tiles:SparseGrid<any>, color:number = 0x0000ff, alpha:number = 0.3) {
@@ -35,6 +37,21 @@ export default class LevelDisplay extends PIXI.Container {
 
 	public clearPathing() {
 		this.pathingGraphics.clear();
+	}
+
+	public showRoute(route:Array<Array<number>>, color:number = 0x000000, alpha:number = 0.3) {
+		this.routeGraphics.beginFill(color, alpha);
+
+		var size = Globals.gridSize;
+		for (var coords of route) {
+			this.routeGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+		}
+
+		this.routeGraphics.endFill();
+	}
+
+	public clearRoute() {
+		this.routeGraphics.clear();
 	}
 
 	//TODO TODO TODO make this not garbage (make a tilemap)

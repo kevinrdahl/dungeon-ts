@@ -100,6 +100,7 @@ var BattleDisplay = (function (_super) {
                 break;
             }
         }
+        this.battle.hoverTile(this.mouseGridX, this.mouseGridY);
     };
     return BattleDisplay;
 }(PIXI.Container));

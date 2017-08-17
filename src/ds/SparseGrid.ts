@@ -1,4 +1,10 @@
-
+/**
+ * Convenience class for an Object of Objects
+ * 
+ * I understand that JavaScript Arrays are generally implemented as hash tables anyway,
+ * but on the off chance some platform is different, use this class instead. Speed will
+ * be more or less identical.
+ */
 export default class SparseGrid<T> {
 	private rows:Object = {};
 	private defaultValue;
@@ -30,6 +36,10 @@ export default class SparseGrid<T> {
 		if (row && row.hasOwnProperty(x.toString())) {
 			delete row[x];
 		}
+	}
+
+	public contains(x:number, y:number):boolean {
+		return this.get(x, y) != this.defaultValue;
 	}
 
 	public getAllCoordinates():Array<Array<number>> {

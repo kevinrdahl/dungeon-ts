@@ -100,5 +100,7 @@ export default class BattleDisplay extends PIXI.Container {
 				break;
 			}
 		}
+
+		this.battle.hoverTile(this.mouseGridX, this.mouseGridY);
 	}
 }

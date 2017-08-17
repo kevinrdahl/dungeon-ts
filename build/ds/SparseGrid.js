@@ -1,5 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * Convenience class for an Object of Objects
+ *
+ * I understand that JavaScript Arrays are generally implemented as hash tables anyway,
+ * but on the off chance some platform is different, use this class instead. Speed will
+ * be more or less identical.
+ */
 var SparseGrid = (function () {
     function SparseGrid(defaultValue) {
         if (defaultValue === void 0) { defaultValue = null; }
@@ -26,6 +33,9 @@ var SparseGrid = (function () {
         if (row && row.hasOwnProperty(x.toString())) {
             delete row[x];
         }
+    };
+    SparseGrid.prototype.contains = function (x, y) {
+        return this.get(x, y) != this.defaultValue;
     };
     SparseGrid.prototype.getAllCoordinates = function () {
         var allCoords = [];
