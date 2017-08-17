@@ -91,6 +91,9 @@ var Vector2D = (function () {
     Vector2D.prototype.toJSON = function () {
         return [this.x, this.y];
     };
+    Vector2D.prototype.toString = function () {
+        return "[" + this.x + "," + this.y + "]";
+    };
     Vector2D.polar = function (angle, distance) {
         return new Vector2D(0, 0).offset(angle, distance);
     };

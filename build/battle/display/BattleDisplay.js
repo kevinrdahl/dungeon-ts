@@ -66,12 +66,10 @@ var BattleDisplay = (function (_super) {
     BattleDisplay.prototype.update = function (timeElapsed) {
         //check mouse position, and highlight things
         var mouseCoords = InputManager_1.default.instance.mouseCoords;
-        var local = this.toLocal(new PIXI.Point(mouseCoords.x, mouseCoords.y));
-        var x = Math.floor(local.x / Globals_1.default.gridSize);
-        var y = Math.floor(local.y / Globals_1.default.gridSize);
-        if (x != this.mouseGridX || y != this.mouseGridY) {
-            this.mouseGridX = x;
-            this.mouseGridY = y;
+        var gridCoords = this.viewToGrid(mouseCoords);
+        if (gridCoords.x != this.mouseGridX || gridCoords.y != this.mouseGridY) {
+            this.mouseGridX = gridCoords.x;
+            this.mouseGridY = gridCoords.y;
             this.updateHover();
         }
     };
@@ -87,6 +85,19 @@ var BattleDisplay = (function (_super) {
         if (!unitClicked) {
             this._battle.deselectUnit();
         }
+    };
+    BattleDisplay.prototype.onRightClick = function (coords) {
+        var gridCoords = this.viewToGrid(coords);
+        this._battle.rightClickTile(gridCoords.x, gridCoords.y);
+    };
+    /**
+     * Returns the grid coordinates corresponding to the provided viewspace coordinates
+     */
+    BattleDisplay.prototype.viewToGrid = function (coords) {
+        coords = coords.clone();
+        coords.x = Math.floor(((coords.x - this.x) / this.scale.x) / Globals_1.default.gridSize);
+        coords.y = Math.floor(((coords.y - this.y) / this.scale.y) / Globals_1.default.gridSize);
+        return coords;
     };
     BattleDisplay.prototype.updateHover = function () {
         if (this.hoveredUnitDisplay) {

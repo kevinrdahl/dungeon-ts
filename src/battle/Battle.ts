@@ -14,10 +14,12 @@ export default class Battle {
 	get visible():boolean { return this._visible; }
 	get display():BattleDisplay { return this._display; }
 	get selectedUnit():Unit { return this._selectedUnit; }
+	get currentPlayer():Player { return this._currentPlayer; }
 
 	private _visible:boolean;
 	private _display:BattleDisplay = null;
 	private _selectedUnit:Unit = null;
+	private _currentPlayer:Player = null;
 	private initialized:boolean = false;
 	private unitPositions:SparseGrid<Unit> = new SparseGrid<Unit>(null);
 
@@ -57,12 +59,17 @@ export default class Battle {
 			}
 		}
 
+		this._currentPlayer = this.players.list[0];
+		this.updateAllUnitPathing();
+	}
+
+	public updateAllUnitPathing() {
 		var now = performance.now();
 		for (var unit of this.units.list) {
 			unit.updatePathing();
 		}
 		var timeTaken = performance.now() - now;
-		console.log("Computing " + this.units.count + " units pathing took " + timeTaken + "ms");
+		console.log("Updating pathing for " + this.units.count + " units took " + timeTaken + "ms");
 	}
 
 	public selectUnit(unit:Unit) {
@@ -74,8 +81,9 @@ export default class Battle {
 			unit.onSelect();
 
 			if (this._display) {
+				var color:number = (this.ownUnitSelected()) ? 0x0000ff : 0xff0000;
 				this._display.levelDisplay.clearPathing();
-				this._display.levelDisplay.showPathing(unit.pathableTiles);
+				this._display.levelDisplay.showPathing(unit.pathableTiles, color);
 			}
 		}
 	}
@@ -89,6 +97,7 @@ export default class Battle {
 
 		if (this._display) {
 			this._display.levelDisplay.clearPathing();
+			this._display.levelDisplay.clearRoute();
 		}
 	}
 
@@ -129,23 +138,51 @@ export default class Battle {
 		}
 	}
 
-	public hoverTile(x:number, y:number) {
-		if (this.display) {
-			this.display.levelDisplay.clearRoute();
-		}
+	public moveUnit(unit:Unit, x:number, y:number) {
+		//TODO: trace the path
+		//for now, just plop it there
+		this.unitPositions.unset(unit.x, unit.y);
+		this.unitPositions.set(x, y, unit);
+		unit.x = x;
+		unit.y = y;
+		unit.updatePosition();
+		this.updateAllUnitPathing();
+	}
 
-		if (this.selectedUnit && this.display) {
+	public hoverTile(x:number, y:number) {
+		if (!this.display) return;
+		this.display.levelDisplay.clearRoute();
+
+		if (this.ownUnitSelected()) {
 			if (this.selectedUnit.x != x || this.selectedUnit.y != y) {
 				if (this.selectedUnit.pathableTiles.contains(x, y)) {
 					var route = this.selectedUnit.getPathToPosition(x, y);
 					this.display.levelDisplay.showRoute(route);
 				}
 			}
-		} 
+		}
+	}
+
+	public rightClickTile(x:number, y:number) {
+		var unit = this._selectedUnit;
+		if (unit && this.ownUnitSelected()) {
+			if (unit.canReachTile(x, y) && !this.getUnitAtPosition(x, y)) {
+				this.moveUnit(unit, x, y);
+				this.deselectUnit();
+				this.selectUnit(unit);
+			}
+		}
 	}
 
 	public getUnitAtPosition(x:number, y:number):Unit {
 		return this.unitPositions.get(x, y);
+	}
+
+	public ownUnitSelected():boolean {
+		if (this._currentPlayer && this._selectedUnit && this._selectedUnit.player == this._currentPlayer) {
+			return true;
+		}
+		return false;
 	}
 
 	private initLevel() {

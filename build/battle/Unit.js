@@ -69,6 +69,11 @@ var Unit = (function () {
             this.battle.deselectUnit();
         }
     };
+    Unit.prototype.updatePosition = function () {
+        if (this.display) {
+            this.display.updatePosition();
+        }
+    };
     /**
      * Updates this Unit's public pathableTiles variable, which lists the minimum cost to get to
      * nearby tiles.
@@ -133,7 +138,7 @@ var Unit = (function () {
         //todo: add additional heuristic cost based on environment hazards
         if (fromX === void 0) { fromX = Number.NEGATIVE_INFINITY; }
         if (fromY === void 0) { fromY = Number.NEGATIVE_INFINITY; }
-        var startTime = performance.now();
+        //var startTime = performance.now();
         if (fromX == Number.NEGATIVE_INFINITY)
             fromX = this.x;
         if (fromY == Number.NEGATIVE_INFINITY)
@@ -150,8 +155,8 @@ var Unit = (function () {
             var node = queue.pop();
             if (node.tile.x === targetX && node.tile.y === targetY) {
                 var route = this.traceRoute(node);
-                var endTime = performance.now();
-                console.log("Computed path from " + fromX + "," + fromY + " to " + targetX + "," + targetY + " in " + (endTime - startTime) + "ms");
+                //var endTime = performance.now();
+                //console.log("Computed path from " + fromX + "," + fromY + " to " + targetX + "," + targetY + " in " + (endTime - startTime) + "ms");
                 return route;
             }
             this.pathableTiles.set(node.tile.x, node.tile.y, node.cost);

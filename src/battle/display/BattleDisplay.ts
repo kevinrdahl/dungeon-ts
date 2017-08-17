@@ -61,14 +61,11 @@ export default class BattleDisplay extends PIXI.Container {
 	public update(timeElapsed:number) {
 		//check mouse position, and highlight things
 		var mouseCoords = InputManager.instance.mouseCoords;
-		var local = this.toLocal(new PIXI.Point(mouseCoords.x, mouseCoords.y));
+		var gridCoords = this.viewToGrid(mouseCoords);
 
-		var x = Math.floor(local.x / Globals.gridSize);
-		var y = Math.floor(local.y / Globals.gridSize);
-
-		if (x != this.mouseGridX || y != this.mouseGridY) {
-			this.mouseGridX = x;
-			this.mouseGridY = y;
+		if (gridCoords.x != this.mouseGridX || gridCoords.y != this.mouseGridY) {
+			this.mouseGridX = gridCoords.x;
+			this.mouseGridY = gridCoords.y;
 			this.updateHover();
 		}
 	}
@@ -86,6 +83,21 @@ export default class BattleDisplay extends PIXI.Container {
 		if (!unitClicked) {
 			this._battle.deselectUnit();
 		}
+	}
+
+	public onRightClick(coords:Vector2D) {
+		var gridCoords = this.viewToGrid(coords);
+		this._battle.rightClickTile(gridCoords.x, gridCoords.y);
+	}
+
+	/**
+	 * Returns the grid coordinates corresponding to the provided viewspace coordinates
+	 */
+	public viewToGrid(coords:Vector2D):Vector2D {
+		coords = coords.clone();
+		coords.x = Math.floor(((coords.x - this.x) / this.scale.x) / Globals.gridSize);
+		coords.y = Math.floor(((coords.y - this.y) / this.scale.y) / Globals.gridSize);
+		return coords;
 	}
 
 	private updateHover() {

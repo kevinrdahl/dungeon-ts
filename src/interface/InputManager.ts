@@ -23,6 +23,8 @@ export default class InputManager {
 	private _mouseCoords:Vector2D = new Vector2D(0,0);
 	private _leftMouseDownCoords:Vector2D = null;
 	private _leftMouseDownElement:InterfaceElement = null;
+	private _rightMouseDownCoords: Vector2D = null;
+	private _rightMouseDownElement: InterfaceElement = null;
 	private _hoverElement:InterfaceElement = null;
 	private _focusElement:InterfaceElement = null;
 	private _trackedKeys:Object = {
@@ -104,7 +106,6 @@ export default class InputManager {
 				this._leftMouseDownElement = element;
 				if (element) {
 					this.focus(element);
-					//if (element.onMouseDown) element.onMouseDown(coords);
 					element.sendNewEvent(GameEvent.types.ui.LEFTMOUSEDOWN);
 				} else {
 					Game.instance.onLeftClick(coords.clone());
@@ -115,6 +116,14 @@ export default class InputManager {
 				break;
 			case 3:
 				//right
+				this._rightMouseDownCoords = coords;
+				this._rightMouseDownElement = element;
+				if (element) {
+					this.focus(element);
+					element.sendNewEvent(GameEvent.types.ui.RIGHTMOUSEDOWN);
+				} else {
+					Game.instance.onRightClick(coords.clone());
+				}
 				break;
 			default:
 				console.warn("InputManager: mouse input with which=" + e.which + "?");

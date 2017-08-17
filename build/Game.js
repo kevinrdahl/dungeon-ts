@@ -105,6 +105,14 @@ var Game = (function (_super) {
             this._currentBattle.display.onLeftClick(coords);
         }
     };
+    /**
+     * Called by InputManager when there is a click that isn't on an InterfaceElement
+     */
+    Game.prototype.onRightClick = function (coords) {
+        if (this._currentBattle && this._currentBattle.display) {
+            this._currentBattle.display.onRightClick(coords);
+        }
+    };
     Game.prototype.render = function () {
         var _this = this;
         this._currentDrawTime = Date.now() / 1000;

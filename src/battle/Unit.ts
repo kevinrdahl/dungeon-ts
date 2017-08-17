@@ -74,6 +74,12 @@ export default class Unit {
 		}
 	}
 
+	public updatePosition() {
+		if (this.display) {
+			this.display.updatePosition();
+		}
+	}
+
 	private static adjacentOffsets:Array<Array<number>> = [[-1,0], [1,0], [0,-1], [0,1]];
 
 	/**

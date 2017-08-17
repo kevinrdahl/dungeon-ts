@@ -104,6 +104,10 @@ export default class Vector2D {
 		return [this.x, this.y];
 	}
 
+	public toString():string {
+		return "[" + this.x + "," + this.y + "]";
+	}
+
 	public static polar(angle:number, distance:number):Vector2D {
 		return new Vector2D(0, 0).offset(angle, distance);
 	}

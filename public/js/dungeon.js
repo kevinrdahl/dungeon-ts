@@ -106,6 +106,14 @@ var Game = (function (_super) {
             this._currentBattle.display.onLeftClick(coords);
         }
     };
+    /**
+     * Called by InputManager when there is a click that isn't on an InterfaceElement
+     */
+    Game.prototype.onRightClick = function (coords) {
+        if (this._currentBattle && this._currentBattle.display) {
+            this._currentBattle.display.onRightClick(coords);
+        }
+    };
     Game.prototype.render = function () {
         var _this = this;
         this._currentDrawTime = Date.now() / 1000;
@@ -278,6 +286,7 @@ var Battle = (function () {
         this.level = null;
         this._display = null;
         this._selectedUnit = null;
+        this._currentPlayer = null;
         this.initialized = false;
         this.unitPositions = new SparseGrid_1.default(null);
         this._visible = visible;
@@ -294,6 +303,11 @@ var Battle = (function () {
     });
     Object.defineProperty(Battle.prototype, "selectedUnit", {
         get: function () { return this._selectedUnit; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Battle.prototype, "currentPlayer", {
+        get: function () { return this._currentPlayer; },
         enumerable: true,
         configurable: true
     });
@@ -320,13 +334,17 @@ var Battle = (function () {
                 this.addUnit(unit);
             }
         }
+        this._currentPlayer = this.players.list[0];
+        this.updateAllUnitPathing();
+    };
+    Battle.prototype.updateAllUnitPathing = function () {
         var now = performance.now();
         for (var _i = 0, _a = this.units.list; _i < _a.length; _i++) {
             var unit = _a[_i];
             unit.updatePathing();
         }
         var timeTaken = performance.now() - now;
-        console.log("Computing " + this.units.count + " units pathing took " + timeTaken + "ms");
+        console.log("Updating pathing for " + this.units.count + " units took " + timeTaken + "ms");
     };
     Battle.prototype.selectUnit = function (unit) {
         if (unit == this._selectedUnit)
@@ -336,8 +354,9 @@ var Battle = (function () {
         if (unit) {
             unit.onSelect();
             if (this._display) {
+                var color = (this.ownUnitSelected()) ? 0x0000ff : 0xff0000;
                 this._display.levelDisplay.clearPathing();
-                this._display.levelDisplay.showPathing(unit.pathableTiles);
+                this._display.levelDisplay.showPathing(unit.pathableTiles, color);
             }
         }
     };
@@ -349,6 +368,7 @@ var Battle = (function () {
         unit.onDeselect();
         if (this._display) {
             this._display.levelDisplay.clearPathing();
+            this._display.levelDisplay.clearRoute();
         }
     };
     Battle.prototype.addPlayer = function (player) {
@@ -382,11 +402,21 @@ var Battle = (function () {
             unit.battle = null;
         }
     };
+    Battle.prototype.moveUnit = function (unit, x, y) {
+        //TODO: trace the path
+        //for now, just plop it there
+        this.unitPositions.unset(unit.x, unit.y);
+        this.unitPositions.set(x, y, unit);
+        unit.x = x;
+        unit.y = y;
+        unit.updatePosition();
+        this.updateAllUnitPathing();
+    };
     Battle.prototype.hoverTile = function (x, y) {
-        if (this.display) {
-            this.display.levelDisplay.clearRoute();
-        }
-        if (this.selectedUnit && this.display) {
+        if (!this.display)
+            return;
+        this.display.levelDisplay.clearRoute();
+        if (this.ownUnitSelected()) {
             if (this.selectedUnit.x != x || this.selectedUnit.y != y) {
                 if (this.selectedUnit.pathableTiles.contains(x, y)) {
                     var route = this.selectedUnit.getPathToPosition(x, y);
@@ -395,8 +425,24 @@ var Battle = (function () {
             }
         }
     };
+    Battle.prototype.rightClickTile = function (x, y) {
+        var unit = this._selectedUnit;
+        if (unit && this.ownUnitSelected()) {
+            if (unit.canReachTile(x, y) && !this.getUnitAtPosition(x, y)) {
+                this.moveUnit(unit, x, y);
+                this.deselectUnit();
+                this.selectUnit(unit);
+            }
+        }
+    };
     Battle.prototype.getUnitAtPosition = function (x, y) {
         return this.unitPositions.get(x, y);
+    };
+    Battle.prototype.ownUnitSelected = function () {
+        if (this._currentPlayer && this._selectedUnit && this._selectedUnit.player == this._currentPlayer) {
+            return true;
+        }
+        return false;
     };
     Battle.prototype.initLevel = function () {
         this.level = new Level_1.default();
@@ -611,6 +657,11 @@ var Unit = (function () {
             this.battle.deselectUnit();
         }
     };
+    Unit.prototype.updatePosition = function () {
+        if (this.display) {
+            this.display.updatePosition();
+        }
+    };
     /**
      * Updates this Unit's public pathableTiles variable, which lists the minimum cost to get to
      * nearby tiles.
@@ -675,7 +726,7 @@ var Unit = (function () {
         //todo: add additional heuristic cost based on environment hazards
         if (fromX === void 0) { fromX = Number.NEGATIVE_INFINITY; }
         if (fromY === void 0) { fromY = Number.NEGATIVE_INFINITY; }
-        var startTime = performance.now();
+        //var startTime = performance.now();
         if (fromX == Number.NEGATIVE_INFINITY)
             fromX = this.x;
         if (fromY == Number.NEGATIVE_INFINITY)
@@ -692,8 +743,8 @@ var Unit = (function () {
             var node = queue.pop();
             if (node.tile.x === targetX && node.tile.y === targetY) {
                 var route = this.traceRoute(node);
-                var endTime = performance.now();
-                console.log("Computed path from " + fromX + "," + fromY + " to " + targetX + "," + targetY + " in " + (endTime - startTime) + "ms");
+                //var endTime = performance.now();
+                //console.log("Computed path from " + fromX + "," + fromY + " to " + targetX + "," + targetY + " in " + (endTime - startTime) + "ms");
                 return route;
             }
             this.pathableTiles.set(node.tile.x, node.tile.y, node.cost);
@@ -866,12 +917,10 @@ var BattleDisplay = (function (_super) {
     BattleDisplay.prototype.update = function (timeElapsed) {
         //check mouse position, and highlight things
         var mouseCoords = InputManager_1.default.instance.mouseCoords;
-        var local = this.toLocal(new PIXI.Point(mouseCoords.x, mouseCoords.y));
-        var x = Math.floor(local.x / Globals_1.default.gridSize);
-        var y = Math.floor(local.y / Globals_1.default.gridSize);
-        if (x != this.mouseGridX || y != this.mouseGridY) {
-            this.mouseGridX = x;
-            this.mouseGridY = y;
+        var gridCoords = this.viewToGrid(mouseCoords);
+        if (gridCoords.x != this.mouseGridX || gridCoords.y != this.mouseGridY) {
+            this.mouseGridX = gridCoords.x;
+            this.mouseGridY = gridCoords.y;
             this.updateHover();
         }
     };
@@ -887,6 +936,19 @@ var BattleDisplay = (function (_super) {
         if (!unitClicked) {
             this._battle.deselectUnit();
         }
+    };
+    BattleDisplay.prototype.onRightClick = function (coords) {
+        var gridCoords = this.viewToGrid(coords);
+        this._battle.rightClickTile(gridCoords.x, gridCoords.y);
+    };
+    /**
+     * Returns the grid coordinates corresponding to the provided viewspace coordinates
+     */
+    BattleDisplay.prototype.viewToGrid = function (coords) {
+        coords = coords.clone();
+        coords.x = Math.floor(((coords.x - this.x) / this.scale.x) / Globals_1.default.gridSize);
+        coords.y = Math.floor(((coords.y - this.y) / this.scale.y) / Globals_1.default.gridSize);
+        return coords;
     };
     BattleDisplay.prototype.updateHover = function () {
         if (this.hoveredUnitDisplay) {
@@ -1057,8 +1119,11 @@ var UnitDisplay = (function (_super) {
         this.addChild(this.sprite);
         this.idText = new PIXI.Text(unit.id.toString(), TextUtil.styles.unitID);
         this.addChild(this.idText);
-        this.x = unit.x * Globals_1.default.gridSize;
-        this.y = unit.y * Globals_1.default.gridSize - 9;
+        this.updatePosition();
+    };
+    UnitDisplay.prototype.updatePosition = function () {
+        this.x = this.unit.x * Globals_1.default.gridSize;
+        this.y = this.unit.y * Globals_1.default.gridSize - 9;
     };
     UnitDisplay.prototype.cleanUp = function () {
         if (this.parent) {
@@ -1765,6 +1830,8 @@ var InputManager = (function () {
         this._mouseCoords = new Vector2D_1.default(0, 0);
         this._leftMouseDownCoords = null;
         this._leftMouseDownElement = null;
+        this._rightMouseDownCoords = null;
+        this._rightMouseDownElement = null;
         this._hoverElement = null;
         this._focusElement = null;
         this._trackedKeys = {
@@ -1788,7 +1855,6 @@ var InputManager = (function () {
                     _this._leftMouseDownElement = element;
                     if (element) {
                         _this.focus(element);
-                        //if (element.onMouseDown) element.onMouseDown(coords);
                         element.sendNewEvent(GameEvent_1.default.types.ui.LEFTMOUSEDOWN);
                     }
                     else {
@@ -1800,6 +1866,15 @@ var InputManager = (function () {
                     break;
                 case 3:
                     //right
+                    _this._rightMouseDownCoords = coords;
+                    _this._rightMouseDownElement = element;
+                    if (element) {
+                        _this.focus(element);
+                        element.sendNewEvent(GameEvent_1.default.types.ui.RIGHTMOUSEDOWN);
+                    }
+                    else {
+                        Game_1.default.instance.onRightClick(coords.clone());
+                    }
                     break;
                 default:
                     console.warn("InputManager: mouse input with which=" + e.which + "?");
@@ -3993,6 +4068,9 @@ var Vector2D = (function () {
     };
     Vector2D.prototype.toJSON = function () {
         return [this.x, this.y];
+    };
+    Vector2D.prototype.toString = function () {
+        return "[" + this.x + "," + this.y + "]";
     };
     Vector2D.polar = function (angle, distance) {
         return new Vector2D(0, 0).offset(angle, distance);

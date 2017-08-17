@@ -111,6 +111,15 @@ export default class Game extends GameEventHandler {
 		}
 	}
 
+	/**
+	 * Called by InputManager when there is a click that isn't on an InterfaceElement
+	 */
+	public onRightClick(coords: Vector2D) {
+		if (this._currentBattle && this._currentBattle.display) {
+			this._currentBattle.display.onRightClick(coords);
+		}
+	}
+
 	private render() {
 		this._currentDrawTime = Date.now() / 1000;
 		if (this._lastDrawTime <= 0) this._lastDrawTime = this._currentDrawTime;

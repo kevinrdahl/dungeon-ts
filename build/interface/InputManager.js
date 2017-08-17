@@ -18,6 +18,8 @@ var InputManager = (function () {
         this._mouseCoords = new Vector2D_1.default(0, 0);
         this._leftMouseDownCoords = null;
         this._leftMouseDownElement = null;
+        this._rightMouseDownCoords = null;
+        this._rightMouseDownElement = null;
         this._hoverElement = null;
         this._focusElement = null;
         this._trackedKeys = {
@@ -41,7 +43,6 @@ var InputManager = (function () {
                     _this._leftMouseDownElement = element;
                     if (element) {
                         _this.focus(element);
-                        //if (element.onMouseDown) element.onMouseDown(coords);
                         element.sendNewEvent(GameEvent_1.default.types.ui.LEFTMOUSEDOWN);
                     }
                     else {
@@ -53,6 +54,15 @@ var InputManager = (function () {
                     break;
                 case 3:
                     //right
+                    _this._rightMouseDownCoords = coords;
+                    _this._rightMouseDownElement = element;
+                    if (element) {
+                        _this.focus(element);
+                        element.sendNewEvent(GameEvent_1.default.types.ui.RIGHTMOUSEDOWN);
+                    }
+                    else {
+                        Game_1.default.instance.onRightClick(coords.clone());
+                    }
                     break;
                 default:
                     console.warn("InputManager: mouse input with which=" + e.which + "?");

@@ -59,8 +59,11 @@ var UnitDisplay = (function (_super) {
         this.addChild(this.sprite);
         this.idText = new PIXI.Text(unit.id.toString(), TextUtil.styles.unitID);
         this.addChild(this.idText);
-        this.x = unit.x * Globals_1.default.gridSize;
-        this.y = unit.y * Globals_1.default.gridSize - 9;
+        this.updatePosition();
+    };
+    UnitDisplay.prototype.updatePosition = function () {
+        this.x = this.unit.x * Globals_1.default.gridSize;
+        this.y = this.unit.y * Globals_1.default.gridSize - 9;
     };
     UnitDisplay.prototype.cleanUp = function () {
         if (this.parent) {

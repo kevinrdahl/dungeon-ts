@@ -52,8 +52,12 @@ export default class UnitDisplay extends PIXI.Container {
 		this.idText = new PIXI.Text(unit.id.toString(), TextUtil.styles.unitID);
 		this.addChild(this.idText);
 
-		this.x = unit.x * Globals.gridSize;
-		this.y = unit.y * Globals.gridSize - 9;
+		this.updatePosition();
+	}
+
+	public updatePosition() {
+		this.x = this.unit.x * Globals.gridSize;
+		this.y = this.unit.y * Globals.gridSize - 9;
 	}
 
 	public cleanUp() {

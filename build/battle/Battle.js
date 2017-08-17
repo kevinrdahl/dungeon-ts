@@ -19,6 +19,7 @@ var Battle = (function () {
         this.level = null;
         this._display = null;
         this._selectedUnit = null;
+        this._currentPlayer = null;
         this.initialized = false;
         this.unitPositions = new SparseGrid_1.default(null);
         this._visible = visible;
@@ -35,6 +36,11 @@ var Battle = (function () {
     });
     Object.defineProperty(Battle.prototype, "selectedUnit", {
         get: function () { return this._selectedUnit; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Battle.prototype, "currentPlayer", {
+        get: function () { return this._currentPlayer; },
         enumerable: true,
         configurable: true
     });
@@ -61,13 +67,17 @@ var Battle = (function () {
                 this.addUnit(unit);
             }
         }
+        this._currentPlayer = this.players.list[0];
+        this.updateAllUnitPathing();
+    };
+    Battle.prototype.updateAllUnitPathing = function () {
         var now = performance.now();
         for (var _i = 0, _a = this.units.list; _i < _a.length; _i++) {
             var unit = _a[_i];
             unit.updatePathing();
         }
         var timeTaken = performance.now() - now;
-        console.log("Computing " + this.units.count + " units pathing took " + timeTaken + "ms");
+        console.log("Updating pathing for " + this.units.count + " units took " + timeTaken + "ms");
     };
     Battle.prototype.selectUnit = function (unit) {
         if (unit == this._selectedUnit)
@@ -77,8 +87,9 @@ var Battle = (function () {
         if (unit) {
             unit.onSelect();
             if (this._display) {
+                var color = (this.ownUnitSelected()) ? 0x0000ff : 0xff0000;
                 this._display.levelDisplay.clearPathing();
-                this._display.levelDisplay.showPathing(unit.pathableTiles);
+                this._display.levelDisplay.showPathing(unit.pathableTiles, color);
             }
         }
     };
@@ -90,6 +101,7 @@ var Battle = (function () {
         unit.onDeselect();
         if (this._display) {
             this._display.levelDisplay.clearPathing();
+            this._display.levelDisplay.clearRoute();
         }
     };
     Battle.prototype.addPlayer = function (player) {
@@ -123,11 +135,21 @@ var Battle = (function () {
             unit.battle = null;
         }
     };
+    Battle.prototype.moveUnit = function (unit, x, y) {
+        //TODO: trace the path
+        //for now, just plop it there
+        this.unitPositions.unset(unit.x, unit.y);
+        this.unitPositions.set(x, y, unit);
+        unit.x = x;
+        unit.y = y;
+        unit.updatePosition();
+        this.updateAllUnitPathing();
+    };
     Battle.prototype.hoverTile = function (x, y) {
-        if (this.display) {
-            this.display.levelDisplay.clearRoute();
-        }
-        if (this.selectedUnit && this.display) {
+        if (!this.display)
+            return;
+        this.display.levelDisplay.clearRoute();
+        if (this.ownUnitSelected()) {
             if (this.selectedUnit.x != x || this.selectedUnit.y != y) {
                 if (this.selectedUnit.pathableTiles.contains(x, y)) {
                     var route = this.selectedUnit.getPathToPosition(x, y);
@@ -136,8 +158,24 @@ var Battle = (function () {
             }
         }
     };
+    Battle.prototype.rightClickTile = function (x, y) {
+        var unit = this._selectedUnit;
+        if (unit && this.ownUnitSelected()) {
+            if (unit.canReachTile(x, y) && !this.getUnitAtPosition(x, y)) {
+                this.moveUnit(unit, x, y);
+                this.deselectUnit();
+                this.selectUnit(unit);
+            }
+        }
+    };
     Battle.prototype.getUnitAtPosition = function (x, y) {
         return this.unitPositions.get(x, y);
+    };
+    Battle.prototype.ownUnitSelected = function () {
+        if (this._currentPlayer && this._selectedUnit && this._selectedUnit.player == this._currentPlayer) {
+            return true;
+        }
+        return false;
     };
     Battle.prototype.initLevel = function () {
         this.level = new Level_1.default();
