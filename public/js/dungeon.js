@@ -331,21 +331,15 @@ var Battle = (function () {
                 unit.x = 1 + j;
                 unit.y = 1 + i * 2;
                 player.addUnit(unit);
-                this.addUnit(unit);
+                this.addUnit(unit, false);
             }
         }
-        this._currentPlayer = this.players.list[0];
+        this.beginTurn(this.players.list[0]);
         this.updateAllUnitPathing();
     };
-    Battle.prototype.updateAllUnitPathing = function () {
-        var now = performance.now();
-        for (var _i = 0, _a = this.units.list; _i < _a.length; _i++) {
-            var unit = _a[_i];
-            unit.updatePathing();
-        }
-        var timeTaken = performance.now() - now;
-        console.log("Updating pathing for " + this.units.count + " units took " + timeTaken + "ms");
-    };
+    ////////////////////////////////////////////////////////////
+    // Player actions
+    ////////////////////////////////////////////////////////////
     Battle.prototype.selectUnit = function (unit) {
         if (unit == this._selectedUnit)
             return;
@@ -353,11 +347,7 @@ var Battle = (function () {
         this._selectedUnit = unit;
         if (unit) {
             unit.onSelect();
-            if (this._display) {
-                var color = (this.ownUnitSelected()) ? 0x0000ff : 0xff0000;
-                this._display.levelDisplay.clearPathing();
-                this._display.levelDisplay.showPathing(unit.pathableTiles, color);
-            }
+            this.updatePathingDisplay();
         }
     };
     Battle.prototype.deselectUnit = function () {
@@ -367,22 +357,110 @@ var Battle = (function () {
         this._selectedUnit = null;
         unit.onDeselect();
         if (this._display) {
-            this._display.levelDisplay.clearPathing();
-            this._display.levelDisplay.clearRoute();
+            this.updatePathingDisplay();
         }
     };
+    Battle.prototype.moveUnit = function (unit, x, y) {
+        //TODO: trace the path
+        //for now, just plop it there
+        this.unitPositions.unset(unit.x, unit.y);
+        this.unitPositions.set(x, y, unit);
+        unit.x = x;
+        unit.y = y;
+        unit.updatePosition();
+        this.onUnitAction(unit);
+        this.updateAllUnitPathing();
+    };
+    Battle.prototype.attackUnit = function (attacker, target) {
+        if (!attacker.selected || !this.ownUnitSelected()) {
+            console.log("Battle: " + attacker + " isn't selected by the current player");
+            return;
+        }
+        if (attacker.actionsRemaining <= 0) {
+            console.log("Battle: " + attacker + " is out of actions");
+        }
+        if (!attacker.inRangeToAttack(target)) {
+            console.log("Battle: " + attacker + " isn't in range to attack " + target);
+            return;
+        }
+        //there will be a LOT to change here
+        target.takeDamage(attacker.attackDamage, attacker);
+        this.onUnitAction(attacker);
+    };
+    Battle.prototype.beginTurn = function (player) {
+        if (this._currentPlayer != null) {
+            this.endTurn();
+        }
+        this._currentPlayer = player;
+    };
+    Battle.prototype.endTurn = function () {
+        this.deselectUnit();
+        if (this._currentPlayer) {
+            for (var _i = 0, _a = this._currentPlayer.units.list; _i < _a.length; _i++) {
+                var unit = _a[_i];
+                unit.actionsRemaining = unit.actionsPerTurn;
+                unit.onActionsChanged();
+            }
+        }
+        //select next player and start their turn
+        var index = (this._currentPlayer != null) ? (this.players.list.indexOf(this._currentPlayer) + 1) % this.players.count : 0;
+        this._currentPlayer = null;
+        this.beginTurn(this.players.list[index]);
+    };
+    ////////////////////////////////////////////////////////////
+    // Events
+    ////////////////////////////////////////////////////////////
+    Battle.prototype.onUnitDeath = function (unit) {
+        this.removeUnit(unit);
+    };
+    /** The unit has just completed an action */
+    Battle.prototype.onUnitAction = function (unit) {
+        unit.actionsRemaining -= 1;
+        if (unit.actionsRemaining <= 0) {
+            //update the unit display somehow
+            if (unit.selected)
+                this.deselectUnit();
+        }
+    };
+    ////////////////////////////////////////////////////////////
+    // Book keeping
+    ////////////////////////////////////////////////////////////
+    Battle.prototype.updateAllUnitPathing = function () {
+        var now = performance.now();
+        for (var _i = 0, _a = this.units.list; _i < _a.length; _i++) {
+            var unit = _a[_i];
+            unit.updatePathing();
+        }
+        var timeTaken = performance.now() - now;
+        console.log("Updating pathing for " + this.units.count + " units took " + timeTaken + "ms");
+        this.updatePathingDisplay();
+    };
+    ////////////////////////////////////////////////////////////
+    // Convenience functions for checking state
+    ////////////////////////////////////////////////////////////
+    Battle.prototype.getUnitAtPosition = function (x, y) {
+        return this.unitPositions.get(x, y);
+    };
+    Battle.prototype.ownUnitSelected = function () {
+        if (this._currentPlayer && this._selectedUnit && this._selectedUnit.player == this._currentPlayer) {
+            return true;
+        }
+        return false;
+    };
+    ////////////////////////////////////////////////////////////
+    // Adding and removing things
+    ////////////////////////////////////////////////////////////
     Battle.prototype.addPlayer = function (player) {
         this.players.add(player);
         player.battle = this;
     };
-    /**
-     * I'm pretty sure there will never be a reason to do this...
-     */
+    /** I'm pretty sure there will never be a reason to do this... */
     Battle.prototype.removePlayer = function (player) {
         this.players.remove(player);
         player.battle = null;
     };
-    Battle.prototype.addUnit = function (unit) {
+    Battle.prototype.addUnit = function (unit, updatePathing) {
+        if (updatePathing === void 0) { updatePathing = true; }
         if (this.units.contains(unit)) {
             return;
         }
@@ -395,31 +473,34 @@ var Battle = (function () {
         this.unitPositions.set(unit.x, unit.y, unit);
         unit.battle = this;
         unit.onAddToBattle();
+        if (updatePathing) {
+            this.updateAllUnitPathing();
+        }
     };
     Battle.prototype.removeUnit = function (unit) {
+        if (unit.selected) {
+            this.deselectUnit();
+        }
         this.units.remove(unit);
         if (unit.battle == this) {
             unit.battle = null;
         }
-    };
-    Battle.prototype.moveUnit = function (unit, x, y) {
-        //TODO: trace the path
-        //for now, just plop it there
-        this.unitPositions.unset(unit.x, unit.y);
-        this.unitPositions.set(x, y, unit);
-        unit.x = x;
-        unit.y = y;
-        unit.updatePosition();
+        unit.onRemoveFromBattle();
         this.updateAllUnitPathing();
     };
+    ////////////////////////////////////////////////////////////
+    // Input
+    ////////////////////////////////////////////////////////////
+    /** Update display. Isn't this called by the display?! */
     Battle.prototype.hoverTile = function (x, y) {
         if (!this.display)
             return;
         this.display.levelDisplay.clearRoute();
-        if (this.ownUnitSelected()) {
-            if (this.selectedUnit.x != x || this.selectedUnit.y != y) {
-                if (this.selectedUnit.pathableTiles.contains(x, y)) {
-                    var route = this.selectedUnit.getPathToPosition(x, y);
+        var unit = this._selectedUnit;
+        if (this.ownUnitSelected() && unit.actionsRemaining > 0) {
+            if (unit.x != x || unit.y != y) {
+                if (unit.pathableTiles.contains(x, y)) {
+                    var route = unit.getPathToPosition(x, y);
                     this.display.levelDisplay.showRoute(route);
                 }
             }
@@ -427,23 +508,42 @@ var Battle = (function () {
     };
     Battle.prototype.rightClickTile = function (x, y) {
         var unit = this._selectedUnit;
-        if (unit && this.ownUnitSelected()) {
-            if (unit.canReachTile(x, y) && !this.getUnitAtPosition(x, y)) {
+        if (unit && this.ownUnitSelected() && unit.actionsRemaining > 0) {
+            var tileUnit = this.getUnitAtPosition(x, y);
+            if (!tileUnit && unit.canReachTile(x, y)) {
                 this.moveUnit(unit, x, y);
-                this.deselectUnit();
-                this.selectUnit(unit);
+            }
+            else if (tileUnit && unit.canAttackUnit(tileUnit) && unit.inRangeToAttack(tileUnit)) {
+                this.attackUnit(unit, tileUnit);
+            }
+            else if (tileUnit) {
+                console.log("uh");
+                console.log(unit);
+                console.log(tileUnit);
+                console.log(unit.canAttackUnit(tileUnit));
+                console.log(unit.inRangeToAttack(tileUnit));
             }
         }
     };
-    Battle.prototype.getUnitAtPosition = function (x, y) {
-        return this.unitPositions.get(x, y);
-    };
-    Battle.prototype.ownUnitSelected = function () {
-        if (this._currentPlayer && this._selectedUnit && this._selectedUnit.player == this._currentPlayer) {
-            return true;
+    Battle.prototype.updatePathingDisplay = function () {
+        if (!this.display)
+            return;
+        this.display.levelDisplay.clearPathing();
+        this.display.levelDisplay.clearRoute();
+        var unit = this._selectedUnit;
+        if (unit && (unit.actionsRemaining > 0 || unit.player != this._currentPlayer)) {
+            if (this.ownUnitSelected()) {
+                this._display.levelDisplay.showPathing(unit.pathableTiles, 0x0000ff);
+                this._display.levelDisplay.showPathing(unit.getAttackableNonWalkableTiles(), 0xff0000);
+            }
+            else {
+                this._display.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
+            }
         }
-        return false;
     };
+    ////////////////////////////////////////////////////////////
+    // Init
+    ////////////////////////////////////////////////////////////
     Battle.prototype.initLevel = function () {
         this.level = new Level_1.default();
         this.level.init();
@@ -562,6 +662,11 @@ var Tile = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Tile.prototype, "isPathable", {
+        get: function () { return this.isWalkable || this.isFlyable; },
+        enumerable: true,
+        configurable: true
+    });
     //these are all temp!
     Tile.prototype.initWall = function () {
         this.pathingType = Tile.PATHING_NONE;
@@ -599,6 +704,16 @@ var PathingNode = (function () {
         this.visited = false;
         this.fromNode = null;
     }
+    Object.defineProperty(PathingNode.prototype, "x", {
+        get: function () { return this.tile.x; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(PathingNode.prototype, "y", {
+        get: function () { return this.tile.y; },
+        enumerable: true,
+        configurable: true
+    });
     /** For BinaryHeap */
     PathingNode.scoreFunc = function (node) {
         return node.cost + node.hCost;
@@ -609,12 +724,20 @@ var Unit = (function () {
     function Unit() {
         this.player = null;
         this.battle = null;
+        this.display = null;
         this.x = 0;
         this.y = 0;
         this.moveSpeed = 5;
+        this.actionsRemaining = 2;
+        this.actionsPerTurn = 2;
         this.isFlying = false;
-        this.display = null;
+        this.attackRangeMin = 1;
+        this.attackRangeMax = 2;
+        this.attackDamage = 2;
+        this.health = 5;
+        this.maxHealth = 5;
         this.pathableTiles = null;
+        this.attackableTiles = null;
         this._id = Unit._nextID++;
     }
     Object.defineProperty(Unit.prototype, "id", {
@@ -633,16 +756,39 @@ var Unit = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Unit.prototype, "alive", {
+        get: function () { return this.health > 0; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Unit.prototype, "injured", {
+        get: function () { return this.health < this.maxHealth; },
+        enumerable: true,
+        configurable: true
+    });
     Unit.prototype.onAddToBattle = function () {
         if (this.battle.visible) {
             this.initDisplay();
         }
     };
+    Unit.prototype.onRemoveFromBattle = function () {
+        if (this.display) {
+            this.display.cleanUp();
+            this.display = null;
+        }
+    };
     Unit.prototype.onSelect = function () {
-        this.display.setSelected(true);
+        if (this.display)
+            this.display.setSelected(true);
     };
     Unit.prototype.onDeselect = function () {
-        this.display.setSelected(false);
+        if (this.display)
+            this.display.setSelected(false);
+    };
+    /**The number of remaining actions has changed */
+    Unit.prototype.onActionsChanged = function () {
+        if (this.display)
+            this.display.updateActions();
     };
     /** Tells the battle to select this. */
     Unit.prototype.select = function () {
@@ -662,6 +808,20 @@ var Unit = (function () {
             this.display.updatePosition();
         }
     };
+    Unit.prototype.takeDamage = function (amount, fromUnit) {
+        console.log(this + " takes " + amount + " damage from " + fromUnit);
+        this.health -= amount;
+        if (this.health < 0)
+            this.health = 0;
+        if (this.health == 0) {
+            //die!
+            this.kill();
+            console.log(this + " dies!");
+        }
+    };
+    Unit.prototype.kill = function () {
+        this.battle.onUnitDeath(this);
+    };
     /**
      * Updates this Unit's public pathableTiles variable, which lists the minimum cost to get to
      * nearby tiles.
@@ -675,17 +835,19 @@ var Unit = (function () {
         source.cost = 0;
         var queue = new BinaryHeap_1.default(PathingNode.scoreFunc, [source]);
         var nodes = new SparseGrid_1.default();
-        this.pathableTiles = new SparseGrid_1.default(Number.MAX_VALUE);
-        nodes.set(source.tile.x, source.tile.y, source);
+        this.pathableTiles = new SparseGrid_1.default(false);
+        this.attackableTiles = new SparseGrid_1.default(false);
+        nodes.set(source.x, source.y, source);
         while (!queue.empty) {
             var node = queue.pop();
-            this.pathableTiles.set(node.tile.x, node.tile.y, node.cost);
+            this.pathableTiles.set(node.x, node.y, true);
+            this.setAttackableTiles(node.x, node.y);
             node.visited = true;
             //console.log(node.x + "," + node.y);
             //check the 4 adjacent tiles
             for (var i = 0; i < 4; i++) {
-                var x = node.tile.x + Unit.adjacentOffsets[i][0];
-                var y = node.tile.y + Unit.adjacentOffsets[i][1];
+                var x = node.x + Unit.adjacentOffsets[i][0];
+                var y = node.y + Unit.adjacentOffsets[i][1];
                 //gotta stay in the grid
                 if (x < 0 || x >= width || y < 0 || y >= height)
                     continue;
@@ -721,6 +883,30 @@ var Unit = (function () {
             }
         }
     };
+    Unit.prototype.setAttackableTiles = function (fromX, fromY) {
+        var minRange = 1;
+        var maxRange = 2;
+        var dist = 0;
+        var x, y;
+        var width = this.battle.level.width;
+        var height = this.battle.level.height;
+        var tile;
+        for (var yOffset = -maxRange; yOffset <= maxRange; yOffset++) {
+            for (var xOffset = -maxRange; xOffset <= maxRange; xOffset++) {
+                x = fromX + xOffset;
+                y = fromY + yOffset;
+                if (x < 0 || y < 0 || x >= width || y >= height)
+                    continue;
+                tile = this.battle.level.getTile(x, y);
+                if (!tile.isPathable)
+                    continue;
+                dist = Math.abs(xOffset) + Math.abs(yOffset);
+                if (dist >= minRange && dist <= maxRange) {
+                    this.attackableTiles.set(x, y, true);
+                }
+            }
+        }
+    };
     Unit.prototype.getPathToPosition = function (targetX, targetY, fromX, fromY) {
         //A*
         //todo: add additional heuristic cost based on environment hazards
@@ -738,21 +924,21 @@ var Unit = (function () {
         source.cost = 0;
         var queue = new BinaryHeap_1.default(PathingNode.scoreFunc, [source]);
         var nodes = new SparseGrid_1.default();
-        nodes.set(source.tile.x, source.tile.y, source);
+        nodes.set(source.x, source.y, source);
         while (!queue.empty) {
             var node = queue.pop();
-            if (node.tile.x === targetX && node.tile.y === targetY) {
+            if (node.x === targetX && node.y === targetY) {
                 var route = this.traceRoute(node);
                 //var endTime = performance.now();
                 //console.log("Computed path from " + fromX + "," + fromY + " to " + targetX + "," + targetY + " in " + (endTime - startTime) + "ms");
                 return route;
             }
-            this.pathableTiles.set(node.tile.x, node.tile.y, node.cost);
+            this.pathableTiles.set(node.x, node.y, true);
             node.visited = true;
             //check the 4 adjacent tiles
             for (var i = 0; i < 4; i++) {
-                var x = node.tile.x + Unit.adjacentOffsets[i][0];
-                var y = node.tile.y + Unit.adjacentOffsets[i][1];
+                var x = node.x + Unit.adjacentOffsets[i][0];
+                var y = node.y + Unit.adjacentOffsets[i][1];
                 //gotta stay in the grid
                 if (x < 0 || x >= width || y < 0 || y >= height)
                     continue;
@@ -795,7 +981,7 @@ var Unit = (function () {
     Unit.prototype.traceRoute = function (node) {
         var route = [];
         while (node != null) {
-            route.push([node.tile.x, node.tile.y]);
+            route.push([node.x, node.y]);
             node = node.fromNode;
         }
         return route;
@@ -815,7 +1001,30 @@ var Unit = (function () {
         if (this.pathableTiles == null) {
             this.updatePathing();
         }
-        return this.pathableTiles.get(x, y) <= this.moveSpeed;
+        return this.pathableTiles.get(x, y) === true;
+    };
+    Unit.prototype.canAttackTile = function (x, y) {
+        if (this.attackableTiles == null) {
+            this.updatePathing();
+        }
+        return this.pathableTiles.get(x, y) === true;
+    };
+    /** Irrespective of actions, range and such. Currently "belongs to a different player from" */
+    Unit.prototype.canAttackUnit = function (unit) {
+        return this.player != unit.player;
+    };
+    Unit.prototype.inRangeToAttack = function (unit) {
+        var range = Math.abs(unit.x - this.x) + Math.abs(unit.y - this.y);
+        if (range >= this.attackRangeMin && range <= this.attackRangeMax) {
+            return true;
+        }
+        return false;
+    };
+    Unit.prototype.getAttackableNonWalkableTiles = function () {
+        if (this.pathableTiles == null) {
+            this.updatePathing();
+        }
+        return this.attackableTiles.getComplement(this.pathableTiles);
     };
     /** Assumes it CAN traverse this tile! */
     Unit.prototype.getCostToTraverseTile = function (tile) {
@@ -841,6 +1050,9 @@ var Unit = (function () {
         if (this.battle.display) {
             this.battle.display.addUnitDisplay(this.display);
         }
+    };
+    Unit.prototype.toString = function () {
+        return "Unit " + this.id;
     };
     Unit._nextID = 1;
     Unit.adjacentOffsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
@@ -1125,6 +1337,9 @@ var UnitDisplay = (function (_super) {
         this.x = this.unit.x * Globals_1.default.gridSize;
         this.y = this.unit.y * Globals_1.default.gridSize - 9;
     };
+    UnitDisplay.prototype.updateActions = function () {
+        this.updateState();
+    };
     UnitDisplay.prototype.cleanUp = function () {
         if (this.parent) {
             this.parent.removeChild(this);
@@ -1146,11 +1361,15 @@ var UnitDisplay = (function (_super) {
         this.updateState();
     };
     UnitDisplay.prototype.updateState = function () {
-        if (this.selected) {
+        var noActions = (this.unit.actionsRemaining == 0);
+        if (this.selected && !noActions) {
             this.sprite.tint = 0x00ff00;
         }
         else {
-            if (this.hover) {
+            if (noActions) {
+                this.sprite.tint = 0x666666;
+            }
+            else if (this.hover) {
                 this.sprite.tint = 0xaaffaa;
             }
             else {
@@ -1421,6 +1640,53 @@ var SparseGrid = (function () {
         }
         return allCoords;
     };
+    /** Get a grid containing all the cells from this grid which aren't set in the other grid */
+    SparseGrid.prototype.getComplement = function (other) {
+        return this.getValueSetInternal(other, SparseGrid.SET_COMPLEMENT);
+    };
+    /** NOTE: this only really makes sense for boolean grids */
+    SparseGrid.prototype.getIntersection = function (other) {
+        return this.getValueSetInternal(other, SparseGrid.SET_INTERSECTION);
+    };
+    /** NOTE: this only really makes sense for boolean grids */
+    SparseGrid.prototype.getUnion = function (other) {
+        return this.getValueSetInternal(other, SparseGrid.SET_UNION);
+    };
+    SparseGrid.prototype.getValueSetInternal = function (other, setType) {
+        var ret = new SparseGrid(this.defaultValue);
+        for (var y in this.rows) {
+            for (var x in this.rows[y]) {
+                switch (setType) {
+                    case SparseGrid.SET_INTERSECTION:
+                        if (other.contains(x, y)) {
+                            ret.set(x, y, this.rows[y][x]);
+                        }
+                        break;
+                    case SparseGrid.SET_COMPLEMENT:
+                        if (!other.contains(x, y)) {
+                            ret.set(x, y, this.rows[y][x]);
+                        }
+                        break;
+                    case SparseGrid.SET_UNION:
+                        ret.set(x, y, this.rows[y][x]);
+                }
+            }
+        }
+        if (setType == SparseGrid.SET_UNION) {
+            for (var y in other.rows) {
+                for (var x in other.rows[y]) {
+                    //preserve values from this grid
+                    if (!ret.contains(x, y)) {
+                        ret.set(x, y, other.rows[y][x]);
+                    }
+                }
+            }
+        }
+        return ret;
+    };
+    SparseGrid.SET_UNION = 0;
+    SparseGrid.SET_COMPLEMENT = 1;
+    SparseGrid.SET_INTERSECTION = 2;
     return SparseGrid;
 }());
 exports.default = SparseGrid;

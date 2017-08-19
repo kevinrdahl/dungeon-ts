@@ -65,6 +65,9 @@ var UnitDisplay = (function (_super) {
         this.x = this.unit.x * Globals_1.default.gridSize;
         this.y = this.unit.y * Globals_1.default.gridSize - 9;
     };
+    UnitDisplay.prototype.updateActions = function () {
+        this.updateState();
+    };
     UnitDisplay.prototype.cleanUp = function () {
         if (this.parent) {
             this.parent.removeChild(this);
@@ -86,11 +89,15 @@ var UnitDisplay = (function (_super) {
         this.updateState();
     };
     UnitDisplay.prototype.updateState = function () {
-        if (this.selected) {
+        var noActions = (this.unit.actionsRemaining == 0);
+        if (this.selected && !noActions) {
             this.sprite.tint = 0x00ff00;
         }
         else {
-            if (this.hover) {
+            if (noActions) {
+                this.sprite.tint = 0x666666;
+            }
+            else if (this.hover) {
                 this.sprite.tint = 0xaaffaa;
             }
             else {

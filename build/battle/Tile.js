@@ -20,6 +20,11 @@ var Tile = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Tile.prototype, "isPathable", {
+        get: function () { return this.isWalkable || this.isFlyable; },
+        enumerable: true,
+        configurable: true
+    });
     //these are all temp!
     Tile.prototype.initWall = function () {
         this.pathingType = Tile.PATHING_NONE;

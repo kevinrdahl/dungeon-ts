@@ -14,6 +14,7 @@ export default class Tile {
 
 	get isWalkable():boolean { return this.pathingType >= 2; }
 	get isFlyable():boolean { return this.pathingType >= 1; }
+	get isPathable():boolean { return this.isWalkable || this.isFlyable; }
 
 	constructor() {
 

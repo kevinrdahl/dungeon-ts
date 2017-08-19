@@ -60,6 +60,10 @@ export default class UnitDisplay extends PIXI.Container {
 		this.y = this.unit.y * Globals.gridSize - 9;
 	}
 
+	public updateActions() {
+		this.updateState();
+	}
+
 	public cleanUp() {
 		if (this.parent) {
 			this.parent.removeChild(this);
@@ -86,10 +90,15 @@ export default class UnitDisplay extends PIXI.Container {
 	}
 
 	private updateState() {
-		if (this.selected) {
+		var noActions = (this.unit.actionsRemaining == 0);
+
+		if (this.selected && !noActions) {
 			this.sprite.tint = 0x00ff00;
 		} else {
-			if (this.hover) {
+			if (noActions) {
+				this.sprite.tint = 0x666666;
+			}
+			else if (this.hover) {
 				this.sprite.tint = 0xaaffaa;
 			} else {
 				this.sprite.tint = 0xffffff;
