@@ -27,7 +27,13 @@ export default class Updater {
 		}
 	}
 
-	public add(obj:IUpdateable) {
+	public add(obj:IUpdateable, ifNotAdded:boolean = false) {
+		if (ifNotAdded) {
+			if (this.objects.indexOf(obj) !== -1 || this.objectsToAdd.indexOf(obj) !== -1) {
+				return;
+			}
+		}
+
 		if (this.updating) {
 			this.objectsToAdd.push(obj);
 		} else {

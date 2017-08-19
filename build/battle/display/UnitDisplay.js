@@ -60,6 +60,11 @@ var UnitDisplay = (function (_super) {
         this.idText = new PIXI.Text(unit.id.toString(), TextUtil.styles.unitID);
         this.addChild(this.idText);
         this.updatePosition();
+        //Game.instance.updater.add(this, true);
+    };
+    UnitDisplay.prototype.update = function (timeElapsed) {
+        //yup the updater works
+        //this.rotation += (Math.PI / 180) * 45 * timeElapsed;
     };
     UnitDisplay.prototype.updatePosition = function () {
         this.x = this.unit.x * Globals_1.default.gridSize;

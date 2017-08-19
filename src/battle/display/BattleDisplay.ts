@@ -5,6 +5,7 @@ import Vector2D from '../../util/Vector2D';
 import InputManager from '../../interface/InputManager';
 import Globals from '../../Globals';
 import Battle from '../Battle';
+import Unit from '../Unit';
 
 import UnitDisplay from './UnitDisplay';
 import LevelDisplay from './LevelDisplay';
@@ -101,18 +102,28 @@ export default class BattleDisplay extends PIXI.Container {
 	}
 
 	private updateHover() {
+		var x = this.mouseGridX;
+		var y = this.mouseGridY;
+
+		this.levelDisplay.clearRoute();
+
 		if (this.hoveredUnitDisplay) {
 			this.hoveredUnitDisplay.onMouseOut();
 		}
 
 		for (var display of this._unitDisplays) {
-			if (display.unit.x == this.mouseGridX && display.unit.y == this.mouseGridY) {
+			if (display.unit.x == x && display.unit.y == y) {
 				this.hoveredUnitDisplay = display;
 				display.onMouseOver();
 				break;
 			}
 		}
 
-		this.battle.hoverTile(this.mouseGridX, this.mouseGridY);
+		if (this.battle.ownUnitSelected()) {
+			var unit:Unit = this.battle.selectedUnit;
+			if (unit.actionsRemaining > 0 && (unit.x != x || unit.y != y) && unit.canReachTile(x, y)) {
+				this.levelDisplay.showRoute(unit.getPathToPosition(x, y));
+			}
+		}
 	}
 }

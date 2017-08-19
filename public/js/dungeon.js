@@ -242,7 +242,13 @@ var Updater = (function () {
             this.objects.push(obj);
         }
     };
-    Updater.prototype.add = function (obj) {
+    Updater.prototype.add = function (obj, ifNotAdded) {
+        if (ifNotAdded === void 0) { ifNotAdded = false; }
+        if (ifNotAdded) {
+            if (this.objects.indexOf(obj) !== -1 || this.objectsToAdd.indexOf(obj) !== -1) {
+                return;
+            }
+        }
         if (this.updating) {
             this.objectsToAdd.push(obj);
         }
@@ -491,24 +497,10 @@ var Battle = (function () {
     ////////////////////////////////////////////////////////////
     // Input
     ////////////////////////////////////////////////////////////
-    /** Update display. Isn't this called by the display?! */
-    Battle.prototype.hoverTile = function (x, y) {
-        if (!this.display)
-            return;
-        this.display.levelDisplay.clearRoute();
-        var unit = this._selectedUnit;
-        if (this.ownUnitSelected() && unit.actionsRemaining > 0) {
-            if (unit.x != x || unit.y != y) {
-                if (unit.pathableTiles.contains(x, y)) {
-                    var route = unit.getPathToPosition(x, y);
-                    this.display.levelDisplay.showRoute(route);
-                }
-            }
-        }
-    };
+    /** Perform the default action for that tile */
     Battle.prototype.rightClickTile = function (x, y) {
         var unit = this._selectedUnit;
-        if (unit && this.ownUnitSelected() && unit.actionsRemaining > 0) {
+        if (this.ownUnitSelected() && unit.actionsRemaining > 0) {
             var tileUnit = this.getUnitAtPosition(x, y);
             if (!tileUnit && unit.canReachTile(x, y)) {
                 this.moveUnit(unit, x, y);
@@ -1163,18 +1155,26 @@ var BattleDisplay = (function (_super) {
         return coords;
     };
     BattleDisplay.prototype.updateHover = function () {
+        var x = this.mouseGridX;
+        var y = this.mouseGridY;
+        this.levelDisplay.clearRoute();
         if (this.hoveredUnitDisplay) {
             this.hoveredUnitDisplay.onMouseOut();
         }
         for (var _i = 0, _a = this._unitDisplays; _i < _a.length; _i++) {
             var display = _a[_i];
-            if (display.unit.x == this.mouseGridX && display.unit.y == this.mouseGridY) {
+            if (display.unit.x == x && display.unit.y == y) {
                 this.hoveredUnitDisplay = display;
                 display.onMouseOver();
                 break;
             }
         }
-        this.battle.hoverTile(this.mouseGridX, this.mouseGridY);
+        if (this.battle.ownUnitSelected()) {
+            var unit = this.battle.selectedUnit;
+            if (unit.actionsRemaining > 0 && (unit.x != x || unit.y != y) && unit.canReachTile(x, y)) {
+                this.levelDisplay.showRoute(unit.getPathToPosition(x, y));
+            }
+        }
     };
     return BattleDisplay;
 }(PIXI.Container));
@@ -1332,6 +1332,11 @@ var UnitDisplay = (function (_super) {
         this.idText = new PIXI.Text(unit.id.toString(), TextUtil.styles.unitID);
         this.addChild(this.idText);
         this.updatePosition();
+        //Game.instance.updater.add(this, true);
+    };
+    UnitDisplay.prototype.update = function (timeElapsed) {
+        //yup the updater works
+        //this.rotation += (Math.PI / 180) * 45 * timeElapsed;
     };
     UnitDisplay.prototype.updatePosition = function () {
         this.x = this.unit.x * Globals_1.default.gridSize;

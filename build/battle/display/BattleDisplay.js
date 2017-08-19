@@ -100,18 +100,26 @@ var BattleDisplay = (function (_super) {
         return coords;
     };
     BattleDisplay.prototype.updateHover = function () {
+        var x = this.mouseGridX;
+        var y = this.mouseGridY;
+        this.levelDisplay.clearRoute();
         if (this.hoveredUnitDisplay) {
             this.hoveredUnitDisplay.onMouseOut();
         }
         for (var _i = 0, _a = this._unitDisplays; _i < _a.length; _i++) {
             var display = _a[_i];
-            if (display.unit.x == this.mouseGridX && display.unit.y == this.mouseGridY) {
+            if (display.unit.x == x && display.unit.y == y) {
                 this.hoveredUnitDisplay = display;
                 display.onMouseOver();
                 break;
             }
         }
-        this.battle.hoverTile(this.mouseGridX, this.mouseGridY);
+        if (this.battle.ownUnitSelected()) {
+            var unit = this.battle.selectedUnit;
+            if (unit.actionsRemaining > 0 && (unit.x != x || unit.y != y) && unit.canReachTile(x, y)) {
+                this.levelDisplay.showRoute(unit.getPathToPosition(x, y));
+            }
+        }
     };
     return BattleDisplay;
 }(PIXI.Container));

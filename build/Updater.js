@@ -21,7 +21,13 @@ var Updater = (function () {
             this.objects.push(obj);
         }
     };
-    Updater.prototype.add = function (obj) {
+    Updater.prototype.add = function (obj, ifNotAdded) {
+        if (ifNotAdded === void 0) { ifNotAdded = false; }
+        if (ifNotAdded) {
+            if (this.objects.indexOf(obj) !== -1 || this.objectsToAdd.indexOf(obj) !== -1) {
+                return;
+            }
+        }
         if (this.updating) {
             this.objectsToAdd.push(obj);
         }

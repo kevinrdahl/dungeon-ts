@@ -246,25 +246,10 @@ export default class Battle {
 	// Input
 	////////////////////////////////////////////////////////////
 
-	/** Update display. Isn't this called by the display?! */
-	public hoverTile(x: number, y: number) {
-		if (!this.display) return;
-		this.display.levelDisplay.clearRoute();
-
-		var unit = this._selectedUnit;
-		if (this.ownUnitSelected() && unit.actionsRemaining > 0) {
-			if (unit.x != x || unit.y != y) {
-				if (unit.pathableTiles.contains(x, y)) {
-					var route = unit.getPathToPosition(x, y);
-					this.display.levelDisplay.showRoute(route);
-				}
-			}
-		}
-	}
-
+	/** Perform the default action for that tile */
 	public rightClickTile(x: number, y: number) {
 		var unit = this._selectedUnit;
-		if (unit && this.ownUnitSelected() && unit.actionsRemaining > 0) {
+		if (this.ownUnitSelected() && unit.actionsRemaining > 0) {
 			var tileUnit:Unit = this.getUnitAtPosition(x, y);
 			if (!tileUnit && unit.canReachTile(x, y)) {
 				this.moveUnit(unit, x, y);

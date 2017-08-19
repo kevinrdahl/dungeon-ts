@@ -53,6 +53,12 @@ export default class UnitDisplay extends PIXI.Container {
 		this.addChild(this.idText);
 
 		this.updatePosition();
+		//Game.instance.updater.add(this, true);
+	}
+
+	public update(timeElapsed:number) {
+		//yup the updater works
+		//this.rotation += (Math.PI / 180) * 45 * timeElapsed;
 	}
 
 	public updatePosition() {
