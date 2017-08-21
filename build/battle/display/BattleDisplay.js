@@ -12,8 +12,12 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../../Game");
+var Vector2D_1 = require("../../util/Vector2D");
 var InputManager_1 = require("../../interface/InputManager");
 var Globals_1 = require("../../Globals");
+var ElementList_1 = require("../../interface/ElementList");
+var AttachInfo_1 = require("../../interface/AttachInfo");
+var TextElement_1 = require("../../interface/TextElement");
 var BattleDisplay = (function (_super) {
     __extends(BattleDisplay, _super);
     function BattleDisplay() {
@@ -33,6 +37,11 @@ var BattleDisplay = (function (_super) {
     });
     Object.defineProperty(BattleDisplay.prototype, "levelDisplay", {
         get: function () { return this._levelDisplay; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(BattleDisplay.prototype, "hoverCoords", {
+        get: function () { return new Vector2D_1.default(this.mouseGridX, this.mouseGridY); },
         enumerable: true,
         configurable: true
     });
@@ -85,10 +94,14 @@ var BattleDisplay = (function (_super) {
         if (!unitClicked) {
             this._battle.deselectUnit();
         }
+        this.updatePathingDisplay();
+        this.updateDebugPanel();
     };
     BattleDisplay.prototype.onRightClick = function (coords) {
         var gridCoords = this.viewToGrid(coords);
         this._battle.rightClickTile(gridCoords.x, gridCoords.y);
+        this.updatePathingDisplay();
+        this.updateDebugPanel();
     };
     /**
      * Returns the grid coordinates corresponding to the provided viewspace coordinates
@@ -114,10 +127,77 @@ var BattleDisplay = (function (_super) {
                 break;
             }
         }
+        this.updatePathingHover();
+        this.updateDebugPanel();
+    };
+    BattleDisplay.prototype.updateDebugPanel = function () {
+        var items = this.battle.getDebugPanelStrings();
+        if (!this.debugPanel) {
+            this.debugPanel = new ElementList_1.default(200, ElementList_1.default.VERTICAL, 5, ElementList_1.default.RIGHT);
+            Game_1.default.instance.interfaceRoot.addDialog(this.debugPanel);
+            this.debugPanel.attachToParent(AttachInfo_1.default.TRtoTR);
+        }
+        this.debugPanel.beginBatchChange();
+        //remove excess
+        while (this.debugPanel.numChildren > items.length) {
+            this.debugPanel.removeChild(this.debugPanel.getLastChild());
+        }
+        //add as needed
+        while (this.debugPanel.numChildren < items.length) {
+            var text = new TextElement_1.default("aaa", TextElement_1.default.basicText);
+            this.debugPanel.addChild(text);
+        }
+        //set them all
+        for (var i = 0; i < items.length; i++) {
+            this.debugPanel.children[i].text = items[i];
+        }
+        this.debugPanel.endBatchChange();
+    };
+    BattleDisplay.prototype.updatePathingDisplay = function () {
+        this.levelDisplay.clearPathing();
+        var unit = this.battle.selectedUnit;
+        if (unit && (unit.canAct() || !this.battle.ownUnitSelected())) {
+            if (this.battle.ownUnitSelected()) {
+                if (unit.actionsRemaining == 1) {
+                    //show pathing in a different color, and only show red on tiles attackable from current position
+                    this.levelDisplay.showPathing(unit.pathableTiles, 0xffff00);
+                    var attackable = unit.getAttackableTiles(unit.x, unit.y).getComplement(unit.pathableTiles);
+                    this.levelDisplay.showPathing(attackable, 0xff0000);
+                }
+                else {
+                    //show everywhere the unit could move, and attackable tiles outside that range
+                    this.levelDisplay.showPathing(unit.pathableTiles, 0x0000ff);
+                    this.levelDisplay.showPathing(unit.getAttackableNonWalkableTiles(), 0xff0000);
+                }
+            }
+            else {
+                //show everywhere this unit could attack
+                this.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
+            }
+        }
+        this.updatePathingHover();
+    };
+    BattleDisplay.prototype.updatePathingHover = function () {
+        this.levelDisplay.clearRoute();
+        var x = this.mouseGridX;
+        var y = this.mouseGridY;
         if (this.battle.ownUnitSelected()) {
             var unit = this.battle.selectedUnit;
-            if (unit.actionsRemaining > 0 && (unit.x != x || unit.y != y) && unit.canReachTile(x, y)) {
-                this.levelDisplay.showRoute(unit.getPathToPosition(x, y));
+            if (unit.canAct() && (unit.x != x || unit.y != y)) {
+                if (unit.canReachTile(x, y)) {
+                    this.levelDisplay.showRoute(unit.getPathToPosition(x, y));
+                }
+                else {
+                    var tileUnit = this.battle.getUnitAtPosition(x, y);
+                    if (tileUnit && unit.canAttackUnit(tileUnit)) {
+                        if (!unit.inRangeToAttack(tileUnit)) {
+                            var pos = unit.getPositionToAttackUnit(tileUnit);
+                            if (pos) {
+                                this.levelDisplay.showRoute(unit.getPathToPosition(pos[0], pos[1]));
+                            }
+                        }
+                    }
+                }
             }
         }
     };

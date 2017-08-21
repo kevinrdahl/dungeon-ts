@@ -18,6 +18,7 @@ export default class ElementList extends InterfaceElement {
 	private _childBounds:Array<number> = [];
 	private _childPadding:Array<number> = [];
 	private _alignment:number;
+	private _inBatchChange:boolean = false;
 
 	protected _debugColor = 0xffff00;
 
@@ -36,12 +37,24 @@ export default class ElementList extends InterfaceElement {
 		}
 	}
 
+	public beginBatchChange() {
+		this._inBatchChange = true;
+	}
+
+	public endBatchChange() {
+		if (!this._inBatchChange) {
+			return;
+		}
+		this._inBatchChange = false;
+		this.redoLayout();
+	}
+
 	public addChild(child:InterfaceElement, extraPadding:number = 0, redoLayout:boolean = true) {
 		super.addChild(child);
 		this._childBounds.push(0);
 		this._childPadding.push(this._padding + extraPadding);
 
-		if (redoLayout) {
+		if (redoLayout && !this._inBatchChange) {
 			this.redoLayout(child);
 		}
 	}
@@ -51,7 +64,7 @@ export default class ElementList extends InterfaceElement {
 		this._childBounds.push(0);
 		this._childPadding.splice(index, 0, extraPadding);
 
-		if (redoLayout) {
+		if (redoLayout && !this._inBatchChange) {
 			this.redoLayout(child);
 		}
 	}
@@ -63,11 +76,13 @@ export default class ElementList extends InterfaceElement {
 
 		if (index != -1 && index < this._children.length) {
 			this._childBounds.pop();
-			this.redoLayout(this._children[index]);
+			if (!this._inBatchChange) {
+				this.redoLayout(this._children[index]);
+			}
 		}
 	}
 
-	private redoLayout(fromChild:InterfaceElement = null) {
+	public redoLayout(fromChild:InterfaceElement = null) {
 		var index:number = -1;
 		if (fromChild == null && this._children.length > 0) {
 			index = 0;

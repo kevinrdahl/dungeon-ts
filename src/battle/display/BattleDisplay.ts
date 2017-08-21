@@ -10,6 +10,10 @@ import Unit from '../Unit';
 import UnitDisplay from './UnitDisplay';
 import LevelDisplay from './LevelDisplay';
 
+import ElementList from '../../interface/ElementList';
+import AttachInfo from '../../interface/AttachInfo';
+import TextElement from '../../interface/TextElement';
+
 export default class BattleDisplay extends PIXI.Container {
 	private _unitContainer:PIXI.Container = new PIXI.Container();
 	private _unitDisplays:Array<UnitDisplay> = [];
@@ -18,9 +22,11 @@ export default class BattleDisplay extends PIXI.Container {
 	private mouseGridY:number = Number.NEGATIVE_INFINITY;
 	private hoveredUnitDisplay:UnitDisplay = null;
 	private _battle:Battle;
+	private debugPanel:ElementList;
 
 	get battle():Battle { return this._battle;}
 	get levelDisplay():LevelDisplay { return this._levelDisplay; }
+	get hoverCoords():Vector2D { return new Vector2D(this.mouseGridX, this.mouseGridY); }
 
 	constructor() {
 		super();
@@ -84,11 +90,17 @@ export default class BattleDisplay extends PIXI.Container {
 		if (!unitClicked) {
 			this._battle.deselectUnit();
 		}
+
+		this.updatePathingDisplay();
+		this.updateDebugPanel();
 	}
 
 	public onRightClick(coords:Vector2D) {
 		var gridCoords = this.viewToGrid(coords);
 		this._battle.rightClickTile(gridCoords.x, gridCoords.y);
+
+		this.updatePathingDisplay();
+		this.updateDebugPanel();
 	}
 
 	/**
@@ -105,7 +117,7 @@ export default class BattleDisplay extends PIXI.Container {
 		var x = this.mouseGridX;
 		var y = this.mouseGridY;
 
-		this.levelDisplay.clearRoute();
+		this.levelDisplay.clearPath();
 
 		if (this.hoveredUnitDisplay) {
 			this.hoveredUnitDisplay.onMouseOut();
@@ -119,10 +131,87 @@ export default class BattleDisplay extends PIXI.Container {
 			}
 		}
 
+		this.updatePathingHover();
+		this.updateDebugPanel();
+	}
+
+	public updateDebugPanel() {
+		var items = this.battle.getDebugPanelStrings();
+
+		if (!this.debugPanel) {
+			this.debugPanel = new ElementList(200, ElementList.VERTICAL, 5, ElementList.RIGHT);
+			Game.instance.interfaceRoot.addDialog(this.debugPanel);
+			this.debugPanel.attachToParent(AttachInfo.TRtoTR);
+		}
+
+		this.debugPanel.beginBatchChange();
+
+		//remove excess
+		while (this.debugPanel.numChildren > items.length) {
+			this.debugPanel.removeChild(this.debugPanel.getLastChild());
+		}
+
+		//add as needed
+		while (this.debugPanel.numChildren < items.length) {
+			var text:TextElement = new TextElement("aaa", TextElement.basicText);
+			this.debugPanel.addChild(text);
+		}
+
+		//set them all
+		for (var i = 0; i < items.length; i++) {
+			(this.debugPanel.children[i] as TextElement).text = items[i];
+		}
+
+		this.debugPanel.endBatchChange();
+	}
+
+	public updatePathingDisplay() {
+		this.levelDisplay.clearPathing();
+
+		var unit = this.battle.selectedUnit;
+		if (unit && (unit.canAct() || !this.battle.ownUnitSelected())) {
+			if (this.battle.ownUnitSelected()) {
+				if (unit.actionsRemaining == 1) {
+					//show pathing in a different color, and only show red on tiles attackable from current position
+					this.levelDisplay.showPathing(unit.pathableTiles, 0xffff00);
+					var attackable = unit.getAttackableTiles(unit.x, unit.y).getComplement(unit.pathableTiles);
+					this.levelDisplay.showPathing(attackable, 0xff0000);
+				} else {
+					//show everywhere the unit could move, and attackable tiles outside that range
+					this.levelDisplay.showPathing(unit.pathableTiles, 0x0000ff);
+					this.levelDisplay.showPathing(unit.getAttackableNonWalkableTiles(), 0xff0000);
+				}
+			} else {
+				//show everywhere this unit could attack
+				this.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
+			}
+		}
+
+		this.updatePathingHover();
+	}
+
+	public updatePathingHover() {
+		this.levelDisplay.clearPath();
+
+		var x = this.mouseGridX;
+		var y = this.mouseGridY;
+
 		if (this.battle.ownUnitSelected()) {
-			var unit:Unit = this.battle.selectedUnit;
-			if (unit.actionsRemaining > 0 && (unit.x != x || unit.y != y) && unit.canReachTile(x, y)) {
-				this.levelDisplay.showRoute(unit.getPathToPosition(x, y));
+			var unit: Unit = this.battle.selectedUnit;
+			if (unit.canAct() && (unit.x != x || unit.y != y)) {
+				if (unit.canReachTile(x, y)) {
+					this.levelDisplay.showPath(unit.getPathToPosition(x, y));
+				} else {
+					var tileUnit = this.battle.getUnitAtPosition(x, y);
+					if (tileUnit && unit.canAttackUnit(tileUnit)) {
+						if (!unit.inRangeToAttack(tileUnit)) {
+							var pos = unit.getPositionToAttackUnit(tileUnit);
+							if (pos) {
+								this.levelDisplay.showPath(unit.getPathToPosition(pos[0], pos[1]));
+							}
+						}
+					}
+				}
 			}
 		}
 	}

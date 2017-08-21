@@ -14,6 +14,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../../Game");
 var TextUtil = require("../../util/TextUtil");
 var Globals_1 = require("../../Globals");
+var TracePathInfo = (function () {
+    function TracePathInfo() {
+        this.timeElapsed = 0;
+        this.duration = 0;
+    }
+    return TracePathInfo;
+}());
 var UnitDisplay = (function (_super) {
     __extends(UnitDisplay, _super);
     function UnitDisplay() {
@@ -23,6 +30,7 @@ var UnitDisplay = (function (_super) {
         _this.idText = null;
         _this.hover = false;
         _this.selected = false;
+        _this.tracePathInfo = null;
         _this.unit = null;
         return _this;
     }
@@ -51,24 +59,31 @@ var UnitDisplay = (function (_super) {
         if (!this.shadowSprite) {
             this.shadowSprite = new PIXI.Sprite(Game_1.default.instance.textureLoader.get("character/shadow"));
             this.addChildAt(this.shadowSprite, 0);
-            this.shadowSprite.y = 4;
+            this.shadowSprite.y = -5;
         }
         var tex = Game_1.default.instance.textureLoader.get(texName);
         this.sprite = new PIXI.Sprite(tex);
         this.sprite.x = -1;
+        this.sprite.y = -9;
         this.addChild(this.sprite);
         this.idText = new PIXI.Text(unit.id.toString(), TextUtil.styles.unitID);
         this.addChild(this.idText);
         this.updatePosition();
-        //Game.instance.updater.add(this, true);
+        Game_1.default.instance.updater.add(this, true);
     };
     UnitDisplay.prototype.update = function (timeElapsed) {
-        //yup the updater works
-        //this.rotation += (Math.PI / 180) * 45 * timeElapsed;
+        this.updateMovement(timeElapsed);
+    };
+    UnitDisplay.prototype.tracePath = function (path, duration) {
+        var info = new TracePathInfo();
+        info.path = path;
+        info.duration = duration;
+        this.tracePathInfo = info;
+        //then it's taken care of in update
     };
     UnitDisplay.prototype.updatePosition = function () {
         this.x = this.unit.x * Globals_1.default.gridSize;
-        this.y = this.unit.y * Globals_1.default.gridSize - 9;
+        this.y = this.unit.y * Globals_1.default.gridSize;
     };
     UnitDisplay.prototype.updateActions = function () {
         this.updateState();
@@ -109,6 +124,33 @@ var UnitDisplay = (function (_super) {
                 this.sprite.tint = 0xffffff;
             }
         }
+    };
+    UnitDisplay.prototype.updateMovement = function (timeElapsed) {
+        if (this.tracePathInfo) {
+            var info = this.tracePathInfo;
+            info.timeElapsed = Math.min(info.duration, info.timeElapsed + timeElapsed);
+            if (info.timeElapsed >= info.duration) {
+                var pos = info.path[info.path.length - 1];
+                this.setGridPosition(pos[0], pos[1]);
+                this.tracePathInfo = null; //done
+            }
+            else {
+                var numCells = info.path.length - 1; //don't include the start cell
+                var timePerCell = info.duration / numCells;
+                var cellsMoved = Math.floor(info.timeElapsed / timePerCell);
+                var progress = (info.timeElapsed - (cellsMoved * timePerCell)) / timePerCell;
+                var pos1 = info.path[cellsMoved];
+                var pos2 = info.path[cellsMoved + 1];
+                var x = pos1[0] + (pos2[0] - pos1[0]) * progress;
+                var y = pos1[1] + (pos2[1] - pos1[1]) * progress;
+                this.setGridPosition(x, y);
+            }
+        }
+    };
+    UnitDisplay.prototype.setGridPosition = function (x, y) {
+        x *= Globals_1.default.gridSize;
+        y *= Globals_1.default.gridSize;
+        this.position.set(x, y);
     };
     return UnitDisplay;
 }(PIXI.Container));

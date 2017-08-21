@@ -21,6 +21,7 @@ var ElementList = (function (_super) {
         var _this = _super.call(this) || this;
         _this._childBounds = [];
         _this._childPadding = [];
+        _this._inBatchChange = false;
         _this._debugColor = 0xffff00;
         _this._orientation = orientation;
         _this._padding = padding;
@@ -34,13 +35,23 @@ var ElementList = (function (_super) {
         }
         return _this;
     }
+    ElementList.prototype.beginBatchChange = function () {
+        this._inBatchChange = true;
+    };
+    ElementList.prototype.endBatchChange = function () {
+        if (!this._inBatchChange) {
+            return;
+        }
+        this._inBatchChange = false;
+        this.redoLayout();
+    };
     ElementList.prototype.addChild = function (child, extraPadding, redoLayout) {
         if (extraPadding === void 0) { extraPadding = 0; }
         if (redoLayout === void 0) { redoLayout = true; }
         _super.prototype.addChild.call(this, child);
         this._childBounds.push(0);
         this._childPadding.push(this._padding + extraPadding);
-        if (redoLayout) {
+        if (redoLayout && !this._inBatchChange) {
             this.redoLayout(child);
         }
     };
@@ -50,7 +61,7 @@ var ElementList = (function (_super) {
         _super.prototype.addChildAt.call(this, child, index);
         this._childBounds.push(0);
         this._childPadding.splice(index, 0, extraPadding);
-        if (redoLayout) {
+        if (redoLayout && !this._inBatchChange) {
             this.redoLayout(child);
         }
     };
@@ -59,7 +70,9 @@ var ElementList = (function (_super) {
         _super.prototype.removeChild.call(this, child);
         if (index != -1 && index < this._children.length) {
             this._childBounds.pop();
-            this.redoLayout(this._children[index]);
+            if (!this._inBatchChange) {
+                this.redoLayout(this._children[index]);
+            }
         }
     };
     ElementList.prototype.redoLayout = function (fromChild) {

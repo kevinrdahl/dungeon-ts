@@ -177,12 +177,22 @@ var InterfaceElement = (function (_super) {
             return e.id == id;
         });
     };
+    /** Returns the given element, if it's a descendent of this (or is this) */
     InterfaceElement.prototype.getElement = function (e) {
         if (this == e)
             return this; //derp
         return this.getElementByFunction(function (e2) {
             return e2 == e;
         });
+    };
+    InterfaceElement.prototype.getChildAt = function (index) {
+        if (this.numChildren > index) {
+            return this._children[index];
+        }
+        return null;
+    };
+    InterfaceElement.prototype.getLastChild = function () {
+        return this.getChildAt(this.numChildren - 1);
     };
     //BFS, always call from the lowest known ancestor
     //Hey kid, don't make cyclical structures. I'm putting maxChecks here anyway, just in case.

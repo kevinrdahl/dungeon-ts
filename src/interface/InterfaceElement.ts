@@ -132,12 +132,25 @@ export default class InterfaceElement extends GameEventHandler {
 		});
 	}
 
+	/** Returns the given element, if it's a descendent of this (or is this) */
 	public getElement(e:InterfaceElement) {
 		if (this == e) return this; //derp
 
 		return this.getElementByFunction(function(e2:InterfaceElement) {
 			return e2 == e;
 		});
+	}
+
+	public getChildAt(index:number):InterfaceElement {
+		if (this.numChildren > index) {
+			return this._children[index];
+		}
+
+		return null;
+	}
+
+	public getLastChild():InterfaceElement {
+		return this.getChildAt(this.numChildren - 1);
 	}
 
 	//BFS, always call from the lowest known ancestor

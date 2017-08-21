@@ -31,6 +31,8 @@ var Level = (function () {
         }
     };
     Level.prototype.getTile = function (x, y) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height)
+            return null;
         var index = this.width * y + x;
         return this.tiles[index];
     };

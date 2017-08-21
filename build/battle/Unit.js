@@ -148,7 +148,7 @@ var Unit = (function () {
         while (!queue.empty) {
             var node = queue.pop();
             this.pathableTiles.set(node.x, node.y, true);
-            this.setAttackableTiles(node.x, node.y);
+            this.getAttackableTiles(node.x, node.y, this.attackableTiles);
             node.visited = true;
             //console.log(node.x + "," + node.y);
             //check the 4 adjacent tiles
@@ -190,14 +190,19 @@ var Unit = (function () {
             }
         }
     };
-    Unit.prototype.setAttackableTiles = function (fromX, fromY) {
-        var minRange = 1;
-        var maxRange = 2;
+    /** For each tile that can be attacked from the given position, writes them to the provided grid, and returns it */
+    Unit.prototype.getAttackableTiles = function (fromX, fromY, toGrid) {
+        if (toGrid === void 0) { toGrid = null; }
+        var minRange = this.attackRangeMin;
+        var maxRange = this.attackRangeMax;
         var dist = 0;
         var x, y;
         var width = this.battle.level.width;
         var height = this.battle.level.height;
         var tile;
+        if (toGrid == null) {
+            toGrid = new SparseGrid_1.default();
+        }
         for (var yOffset = -maxRange; yOffset <= maxRange; yOffset++) {
             for (var xOffset = -maxRange; xOffset <= maxRange; xOffset++) {
                 x = fromX + xOffset;
@@ -209,10 +214,36 @@ var Unit = (function () {
                     continue;
                 dist = Math.abs(xOffset) + Math.abs(yOffset);
                 if (dist >= minRange && dist <= maxRange) {
-                    this.attackableTiles.set(x, y, true);
+                    toGrid.set(x, y, true);
                 }
             }
         }
+        return toGrid;
+    };
+    /**
+     * Gets the coordinates from which this unit should attack the other unit. Assumes it can get there.
+     */
+    Unit.prototype.getPositionToAttackUnit = function (unit) {
+        var _this = this;
+        var grid = this.pathableTiles.filter(function (x, y, val) {
+            var dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+            if (dist >= _this.attackRangeMin && dist <= _this.attackRangeMax) {
+                return !_this.battle.getUnitAtPosition(x, y);
+            }
+            return false;
+        });
+        var allCoords = grid.getAllCoordinates();
+        var closestCoords = null;
+        var leastDist = Number.POSITIVE_INFINITY;
+        for (var _i = 0, allCoords_1 = allCoords; _i < allCoords_1.length; _i++) {
+            var coords = allCoords_1[_i];
+            var dist = Math.sqrt(Math.pow(coords[0] - this.x, 2) + Math.pow(coords[1] - this.y, 2));
+            if (dist < leastDist) {
+                closestCoords = coords;
+                leastDist = dist;
+            }
+        }
+        return closestCoords;
     };
     Unit.prototype.getPathToPosition = function (targetX, targetY, fromX, fromY) {
         //A*
@@ -227,6 +258,7 @@ var Unit = (function () {
         var level = this.battle.level;
         var width = level.width;
         var height = level.height;
+        var xIsLongest = (Math.abs(targetX - fromX) > Math.abs(targetY - fromY));
         var source = this.getNewPathingNode(fromX, fromY);
         source.cost = 0;
         var queue = new BinaryHeap_1.default(PathingNode.scoreFunc, [source]);
@@ -254,8 +286,15 @@ var Unit = (function () {
                 var justDiscoveredNeighbour = false;
                 if (!neighbour) {
                     neighbour = this.getNewPathingNode(x, y);
-                    //hCost is the line distance
+                    //hCost is the line distance...
                     neighbour.hCost = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
+                    //...but favour moving along the longest axis
+                    if (xIsLongest) {
+                        neighbour.hCost += Math.abs(neighbour.x - targetX);
+                    }
+                    else {
+                        neighbour.hCost += Math.abs(neighbour.y - targetY);
+                    }
                     nodes.set(x, y, neighbour);
                     justDiscoveredNeighbour = true;
                 }
@@ -288,10 +327,13 @@ var Unit = (function () {
     Unit.prototype.traceRoute = function (node) {
         var route = [];
         while (node != null) {
-            route.push([node.x, node.y]);
+            route.unshift([node.x, node.y]);
             node = node.fromNode;
         }
         return route;
+    };
+    Unit.prototype.canAct = function () {
+        return this.actionsRemaining > 0;
     };
     Unit.prototype.canTraverseTile = function (tile) {
         //can't enter enemy tiles!

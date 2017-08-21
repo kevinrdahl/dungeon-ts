@@ -39,18 +39,18 @@ export default class LevelDisplay extends PIXI.Container {
 		this.pathingGraphics.clear();
 	}
 
-	public showRoute(route:Array<Array<number>>, color:number = 0x000000, alpha:number = 0.3) {
+	public showPath(path:Array<Array<number>>, color:number = 0x000000, alpha:number = 0.3) {
 		this.routeGraphics.beginFill(color, alpha);
 
 		var size = Globals.gridSize;
-		for (var coords of route) {
+		for (var coords of path) {
 			this.routeGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
 		}
 
 		this.routeGraphics.endFill();
 	}
 
-	public clearRoute() {
+	public clearPath() {
 		this.routeGraphics.clear();
 	}
 

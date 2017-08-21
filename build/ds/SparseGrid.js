@@ -46,6 +46,9 @@ var SparseGrid = (function () {
         }
         return allCoords;
     };
+    SparseGrid.prototype.clone = function () {
+        return this.getUnion(this);
+    };
     /** Get a grid containing all the cells from this grid which aren't set in the other grid */
     SparseGrid.prototype.getComplement = function (other) {
         return this.getValueSetInternal(other, SparseGrid.SET_COMPLEMENT);
@@ -58,32 +61,46 @@ var SparseGrid = (function () {
     SparseGrid.prototype.getUnion = function (other) {
         return this.getValueSetInternal(other, SparseGrid.SET_UNION);
     };
+    SparseGrid.prototype.filter = function (func) {
+        var grid = new SparseGrid(this.defaultValue);
+        for (var y in this.rows) {
+            var row = this.rows[y];
+            for (var x in row) {
+                if (func(x, y, row[x])) {
+                    grid.set(x, y, row[x]);
+                }
+            }
+        }
+        return grid;
+    };
     SparseGrid.prototype.getValueSetInternal = function (other, setType) {
         var ret = new SparseGrid(this.defaultValue);
         for (var y in this.rows) {
-            for (var x in this.rows[y]) {
+            var row = this.rows[y];
+            for (var x in row) {
                 switch (setType) {
                     case SparseGrid.SET_INTERSECTION:
                         if (other.contains(x, y)) {
-                            ret.set(x, y, this.rows[y][x]);
+                            ret.set(x, y, row[x]);
                         }
                         break;
                     case SparseGrid.SET_COMPLEMENT:
                         if (!other.contains(x, y)) {
-                            ret.set(x, y, this.rows[y][x]);
+                            ret.set(x, y, row[x]);
                         }
                         break;
                     case SparseGrid.SET_UNION:
-                        ret.set(x, y, this.rows[y][x]);
+                        ret.set(x, y, row[x]);
                 }
             }
         }
-        if (setType == SparseGrid.SET_UNION) {
+        if (setType == SparseGrid.SET_UNION && other !== this) {
             for (var y in other.rows) {
-                for (var x in other.rows[y]) {
+                var row = other.rows[y];
+                for (var x in row) {
                     //preserve values from this grid
                     if (!ret.contains(x, y)) {
-                        ret.set(x, y, other.rows[y][x]);
+                        ret.set(x, y, row[x]);
                     }
                 }
             }

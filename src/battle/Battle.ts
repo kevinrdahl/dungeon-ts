@@ -5,6 +5,8 @@ import Level from './Level';
 import IDObjectGroup from '../util/IDObjectGroup';
 import BattleDisplay from './display/BattleDisplay';
 import SparseGrid from '../ds/SparseGrid';
+import Globals from '../Globals';
+import Timer from '../util/Timer';
 
 export default class Battle {
 	public players:IDObjectGroup<Player> = new IDObjectGroup<Player>();
@@ -15,6 +17,7 @@ export default class Battle {
 	get display():BattleDisplay { return this._display; }
 	get selectedUnit():Unit { return this._selectedUnit; }
 	get currentPlayer():Player { return this._currentPlayer; }
+	get animationTime():number { return this._animationTime; }
 
 	private _visible:boolean;
 	private _display:BattleDisplay = null;
@@ -22,6 +25,7 @@ export default class Battle {
 	private _currentPlayer:Player = null;
 	private initialized:boolean = false;
 	private unitPositions:SparseGrid<Unit> = new SparseGrid<Unit>(null);
+	private _animationTime:number = 0;
 
 	/**
 	 * It's a battle!
@@ -74,8 +78,6 @@ export default class Battle {
 		this._selectedUnit = unit;
 		if (unit) {
 			unit.onSelect();
-
-			this.updatePathingDisplay();
 		}
 	}
 
@@ -85,20 +87,30 @@ export default class Battle {
 		var unit = this._selectedUnit;
 		this._selectedUnit = null;
 		unit.onDeselect();
-
-		if (this._display) {
-			this.updatePathingDisplay();
-		}
 	}
 
-	public moveUnit(unit:Unit, x:number, y:number) {
-		//TODO: trace the path
-		//for now, just plop it there
+	public moveUnit(unit:Unit, x:number, y:number, path:Array<Array<number>> = null) {
+		//This is going to have to step through the whole path and see what triggers
+		//(once that sort of thing is implemented, anyway)
 		this.unitPositions.unset(unit.x, unit.y);
 		this.unitPositions.set(x, y, unit);
 		unit.x = x;
 		unit.y = y;
-		unit.updatePosition();
+
+		var display = unit.display;
+		if (display) {
+			var timeTaken = Globals.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
+			if (this._animationTime > 0) {
+				var timer = new Timer().init(this._animationTime, ()=> {
+					display.tracePath(path, timeTaken);;
+				}).start();
+			} else {
+				display.tracePath(path, timeTaken);
+			}
+
+			this._animationTime += timeTaken;
+		}
+
 		this.onUnitAction(unit);
 		this.updateAllUnitPathing();
 	}
@@ -129,6 +141,9 @@ export default class Battle {
 		}
 
 		this._currentPlayer = player;
+		if (this._display) {
+			this._display.updateDebugPanel();
+		}
 	}
 
 	public endTurn() {
@@ -152,6 +167,9 @@ export default class Battle {
 	////////////////////////////////////////////////////////////
 	public onUnitDeath(unit:Unit) {
 		this.removeUnit(unit);
+		if (unit.player) {
+			unit.player.removeUnit(unit);
+		}
 	}
 
 	/** The unit has just completed an action */
@@ -159,8 +177,22 @@ export default class Battle {
 		unit.actionsRemaining -= 1;
 		if (unit.actionsRemaining <= 0) {
 			//update the unit display somehow
-			if (unit.selected) this.deselectUnit();
+			if (unit.selected) {
+				this.deselectUnit();
+			}
 		}
+
+		if (this.shouldForceEndTurn()) {
+			this.endTurn();
+		}
+	}
+
+	private beginAnimation() {
+		this._animationTime = 0;
+	}
+
+	private endAnimation() {
+		//TODO: unlock controls after other animations have completed
 	}
 
 	////////////////////////////////////////////////////////////
@@ -174,8 +206,6 @@ export default class Battle {
 		}
 		var timeTaken = performance.now() - now;
 		console.log("Updating pathing for " + this.units.count + " units took " + timeTaken + "ms");
-
-		this.updatePathingDisplay();
 	}
 
 	////////////////////////////////////////////////////////////
@@ -191,6 +221,10 @@ export default class Battle {
 			return true;
 		}
 		return false;
+	}
+
+	public shouldForceEndTurn():boolean {
+		return this.getUnitsWithActions().length == 0;
 	}
 
 	////////////////////////////////////////////////////////////
@@ -234,6 +268,7 @@ export default class Battle {
 		}
 
 		this.units.remove(unit);
+		this.unitPositions.unset(unit.x, unit.y);
 		if (unit.battle == this) {
 			unit.battle = null;
 		}
@@ -243,44 +278,73 @@ export default class Battle {
 	}
 
 	////////////////////////////////////////////////////////////
+	// Getting things
+	////////////////////////////////////////////////////////////
+
+	public getUnitsWithActions():Array<Unit> {
+		var ret:Array<Unit> = [];
+
+		if (this._currentPlayer) {
+			for (var unit of this.currentPlayer.units.list) {
+				if (unit.canAct()) {
+					ret.push(unit);
+				}
+			}
+		}
+
+		return ret;
+	}
+
+	public getDebugPanelStrings():Array<string> {
+		var ret:Array<string> = [
+			"Current player: " + this._currentPlayer.id,
+			"Selected: " + this._selectedUnit
+		];
+
+		var coords = this.display.hoverCoords;
+		var hoverStrings: Array<string> = [coords.toString()];
+		var tile = this.level.getTile(coords.x, coords.y);
+		if (tile) {
+			hoverStrings.push(tile.name);
+		}
+
+		var unit = this.getUnitAtPosition(coords.x, coords.y);
+		if (unit) {
+			hoverStrings.push(unit.toString());
+		}
+
+		ret.push("Hover: " + JSON.stringify(hoverStrings));
+
+		return ret;
+	}
+
+	////////////////////////////////////////////////////////////
 	// Input
 	////////////////////////////////////////////////////////////
 
 	/** Perform the default action for that tile */
 	public rightClickTile(x: number, y: number) {
 		var unit = this._selectedUnit;
-		if (this.ownUnitSelected() && unit.actionsRemaining > 0) {
+		if (this.ownUnitSelected() && unit.canAct()) {
+			this.beginAnimation();
+
 			var tileUnit:Unit = this.getUnitAtPosition(x, y);
 			if (!tileUnit && unit.canReachTile(x, y)) {
-				this.moveUnit(unit, x, y);
+				this.moveUnit(unit, x, y, unit.getPathToPosition(x, y));
 			}
-			else if (tileUnit && unit.canAttackUnit(tileUnit) && unit.inRangeToAttack(tileUnit)) {
-				this.attackUnit(unit, tileUnit);
+			else if (tileUnit && unit.canAttackUnit(tileUnit)) {
+				if (unit.inRangeToAttack(tileUnit)) {
+					this.attackUnit(unit, tileUnit);
+				} else {
+					var pos = unit.getPositionToAttackUnit(tileUnit);
+					if (pos) {
+						this.moveUnit(unit, pos[0], pos[1], unit.getPathToPosition(pos[0], pos[1]));
+						this.attackUnit(unit, tileUnit);
+					}
+				}
 			}
-			else if (tileUnit) {
-				console.log("uh");
-				console.log(unit);
-				console.log(tileUnit);
-				console.log(unit.canAttackUnit(tileUnit));
-				console.log(unit.inRangeToAttack(tileUnit));
-			}
-		}
-	}
 
-	public updatePathingDisplay() {
-		if (!this.display) return;
-
-		this.display.levelDisplay.clearPathing();
-		this.display.levelDisplay.clearRoute();
-
-		var unit = this._selectedUnit;
-		if (unit && (unit.actionsRemaining > 0 || unit.player != this._currentPlayer)) {
-			if (this.ownUnitSelected()) {
-				this._display.levelDisplay.showPathing(unit.pathableTiles, 0x0000ff);
-				this._display.levelDisplay.showPathing(unit.getAttackableNonWalkableTiles(), 0xff0000);
-			} else {
-				this._display.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
-			}
+			this.endAnimation();
 		}
 	}
 

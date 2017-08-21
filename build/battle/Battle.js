@@ -7,6 +7,8 @@ var Level_1 = require("./Level");
 var IDObjectGroup_1 = require("../util/IDObjectGroup");
 var BattleDisplay_1 = require("./display/BattleDisplay");
 var SparseGrid_1 = require("../ds/SparseGrid");
+var Globals_1 = require("../Globals");
+var Timer_1 = require("../util/Timer");
 var Battle = (function () {
     /**
      * It's a battle!
@@ -22,6 +24,7 @@ var Battle = (function () {
         this._currentPlayer = null;
         this.initialized = false;
         this.unitPositions = new SparseGrid_1.default(null);
+        this._animationTime = 0;
         this._visible = visible;
     }
     Object.defineProperty(Battle.prototype, "visible", {
@@ -41,6 +44,11 @@ var Battle = (function () {
     });
     Object.defineProperty(Battle.prototype, "currentPlayer", {
         get: function () { return this._currentPlayer; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Battle.prototype, "animationTime", {
+        get: function () { return this._animationTime; },
         enumerable: true,
         configurable: true
     });
@@ -80,7 +88,6 @@ var Battle = (function () {
         this._selectedUnit = unit;
         if (unit) {
             unit.onSelect();
-            this.updatePathingDisplay();
         }
     };
     Battle.prototype.deselectUnit = function () {
@@ -89,18 +96,29 @@ var Battle = (function () {
         var unit = this._selectedUnit;
         this._selectedUnit = null;
         unit.onDeselect();
-        if (this._display) {
-            this.updatePathingDisplay();
-        }
     };
-    Battle.prototype.moveUnit = function (unit, x, y) {
-        //TODO: trace the path
-        //for now, just plop it there
+    Battle.prototype.moveUnit = function (unit, x, y, path) {
+        if (path === void 0) { path = null; }
+        //This is going to have to step through the whole path and see what triggers
+        //(once that sort of thing is implemented, anyway)
         this.unitPositions.unset(unit.x, unit.y);
         this.unitPositions.set(x, y, unit);
         unit.x = x;
         unit.y = y;
-        unit.updatePosition();
+        var display = unit.display;
+        if (display) {
+            var timeTaken = Globals_1.default.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
+            if (this._animationTime > 0) {
+                var timer = new Timer_1.default().init(this._animationTime, function () {
+                    display.tracePath(path, timeTaken);
+                    ;
+                }).start();
+            }
+            else {
+                display.tracePath(path, timeTaken);
+            }
+            this._animationTime += timeTaken;
+        }
         this.onUnitAction(unit);
         this.updateAllUnitPathing();
     };
@@ -125,6 +143,9 @@ var Battle = (function () {
             this.endTurn();
         }
         this._currentPlayer = player;
+        if (this._display) {
+            this._display.updateDebugPanel();
+        }
     };
     Battle.prototype.endTurn = function () {
         this.deselectUnit();
@@ -145,15 +166,28 @@ var Battle = (function () {
     ////////////////////////////////////////////////////////////
     Battle.prototype.onUnitDeath = function (unit) {
         this.removeUnit(unit);
+        if (unit.player) {
+            unit.player.removeUnit(unit);
+        }
     };
     /** The unit has just completed an action */
     Battle.prototype.onUnitAction = function (unit) {
         unit.actionsRemaining -= 1;
         if (unit.actionsRemaining <= 0) {
             //update the unit display somehow
-            if (unit.selected)
+            if (unit.selected) {
                 this.deselectUnit();
+            }
         }
+        if (this.shouldForceEndTurn()) {
+            this.endTurn();
+        }
+    };
+    Battle.prototype.beginAnimation = function () {
+        this._animationTime = 0;
+    };
+    Battle.prototype.endAnimation = function () {
+        //TODO: unlock controls after other animations have completed
     };
     ////////////////////////////////////////////////////////////
     // Book keeping
@@ -166,7 +200,6 @@ var Battle = (function () {
         }
         var timeTaken = performance.now() - now;
         console.log("Updating pathing for " + this.units.count + " units took " + timeTaken + "ms");
-        this.updatePathingDisplay();
     };
     ////////////////////////////////////////////////////////////
     // Convenience functions for checking state
@@ -179,6 +212,9 @@ var Battle = (function () {
             return true;
         }
         return false;
+    };
+    Battle.prototype.shouldForceEndTurn = function () {
+        return this.getUnitsWithActions().length == 0;
     };
     ////////////////////////////////////////////////////////////
     // Adding and removing things
@@ -215,6 +251,7 @@ var Battle = (function () {
             this.deselectUnit();
         }
         this.units.remove(unit);
+        this.unitPositions.unset(unit.x, unit.y);
         if (unit.battle == this) {
             unit.battle = null;
         }
@@ -222,42 +259,63 @@ var Battle = (function () {
         this.updateAllUnitPathing();
     };
     ////////////////////////////////////////////////////////////
+    // Getting things
+    ////////////////////////////////////////////////////////////
+    Battle.prototype.getUnitsWithActions = function () {
+        var ret = [];
+        if (this._currentPlayer) {
+            for (var _i = 0, _a = this.currentPlayer.units.list; _i < _a.length; _i++) {
+                var unit = _a[_i];
+                if (unit.canAct()) {
+                    ret.push(unit);
+                }
+            }
+        }
+        return ret;
+    };
+    Battle.prototype.getDebugPanelStrings = function () {
+        var ret = [
+            "Current player: " + this._currentPlayer.id,
+            "Selected: " + this._selectedUnit
+        ];
+        var coords = this.display.hoverCoords;
+        var hoverStrings = [coords.toString()];
+        var tile = this.level.getTile(coords.x, coords.y);
+        if (tile) {
+            hoverStrings.push(tile.name);
+        }
+        var unit = this.getUnitAtPosition(coords.x, coords.y);
+        if (unit) {
+            hoverStrings.push(unit.toString());
+        }
+        ret.push("Hover: " + JSON.stringify(hoverStrings));
+        return ret;
+    };
+    ////////////////////////////////////////////////////////////
     // Input
     ////////////////////////////////////////////////////////////
     /** Perform the default action for that tile */
     Battle.prototype.rightClickTile = function (x, y) {
         var unit = this._selectedUnit;
-        if (this.ownUnitSelected() && unit.actionsRemaining > 0) {
+        if (this.ownUnitSelected() && unit.canAct()) {
+            this.beginAnimation();
             var tileUnit = this.getUnitAtPosition(x, y);
             if (!tileUnit && unit.canReachTile(x, y)) {
-                this.moveUnit(unit, x, y);
+                this.moveUnit(unit, x, y, unit.getPathToPosition(x, y));
             }
-            else if (tileUnit && unit.canAttackUnit(tileUnit) && unit.inRangeToAttack(tileUnit)) {
-                this.attackUnit(unit, tileUnit);
+            else if (tileUnit && unit.canAttackUnit(tileUnit)) {
+                if (unit.inRangeToAttack(tileUnit)) {
+                    this.attackUnit(unit, tileUnit);
+                }
+                else {
+                    var pos = unit.getPositionToAttackUnit(tileUnit);
+                    if (pos) {
+                        this.moveUnit(unit, pos[0], pos[1], unit.getPathToPosition(pos[0], pos[1]));
+                        this.attackUnit(unit, tileUnit);
+                    }
+                }
             }
-            else if (tileUnit) {
-                console.log("uh");
-                console.log(unit);
-                console.log(tileUnit);
-                console.log(unit.canAttackUnit(tileUnit));
-                console.log(unit.inRangeToAttack(tileUnit));
-            }
-        }
-    };
-    Battle.prototype.updatePathingDisplay = function () {
-        if (!this.display)
-            return;
-        this.display.levelDisplay.clearPathing();
-        this.display.levelDisplay.clearRoute();
-        var unit = this._selectedUnit;
-        if (unit && (unit.actionsRemaining > 0 || unit.player != this._currentPlayer)) {
-            if (this.ownUnitSelected()) {
-                this._display.levelDisplay.showPathing(unit.pathableTiles, 0x0000ff);
-                this._display.levelDisplay.showPathing(unit.getAttackableNonWalkableTiles(), 0xff0000);
-            }
-            else {
-                this._display.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
-            }
+            this.endAnimation();
         }
     };
     ////////////////////////////////////////////////////////////

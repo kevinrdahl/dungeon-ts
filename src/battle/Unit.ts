@@ -147,7 +147,7 @@ export default class Unit {
 		while (!queue.empty) {
 			var node = queue.pop();
 			this.pathableTiles.set(node.x, node.y, true);
-			this.setAttackableTiles(node.x, node.y);
+			this.getAttackableTiles(node.x, node.y, this.attackableTiles);
 			node.visited = true;
 			//console.log(node.x + "," + node.y);
 
@@ -193,14 +193,19 @@ export default class Unit {
 		}
 	}
 
-	private setAttackableTiles(fromX, fromY) {
-		var minRange = 1;
-		var maxRange = 2;
+	/** For each tile that can be attacked from the given position, writes them to the provided grid, and returns it */
+	public getAttackableTiles(fromX, fromY, toGrid:SparseGrid<boolean>=null):SparseGrid<boolean> {
+		var minRange = this.attackRangeMin;
+		var maxRange = this.attackRangeMax;
 		var dist = 0;
 		var x,y;
 		var width = this.battle.level.width;
 		var height = this.battle.level.height;
 		var tile:Tile;
+
+		if (toGrid == null) {
+			toGrid = new SparseGrid<boolean>();
+		}
 
 		for (var yOffset = -maxRange; yOffset <= maxRange; yOffset++) {
 			for (var xOffset = -maxRange; xOffset <= maxRange; xOffset++) {
@@ -212,10 +217,39 @@ export default class Unit {
 
 				dist = Math.abs(xOffset) + Math.abs(yOffset);
 				if (dist >= minRange && dist <= maxRange) {
-					this.attackableTiles.set(x, y, true);
+					toGrid.set(x, y, true);
 				}
 			}
 		}
+
+		return toGrid;
+	}
+
+	/**
+	 * Gets the coordinates from which this unit should attack the other unit. Assumes it can get there.
+	 */
+	public getPositionToAttackUnit(unit: Unit): Array<number> {
+		var grid = this.pathableTiles.filter((x, y, val:boolean)=>{
+			var dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+			if (dist >= this.attackRangeMin && dist <= this.attackRangeMax) {
+				return !this.battle.getUnitAtPosition(x, y);
+			}
+			return false;
+		});
+
+		var allCoords = grid.getAllCoordinates();
+		var closestCoords:Array<number> = null;
+		var leastDist:number = Number.POSITIVE_INFINITY;
+
+		for (var coords of allCoords) {
+			var dist = Math.sqrt(Math.pow(coords[0] - this.x, 2) + Math.pow(coords[1] - this.y, 2));
+			if (dist < leastDist) {
+				closestCoords = coords;
+				leastDist = dist;
+			}
+		}
+
+		return closestCoords;
 	}
 
 	public getPathToPosition(targetX:number, targetY:number, fromX = Number.NEGATIVE_INFINITY, fromY = Number.NEGATIVE_INFINITY):Array<Array<number>> {
@@ -230,6 +264,7 @@ export default class Unit {
 		var level = this.battle.level;
 		var width = level.width;
 		var height = level.height;
+		var xIsLongest:boolean = (Math.abs(targetX - fromX) > Math.abs(targetY - fromY));
 
 		var source:PathingNode = this.getNewPathingNode(fromX, fromY);
 		source.cost = 0;
@@ -264,8 +299,16 @@ export default class Unit {
 				var justDiscoveredNeighbour = false;
 				if (!neighbour) {
 					neighbour = this.getNewPathingNode(x, y);
-					//hCost is the line distance
+					//hCost is the line distance...
 					neighbour.hCost = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
+
+					//...but favour moving along the longest axis
+					if (xIsLongest) {
+						neighbour.hCost += Math.abs(neighbour.x - targetX);
+					} else {
+						neighbour.hCost += Math.abs(neighbour.y - targetY);
+					}
+
 					nodes.set(x, y, neighbour);
 					justDiscoveredNeighbour = true;
 				} else if (neighbour.visited) {
@@ -302,11 +345,15 @@ export default class Unit {
 		var route:Array<Array<number>> = [];
 
 		while (node != null) {
-			route.push([node.x, node.y]);
+			route.unshift([node.x, node.y]);
 			node = node.fromNode;
 		}
 
 		return route;
+	}
+
+	public canAct():boolean {
+		return this.actionsRemaining > 0;
 	}
 
 	public canTraverseTile(tile:Tile):boolean {

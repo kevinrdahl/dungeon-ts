@@ -33,6 +33,7 @@ export default class Level {
 	}
 
 	public getTile(x:number, y:number):Tile {
+		if (x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
 		var index = this.width * y + x;
 		return this.tiles[index];
 	}
