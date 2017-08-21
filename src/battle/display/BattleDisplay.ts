@@ -203,7 +203,7 @@ export default class BattleDisplay extends PIXI.Container {
 					this.levelDisplay.showPath(unit.getPathToPosition(x, y));
 				} else {
 					var tileUnit = this.battle.getUnitAtPosition(x, y);
-					if (tileUnit && unit.canAttackUnit(tileUnit)) {
+					if (tileUnit && unit.isHostileToUnit(tileUnit)) {
 						if (!unit.inRangeToAttack(tileUnit)) {
 							var pos = unit.getPositionToAttackUnit(tileUnit);
 							if (pos) {

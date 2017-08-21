@@ -386,7 +386,7 @@ export default class Unit {
 	}
 
 	/** Irrespective of actions, range and such. Currently "belongs to a different player from" */
-	public canAttackUnit(unit:Unit):boolean {
+	public isHostileToUnit(unit:Unit):boolean {
 		return this.player != unit.player;
 	}
 

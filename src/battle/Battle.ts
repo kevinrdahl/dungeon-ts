@@ -332,7 +332,7 @@ export default class Battle {
 			if (!tileUnit && unit.canReachTile(x, y)) {
 				this.moveUnit(unit, x, y, unit.getPathToPosition(x, y));
 			}
-			else if (tileUnit && unit.canAttackUnit(tileUnit)) {
+			else if (tileUnit && unit.isHostileToUnit(tileUnit)) {
 				if (unit.inRangeToAttack(tileUnit)) {
 					this.attackUnit(unit, tileUnit);
 				} else {
