@@ -24,6 +24,9 @@ var Battle = (function () {
         this.initialized = false;
         this.unitPositions = new SparseGrid_1.default(null);
         this._animationTime = 0;
+        this.firstAnimation = null;
+        this.lastAnimation = null;
+        this.animating = false;
         this._visible = visible;
     }
     Object.defineProperty(Battle.prototype, "visible", {
@@ -116,7 +119,8 @@ var Battle = (function () {
             }
 
             this._animationTime += timeTaken;*/
-            var animation = Animation_1.default.moveUnit(unit, path).start();
+            var animation = Animation_1.default.moveUnit(unit, path);
+            this.queueAnimation(animation);
         }
         this.onUnitAction(unit);
         this.updateAllUnitPathing();
@@ -133,6 +137,8 @@ var Battle = (function () {
             console.log("Battle: " + attacker + " isn't in range to attack " + target);
             return;
         }
+        var animation = Animation_1.default.attackUnit(attacker, target);
+        this.queueAnimation(animation);
         //there will be a LOT to change here
         target.takeDamage(attacker.attackDamage, attacker);
         this.onUnitAction(attacker);
@@ -182,11 +188,29 @@ var Battle = (function () {
             this.endTurn();
         }
     };
-    Battle.prototype.beginAnimation = function () {
-        this._animationTime = 0;
+    Battle.prototype.initAnimation = function () {
+        this.firstAnimation = null;
+        this.lastAnimation = null;
+        this.animating = false;
     };
-    Battle.prototype.endAnimation = function () {
-        //TODO: unlock controls after other animations have completed
+    Battle.prototype.beginAnimation = function () {
+        var _this = this;
+        if (this.animating || this.firstAnimation == null)
+            return;
+        this.animating = true;
+        this.firstAnimation.start(function () {
+            _this.animating = false;
+        });
+    };
+    Battle.prototype.queueAnimation = function (animation) {
+        if (this.firstAnimation == null) {
+            this.firstAnimation = animation;
+            this.lastAnimation = animation;
+        }
+        else {
+            this.lastAnimation.then(animation);
+            this.lastAnimation = animation;
+        }
     };
     ////////////////////////////////////////////////////////////
     // Book keeping
@@ -297,7 +321,7 @@ var Battle = (function () {
     Battle.prototype.rightClickTile = function (x, y) {
         var unit = this._selectedUnit;
         if (this.ownUnitSelected() && unit.canAct()) {
-            this.beginAnimation();
+            this.initAnimation();
             var tileUnit = this.getUnitAtPosition(x, y);
             if (!tileUnit && unit.canReachTile(x, y)) {
                 this.moveUnit(unit, x, y, unit.getPathToPosition(x, y));
@@ -314,7 +338,7 @@ var Battle = (function () {
                     }
                 }
             }
-            this.endAnimation();
+            this.beginAnimation();
         }
     };
     ////////////////////////////////////////////////////////////

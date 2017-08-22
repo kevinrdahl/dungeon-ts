@@ -40,7 +40,6 @@ var Timer = (function () {
             if (this._currentTime >= this._duration) {
                 this._active = false;
                 this.setUpdating(false);
-                Game_1.default.instance.updater.printAll();
                 this._onFinish();
             }
         }

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Timer_1 = require("../../../util/Timer");
+var Tween_1 = require("../../../util/Tween");
 var Globals_1 = require("../../../Globals");
 /**
  * Wraps a function with a callback, to perform long actions in a logical sequence (or multiple sequences).
@@ -42,10 +43,13 @@ var Animation = (function () {
     /**
      * Go! As a convenience, if the parent has not started, starts that instead.
      */
-    Animation.prototype.start = function () {
+    Animation.prototype.start = function (setCallback) {
         var _this = this;
+        if (setCallback === void 0) { setCallback = null; }
         if (this.started)
             return;
+        if (setCallback)
+            this.callback = setCallback;
         if (this.parent && !this.parent.started) {
             this.parent.start();
             return;
@@ -117,7 +121,10 @@ var Animation = (function () {
     Animation.wait = function (duration, callback) {
         if (callback === void 0) { callback = null; }
         var action = function (cb) {
-            var timer = new Timer_1.default().init(duration, cb).start();
+            if (duration > 0)
+                var timer = new Timer_1.default().init(duration, cb).start();
+            else
+                cb();
         };
         return new Animation(action, callback, duration + 0.5);
     };
@@ -136,6 +143,22 @@ var Animation = (function () {
             }
         };
         return new Animation(action, callback, duration + 0.5);
+    };
+    Animation.attackUnit = function (attacker, target, callback) {
+        if (callback === void 0) { callback = null; }
+        var d1 = attacker.display;
+        var d2 = target.display;
+        d1.updatePosition(); //make sure it's at the unit's position
+        var action = function (cb) {
+            var x0 = d1.x;
+            var y0 = d1.y;
+            d1.tweenTo(d2.x, d2.y, 0.2, Tween_1.default.easingFunctions.quadEaseIn, function () {
+                d1.tweenTo(x0, y0, 0.4, Tween_1.default.easingFunctions.cubeEaseOut, function () {
+                    cb();
+                });
+            });
+        };
+        return new Animation(action, callback, 2);
     };
     Animation.nextId = 1;
     return Animation;

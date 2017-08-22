@@ -3,12 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
 var Tween = (function () {
     function Tween() {
+        this._id = -1;
         this._active = false;
         this._initialized = false;
         this._addedToUpdater = false;
         this.onUpdate = null;
         this.onFinish = null;
         this.roundValue = false;
+        this._id = Tween.nextId++;
     }
     Object.defineProperty(Tween.prototype, "timeRemaining", {
         get: function () { return this._duration - this._currentTime; },
@@ -17,6 +19,11 @@ var Tween = (function () {
     });
     Object.defineProperty(Tween.prototype, "active", {
         get: function () { return this._active; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Tween.prototype, "id", {
+        get: function () { return this._id; },
         enumerable: true,
         configurable: true
     });
@@ -38,10 +45,6 @@ var Tween = (function () {
         }
     };
     Tween.prototype.init = function (target, property, startValue, endValue, duration, easingFunction) {
-        if (!(target instanceof Object) || !target.hasOwnProperty(property)) {
-            console.error("Tween: " + target + " is not an object, or has no property '" + property + "'");
-            return this;
-        }
         this._target = target;
         this._property = property;
         this._startValue = startValue;
@@ -49,7 +52,10 @@ var Tween = (function () {
         this._duration = Math.max(0.0001, duration); //no divide by 0 pls
         this._easingFunction = easingFunction;
         this._active = false;
+        this._currentTime = 0;
         this._initialized = true;
+        var value = this._easingFunction(this._currentTime, this._startValue, this._endValue - this._startValue, this._duration);
+        console.log("AAAA " + value);
         return this;
     };
     Tween.prototype.start = function () {
@@ -61,14 +67,19 @@ var Tween = (function () {
         this._target[this._property] = this._startValue;
         this.setUpdating(true);
     };
-    Tween.prototype.pause = function () {
-        this._active = false;
-        this.setUpdating(false);
-    };
-    Tween.prototype.resume = function () {
+    Tween.prototype.stop = function () {
         this._active = true;
         this.setUpdating(true);
     };
+    /*public pause() {
+        this._active = false;
+        this.setUpdating(false);
+    }
+
+    public resume() {
+        this._active = true;
+        this.setUpdating(true);
+    }*/
     Tween.prototype.setUpdating = function (updating) {
         if (updating && !this._addedToUpdater) {
             Game_1.default.instance.updater.add(this);
@@ -79,6 +90,10 @@ var Tween = (function () {
             this._addedToUpdater = false;
         }
     };
+    Tween.prototype.toString = function () {
+        return "Tween " + this.id;
+    };
+    Tween.nextId = 1;
     Tween.easingFunctions = {
         //(current)time, base, change, duration
         //http://gizma.com/easing/

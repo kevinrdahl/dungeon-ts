@@ -4,6 +4,7 @@ import Unit from '../Unit';
 import Game from '../../Game';
 import * as TextUtil from '../../util/TextUtil';
 import Globals from '../../Globals';
+import Tween from '../../util/Tween';
 
 class TracePathInfo {
 	public timeElapsed = 0;
@@ -19,6 +20,10 @@ export default class UnitDisplay extends PIXI.Container {
 	private hover:boolean = false;
 	private selected:boolean = false;
 	private tracePathInfo:TracePathInfo = null;
+
+	private xTween:Tween = null;
+	private yTween:Tween = null;
+	private tweening:boolean = false;
 
 	public unit:Unit = null;
 
@@ -66,7 +71,29 @@ export default class UnitDisplay extends PIXI.Container {
 	}
 
 	public update(timeElapsed:number) {
-		this.updateMovement(timeElapsed);
+		if (!this.tweening) {
+			this.updateMovement(timeElapsed);
+		}
+	}
+
+	public tweenTo(x:number, y:number, duration:number, easingFunction:(t:number, b:number, c:number, d:number)=>number, callback:()=>void = null) {
+		if (this.xTween) this.xTween.stop();
+		else this.xTween = new Tween();
+
+		if (this.yTween) this.yTween.stop();
+		else this.yTween = new Tween();
+
+		this.xTween.init(this.position, "x", this.position.x, x, duration, easingFunction);
+		this.yTween.init(this.position, "y", this.position.y, y, duration, easingFunction);
+
+		this.tweening = true;
+		this.yTween.onFinish = () => {
+			this.tweening = false;
+			callback();
+		};
+
+		this.xTween.start();
+		this.yTween.start();
 	}
 
 	public tracePath(path:number[][], duration:number, callback:()=>void) {

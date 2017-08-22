@@ -34,7 +34,6 @@ export default class Timer {
 			if (this._currentTime >= this._duration) {
 				this._active = false;
 				this.setUpdating(false);
-				Game.instance.updater.printAll();
 				this._onFinish();
 			}
 		}

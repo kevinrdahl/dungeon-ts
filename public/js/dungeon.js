@@ -306,6 +306,9 @@ var Battle = (function () {
         this.initialized = false;
         this.unitPositions = new SparseGrid_1.default(null);
         this._animationTime = 0;
+        this.firstAnimation = null;
+        this.lastAnimation = null;
+        this.animating = false;
         this._visible = visible;
     }
     Object.defineProperty(Battle.prototype, "visible", {
@@ -398,7 +401,8 @@ var Battle = (function () {
             }
 
             this._animationTime += timeTaken;*/
-            var animation = Animation_1.default.moveUnit(unit, path).start();
+            var animation = Animation_1.default.moveUnit(unit, path);
+            this.queueAnimation(animation);
         }
         this.onUnitAction(unit);
         this.updateAllUnitPathing();
@@ -415,6 +419,8 @@ var Battle = (function () {
             console.log("Battle: " + attacker + " isn't in range to attack " + target);
             return;
         }
+        var animation = Animation_1.default.attackUnit(attacker, target);
+        this.queueAnimation(animation);
         //there will be a LOT to change here
         target.takeDamage(attacker.attackDamage, attacker);
         this.onUnitAction(attacker);
@@ -464,11 +470,29 @@ var Battle = (function () {
             this.endTurn();
         }
     };
-    Battle.prototype.beginAnimation = function () {
-        this._animationTime = 0;
+    Battle.prototype.initAnimation = function () {
+        this.firstAnimation = null;
+        this.lastAnimation = null;
+        this.animating = false;
     };
-    Battle.prototype.endAnimation = function () {
-        //TODO: unlock controls after other animations have completed
+    Battle.prototype.beginAnimation = function () {
+        var _this = this;
+        if (this.animating || this.firstAnimation == null)
+            return;
+        this.animating = true;
+        this.firstAnimation.start(function () {
+            _this.animating = false;
+        });
+    };
+    Battle.prototype.queueAnimation = function (animation) {
+        if (this.firstAnimation == null) {
+            this.firstAnimation = animation;
+            this.lastAnimation = animation;
+        }
+        else {
+            this.lastAnimation.then(animation);
+            this.lastAnimation = animation;
+        }
     };
     ////////////////////////////////////////////////////////////
     // Book keeping
@@ -579,7 +603,7 @@ var Battle = (function () {
     Battle.prototype.rightClickTile = function (x, y) {
         var unit = this._selectedUnit;
         if (this.ownUnitSelected() && unit.canAct()) {
-            this.beginAnimation();
+            this.initAnimation();
             var tileUnit = this.getUnitAtPosition(x, y);
             if (!tileUnit && unit.canReachTile(x, y)) {
                 this.moveUnit(unit, x, y, unit.getPathToPosition(x, y));
@@ -596,7 +620,7 @@ var Battle = (function () {
                     }
                 }
             }
-            this.endAnimation();
+            this.beginAnimation();
         }
     };
     ////////////////////////////////////////////////////////////
@@ -1370,7 +1394,7 @@ var BattleDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../interface/AttachInfo":18,"../../interface/ElementList":20,"../../interface/InputManager":21,"../../interface/TextElement":27,"../../util/Vector2D":44}],11:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../interface/AttachInfo":18,"../../interface/ElementList":20,"../../interface/InputManager":21,"../../interface/TextElement":27,"../../util/Vector2D":45}],11:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1476,6 +1500,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../../Game");
 var TextUtil = require("../../util/TextUtil");
 var Globals_1 = require("../../Globals");
+var Tween_1 = require("../../util/Tween");
 var TracePathInfo = (function () {
     function TracePathInfo() {
         this.timeElapsed = 0;
@@ -1494,6 +1519,9 @@ var UnitDisplay = (function (_super) {
         _this.hover = false;
         _this.selected = false;
         _this.tracePathInfo = null;
+        _this.xTween = null;
+        _this.yTween = null;
+        _this.tweening = false;
         _this.unit = null;
         return _this;
     }
@@ -1535,7 +1563,30 @@ var UnitDisplay = (function (_super) {
         Game_1.default.instance.updater.add(this, true);
     };
     UnitDisplay.prototype.update = function (timeElapsed) {
-        this.updateMovement(timeElapsed);
+        if (!this.tweening) {
+            this.updateMovement(timeElapsed);
+        }
+    };
+    UnitDisplay.prototype.tweenTo = function (x, y, duration, easingFunction, callback) {
+        var _this = this;
+        if (callback === void 0) { callback = null; }
+        if (this.xTween)
+            this.xTween.stop();
+        else
+            this.xTween = new Tween_1.default();
+        if (this.yTween)
+            this.yTween.stop();
+        else
+            this.yTween = new Tween_1.default();
+        this.xTween.init(this.position, "x", this.position.x, x, duration, easingFunction);
+        this.yTween.init(this.position, "y", this.position.y, y, duration, easingFunction);
+        this.tweening = true;
+        this.yTween.onFinish = function () {
+            _this.tweening = false;
+            callback();
+        };
+        this.xTween.start();
+        this.yTween.start();
     };
     UnitDisplay.prototype.tracePath = function (path, duration, callback) {
         var info = new TracePathInfo();
@@ -1623,10 +1674,11 @@ var UnitDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = UnitDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../util/TextUtil":41}],13:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../util/TextUtil":41,"../../util/Tween":43}],13:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Timer_1 = require("../../../util/Timer");
+var Tween_1 = require("../../../util/Tween");
 var Globals_1 = require("../../../Globals");
 /**
  * Wraps a function with a callback, to perform long actions in a logical sequence (or multiple sequences).
@@ -1668,10 +1720,13 @@ var Animation = (function () {
     /**
      * Go! As a convenience, if the parent has not started, starts that instead.
      */
-    Animation.prototype.start = function () {
+    Animation.prototype.start = function (setCallback) {
         var _this = this;
+        if (setCallback === void 0) { setCallback = null; }
         if (this.started)
             return;
+        if (setCallback)
+            this.callback = setCallback;
         if (this.parent && !this.parent.started) {
             this.parent.start();
             return;
@@ -1743,7 +1798,10 @@ var Animation = (function () {
     Animation.wait = function (duration, callback) {
         if (callback === void 0) { callback = null; }
         var action = function (cb) {
-            var timer = new Timer_1.default().init(duration, cb).start();
+            if (duration > 0)
+                var timer = new Timer_1.default().init(duration, cb).start();
+            else
+                cb();
         };
         return new Animation(action, callback, duration + 0.5);
     };
@@ -1763,12 +1821,28 @@ var Animation = (function () {
         };
         return new Animation(action, callback, duration + 0.5);
     };
+    Animation.attackUnit = function (attacker, target, callback) {
+        if (callback === void 0) { callback = null; }
+        var d1 = attacker.display;
+        var d2 = target.display;
+        d1.updatePosition(); //make sure it's at the unit's position
+        var action = function (cb) {
+            var x0 = d1.x;
+            var y0 = d1.y;
+            d1.tweenTo(d2.x, d2.y, 0.2, Tween_1.default.easingFunctions.quadEaseIn, function () {
+                d1.tweenTo(x0, y0, 0.4, Tween_1.default.easingFunctions.cubeEaseOut, function () {
+                    cb();
+                });
+            });
+        };
+        return new Animation(action, callback, 2);
+    };
     Animation.nextId = 1;
     return Animation;
 }());
 exports.default = Animation;
 
-},{"../../../Globals":2,"../../../util/Timer":42}],14:[function(require,module,exports){
+},{"../../../Globals":2,"../../../util/Timer":42,"../../../util/Tween":43}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2239,7 +2313,7 @@ var AttachInfo = (function () {
 }());
 exports.default = AttachInfo;
 
-},{"../util/Vector2D":44}],19:[function(require,module,exports){
+},{"../util/Vector2D":45}],19:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -2742,7 +2816,7 @@ var keyNames = {
     "39": "RIGHT"
 };
 
-},{"../Game":1,"../events/GameEvent":16,"../util/Vector2D":44}],22:[function(require,module,exports){
+},{"../Game":1,"../events/GameEvent":16,"../util/Vector2D":45}],22:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3166,7 +3240,7 @@ var InterfaceElement = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = InterfaceElement;
 
-},{"../Game":1,"../events/GameEventHandler":17,"../util/Vector2D":44,"./InputManager":21,"./ResizeInfo":25}],23:[function(require,module,exports){
+},{"../Game":1,"../events/GameEventHandler":17,"../util/Vector2D":45,"./InputManager":21,"./ResizeInfo":25}],23:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3304,7 +3378,7 @@ var ResizeInfo = (function () {
 }());
 exports.default = ResizeInfo;
 
-},{"../util/AssetCache":37,"../util/Vector2D":44}],26:[function(require,module,exports){
+},{"../util/AssetCache":37,"../util/Vector2D":45}],26:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3652,7 +3726,7 @@ var TextField = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextField;
 
-},{"../events/GameEvent":16,"../util/Vector2D":44,"./AttachInfo":18,"./InterfaceElement":22,"./MaskElement":23,"./Panel":24,"./TextElement":27}],29:[function(require,module,exports){
+},{"../events/GameEvent":16,"../util/Vector2D":45,"./AttachInfo":18,"./InterfaceElement":22,"./MaskElement":23,"./Panel":24,"./TextElement":27}],29:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4629,7 +4703,6 @@ var Timer = (function () {
             if (this._currentTime >= this._duration) {
                 this._active = false;
                 this.setUpdating(false);
-                Game_1.default.instance.updater.printAll();
                 this._onFinish();
             }
         }
@@ -4671,6 +4744,170 @@ var Timer = (function () {
 exports.default = Timer;
 
 },{"../Game":1}],43:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var Game_1 = require("../Game");
+var Tween = (function () {
+    function Tween() {
+        this._id = -1;
+        this._active = false;
+        this._initialized = false;
+        this._addedToUpdater = false;
+        this.onUpdate = null;
+        this.onFinish = null;
+        this.roundValue = false;
+        this._id = Tween.nextId++;
+    }
+    Object.defineProperty(Tween.prototype, "timeRemaining", {
+        get: function () { return this._duration - this._currentTime; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Tween.prototype, "active", {
+        get: function () { return this._active; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Tween.prototype, "id", {
+        get: function () { return this._id; },
+        enumerable: true,
+        configurable: true
+    });
+    Tween.prototype.update = function (timeElapsed) {
+        if (this._active) {
+            this._currentTime = Math.min(this._currentTime + timeElapsed, this._duration);
+            var value = this._easingFunction(this._currentTime, this._startValue, this._endValue - this._startValue, this._duration);
+            if (this.roundValue)
+                value = Math.round(value);
+            this._target[this._property] = value;
+            if (this.onUpdate)
+                this.onUpdate();
+            if (this.timeRemaining <= 0) {
+                this._active = false;
+                this.setUpdating(false);
+                if (this.onFinish)
+                    this.onFinish();
+            }
+        }
+    };
+    Tween.prototype.init = function (target, property, startValue, endValue, duration, easingFunction) {
+        this._target = target;
+        this._property = property;
+        this._startValue = startValue;
+        this._endValue = endValue;
+        this._duration = Math.max(0.0001, duration); //no divide by 0 pls
+        this._easingFunction = easingFunction;
+        this._active = false;
+        this._currentTime = 0;
+        this._initialized = true;
+        var value = this._easingFunction(this._currentTime, this._startValue, this._endValue - this._startValue, this._duration);
+        console.log("AAAA " + value);
+        return this;
+    };
+    Tween.prototype.start = function () {
+        if (!this._initialized) {
+            console.error("Tween: can't start (not initialized)");
+            return;
+        }
+        this._active = true;
+        this._target[this._property] = this._startValue;
+        this.setUpdating(true);
+    };
+    Tween.prototype.stop = function () {
+        this._active = true;
+        this.setUpdating(true);
+    };
+    /*public pause() {
+        this._active = false;
+        this.setUpdating(false);
+    }
+
+    public resume() {
+        this._active = true;
+        this.setUpdating(true);
+    }*/
+    Tween.prototype.setUpdating = function (updating) {
+        if (updating && !this._addedToUpdater) {
+            Game_1.default.instance.updater.add(this);
+            this._addedToUpdater = true;
+        }
+        else if (!updating && this._addedToUpdater) {
+            Game_1.default.instance.updater.remove(this);
+            this._addedToUpdater = false;
+        }
+    };
+    Tween.prototype.toString = function () {
+        return "Tween " + this.id;
+    };
+    Tween.nextId = 1;
+    Tween.easingFunctions = {
+        //(current)time, base, change, duration
+        //http://gizma.com/easing/
+        linear: function (t, b, c, d) {
+            return c * t / d + b;
+        },
+        quadEaseIn: function (t, b, c, d) {
+            t /= d;
+            return c * t * t + b;
+        },
+        quadEaseOut: function (t, b, c, d) {
+            t /= d;
+            return -c * t * (t - 2) + b;
+        },
+        quadEaseInOut: function (t, b, c, d) {
+            t /= d / 2;
+            if (t < 1)
+                return c / 2 * t * t + b;
+            t--;
+            return -c / 2 * (t * (t - 2) - 1) + b;
+        },
+        cubeEaseIn: function (t, b, c, d) {
+            t /= d;
+            return c * t * t * t + b;
+        },
+        cubeEaseOut: function (t, b, c, d) {
+            t /= d;
+            t--;
+            return c * (t * t * t + 1) + b;
+        },
+        cubeEaseInOut: function (t, b, c, d) {
+            t /= d / 2;
+            if (t < 1)
+                return c / 2 * t * t * t + b;
+            t -= 2;
+            return c / 2 * (t * t * t + 2) + b;
+        },
+        quartEaseIn: function (t, b, c, d) {
+            t /= d;
+            return c * t * t * t * t + b;
+        },
+        quartEaseOut: function (t, b, c, d) {
+            t /= d;
+            t--;
+            return -c * (t * t * t * t - 1) + b;
+        },
+        quartEaseInOut: function (t, b, c, d) {
+            t /= d / 2;
+            if (t < 1)
+                return c / 2 * t * t * t * t + b;
+            t -= 2;
+            return -c / 2 * (t * t * t * t - 2) + b;
+        },
+        sineEaseIn: function (t, b, c, d) {
+            return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
+        },
+        sineEaseOut: function (t, b, c, d) {
+            return c * Math.sin(t / d * (Math.PI / 2)) + b;
+        },
+        sineEaseInOut: function (t, b, c, d) {
+            return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
+        }
+    };
+    return Tween;
+}());
+exports.default = Tween;
+
+},{"../Game":1}],44:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function noop() { }
@@ -4752,7 +4989,7 @@ function isCoordinate(x) {
 }
 exports.isCoordinate = isCoordinate;
 
-},{}],44:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Util = require("./Util");
@@ -4872,4 +5109,4 @@ var Vector2D = (function () {
 }());
 exports.default = Vector2D;
 
-},{"./Util":43}]},{},[3]);
+},{"./Util":44}]},{},[3]);

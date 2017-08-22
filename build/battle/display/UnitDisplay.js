@@ -14,6 +14,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../../Game");
 var TextUtil = require("../../util/TextUtil");
 var Globals_1 = require("../../Globals");
+var Tween_1 = require("../../util/Tween");
 var TracePathInfo = (function () {
     function TracePathInfo() {
         this.timeElapsed = 0;
@@ -32,6 +33,9 @@ var UnitDisplay = (function (_super) {
         _this.hover = false;
         _this.selected = false;
         _this.tracePathInfo = null;
+        _this.xTween = null;
+        _this.yTween = null;
+        _this.tweening = false;
         _this.unit = null;
         return _this;
     }
@@ -73,7 +77,30 @@ var UnitDisplay = (function (_super) {
         Game_1.default.instance.updater.add(this, true);
     };
     UnitDisplay.prototype.update = function (timeElapsed) {
-        this.updateMovement(timeElapsed);
+        if (!this.tweening) {
+            this.updateMovement(timeElapsed);
+        }
+    };
+    UnitDisplay.prototype.tweenTo = function (x, y, duration, easingFunction, callback) {
+        var _this = this;
+        if (callback === void 0) { callback = null; }
+        if (this.xTween)
+            this.xTween.stop();
+        else
+            this.xTween = new Tween_1.default();
+        if (this.yTween)
+            this.yTween.stop();
+        else
+            this.yTween = new Tween_1.default();
+        this.xTween.init(this.position, "x", this.position.x, x, duration, easingFunction);
+        this.yTween.init(this.position, "y", this.position.y, y, duration, easingFunction);
+        this.tweening = true;
+        this.yTween.onFinish = function () {
+            _this.tweening = false;
+            callback();
+        };
+        this.xTween.start();
+        this.yTween.start();
     };
     UnitDisplay.prototype.tracePath = function (path, duration, callback) {
         var info = new TracePathInfo();

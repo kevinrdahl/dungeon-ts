@@ -1,4 +1,5 @@
 import Timer from '../../../util/Timer';
+import Tween from '../../../util/Tween';
 import Unit from '../../Unit';
 import UnitDisplay from '../UnitDisplay';
 import Globals from '../../../Globals';
@@ -42,8 +43,9 @@ export default class Animation {
 	/**
 	 * Go! As a convenience, if the parent has not started, starts that instead.
 	 */
-	public start() {
+	public start(setCallback:()=>void = null) {
 		if (this.started) return;
+		if (setCallback) this.callback = setCallback;
 		if (this.parent && !this.parent.started) {
 			this.parent.start();
 			return;
@@ -139,5 +141,23 @@ export default class Animation {
 		}
 
 		return new Animation(action, callback, duration + 0.5);
+	}
+
+	public static attackUnit(attacker:Unit, target:Unit, callback:()=>void = null):Animation {
+		var d1 = attacker.display;
+		var d2 = target.display;
+		d1.updatePosition(); //make sure it's at the unit's position
+
+		var action = (cb:()=>void) => {
+			var x0 = d1.x;
+			var y0 = d1.y;
+			d1.tweenTo(d2.x, d2.y, 0.2, Tween.easingFunctions.quadEaseIn, () => {
+				d1.tweenTo(x0, y0, 0.4, Tween.easingFunctions.cubeEaseOut, () => {
+					cb();
+				});
+			});
+		}
+
+		return new Animation(action, callback, 2);
 	}
 }

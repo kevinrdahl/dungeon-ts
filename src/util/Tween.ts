@@ -1,6 +1,9 @@
 import Game from '../Game';
 
 export default class Tween {
+	private static nextId = 1;
+	private _id = -1;
+
 	private _startValue:number;
 	private _endValue:number;
 	private _easingFunction:(t:number, b:number, c:number, d:number)=>number;
@@ -18,9 +21,10 @@ export default class Tween {
 
 	get timeRemaining():number { return this._duration - this._currentTime; }
 	get active():boolean { return this._active; }
+	get id():number { return this._id; }
 
 	constructor() {
-
+		this._id = Tween.nextId++;
 	}
 
 	public update(timeElapsed:number) {
@@ -42,11 +46,6 @@ export default class Tween {
 	}
 
 	public init(target, property:string, startValue:number, endValue:number, duration:number, easingFunction:(t:number, b:number, c:number, d:number)=>number):Tween {
-		if (!(target instanceof Object) || !target.hasOwnProperty(property)) {
-			console.error("Tween: " + target + " is not an object, or has no property '" + property + "'");
-			return this;
-		}
-
 		this._target = target;
 		this._property = property;
 		this._startValue = startValue;
@@ -54,8 +53,12 @@ export default class Tween {
 		this._duration = Math.max(0.0001, duration); //no divide by 0 pls
 		this._easingFunction = easingFunction;
 		this._active = false;
+		this._currentTime = 0;
 
 		this._initialized = true;
+
+		var value = this._easingFunction(this._currentTime, this._startValue, this._endValue - this._startValue, this._duration);
+		console.log("AAAA " + value);
 
 		return this;
 	}
@@ -71,7 +74,12 @@ export default class Tween {
 		this.setUpdating(true);
 	}
 
-	public pause() {
+	public stop() {
+		this._active = true;
+		this.setUpdating(true);
+	}
+
+	/*public pause() {
 		this._active = false;
 		this.setUpdating(false);
 	}
@@ -79,7 +87,7 @@ export default class Tween {
 	public resume() {
 		this._active = true;
 		this.setUpdating(true);
-	}
+	}*/
 
 	private setUpdating(updating) {
 		if (updating && !this._addedToUpdater) {
@@ -89,6 +97,10 @@ export default class Tween {
 			Game.instance.updater.remove(this);
 			this._addedToUpdater = false;
 		}
+	}
+
+	public toString():string {
+		return "Tween " + this.id;
 	}
 
 	public static readonly easingFunctions = {

@@ -110,7 +110,8 @@ export default class Battle {
 			}
 
 			this._animationTime += timeTaken;*/
-			var animation = Animation.moveUnit(unit, path).start();
+			var animation = Animation.moveUnit(unit, path);
+			this.queueAnimation(animation);
 		}
 
 		this.onUnitAction(unit);
@@ -131,6 +132,9 @@ export default class Battle {
 			console.log("Battle: " + attacker + " isn't in range to attack " + target);
 			return;
 		}
+
+		var animation = Animation.attackUnit(attacker, target);
+		this.queueAnimation(animation);
 
 		//there will be a LOT to change here
 		target.takeDamage(attacker.attackDamage, attacker);
@@ -189,12 +193,33 @@ export default class Battle {
 		}
 	}
 
-	private beginAnimation() {
-		this._animationTime = 0;
+	private firstAnimation:Animation = null;
+	private lastAnimation:Animation = null;
+	private animating:boolean = false;
+
+	private initAnimation() {
+		this.firstAnimation = null;
+		this.lastAnimation = null;
+		this.animating = false;
 	}
 
-	private endAnimation() {
-		//TODO: unlock controls after other animations have completed
+	private beginAnimation() {
+		if (this.animating || this.firstAnimation == null) return;
+
+		this.animating = true;
+		this.firstAnimation.start(() => {
+			this.animating = false;
+		});
+	}
+
+	private queueAnimation(animation:Animation) {
+		if (this.firstAnimation == null) {
+			this.firstAnimation = animation;
+			this.lastAnimation = animation;
+		} else {
+			this.lastAnimation.then(animation);
+			this.lastAnimation = animation;
+		}
 	}
 
 	////////////////////////////////////////////////////////////
@@ -328,7 +353,7 @@ export default class Battle {
 	public rightClickTile(x: number, y: number) {
 		var unit = this._selectedUnit;
 		if (this.ownUnitSelected() && unit.canAct()) {
-			this.beginAnimation();
+			this.initAnimation();
 
 			var tileUnit:Unit = this.getUnitAtPosition(x, y);
 			if (!tileUnit && unit.canReachTile(x, y)) {
@@ -346,7 +371,7 @@ export default class Battle {
 				}
 			}
 
-			this.endAnimation();
+			this.beginAnimation();
 		}
 	}
 
