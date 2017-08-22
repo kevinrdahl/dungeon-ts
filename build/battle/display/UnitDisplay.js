@@ -18,6 +18,7 @@ var TracePathInfo = (function () {
     function TracePathInfo() {
         this.timeElapsed = 0;
         this.duration = 0;
+        this.callback = null;
     }
     return TracePathInfo;
 }());
@@ -74,10 +75,11 @@ var UnitDisplay = (function (_super) {
     UnitDisplay.prototype.update = function (timeElapsed) {
         this.updateMovement(timeElapsed);
     };
-    UnitDisplay.prototype.tracePath = function (path, duration) {
+    UnitDisplay.prototype.tracePath = function (path, duration, callback) {
         var info = new TracePathInfo();
         info.path = path;
         info.duration = duration;
+        info.callback = callback;
         this.tracePathInfo = info;
         //then it's taken care of in update
     };
@@ -133,6 +135,9 @@ var UnitDisplay = (function (_super) {
                 var pos = info.path[info.path.length - 1];
                 this.setGridPosition(pos[0], pos[1]);
                 this.tracePathInfo = null; //done
+                if (info.callback) {
+                    info.callback();
+                }
             }
             else {
                 var numCells = info.path.length - 1; //don't include the start cell

@@ -7,8 +7,7 @@ var Level_1 = require("./Level");
 var IDObjectGroup_1 = require("../util/IDObjectGroup");
 var BattleDisplay_1 = require("./display/BattleDisplay");
 var SparseGrid_1 = require("../ds/SparseGrid");
-var Globals_1 = require("../Globals");
-var Timer_1 = require("../util/Timer");
+var Animation_1 = require("./display/animation/Animation");
 var Battle = (function () {
     /**
      * It's a battle!
@@ -107,17 +106,17 @@ var Battle = (function () {
         unit.y = y;
         var display = unit.display;
         if (display) {
-            var timeTaken = Globals_1.default.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
+            /*var timeTaken = Globals.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
             if (this._animationTime > 0) {
-                var timer = new Timer_1.default().init(this._animationTime, function () {
-                    display.tracePath(path, timeTaken);
-                    ;
+                var timer = new Timer().init(this._animationTime, ()=> {
+                    display.tracePath(path, timeTaken);;
                 }).start();
-            }
-            else {
+            } else {
                 display.tracePath(path, timeTaken);
             }
-            this._animationTime += timeTaken;
+
+            this._animationTime += timeTaken;*/
+            var animation = Animation_1.default.moveUnit(unit, path).start();
         }
         this.onUnitAction(unit);
         this.updateAllUnitPathing();
@@ -303,7 +302,7 @@ var Battle = (function () {
             if (!tileUnit && unit.canReachTile(x, y)) {
                 this.moveUnit(unit, x, y, unit.getPathToPosition(x, y));
             }
-            else if (tileUnit && unit.canAttackUnit(tileUnit)) {
+            else if (tileUnit && unit.isHostileToUnit(tileUnit)) {
                 if (unit.inRangeToAttack(tileUnit)) {
                     this.attackUnit(unit, tileUnit);
                 }

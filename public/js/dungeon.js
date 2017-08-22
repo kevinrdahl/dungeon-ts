@@ -193,7 +193,7 @@ var Game = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Game;
 
-},{"./Updater":4,"./battle/Battle":5,"./events/GameEventHandler":16,"./interface/AttachInfo":17,"./interface/InputManager":20,"./interface/InterfaceElement":21,"./interface/TextElement":26,"./interface/prefabs/InterfaceRoot":29,"./sound/SoundAssets":31,"./sound/SoundManager":32,"./textures/TextureGenerator":33,"./textures/TextureLoader":34,"./textures/TextureWorker":35,"./util/Log":39}],2:[function(require,module,exports){
+},{"./Updater":4,"./battle/Battle":5,"./events/GameEventHandler":17,"./interface/AttachInfo":18,"./interface/InputManager":21,"./interface/InterfaceElement":22,"./interface/TextElement":27,"./interface/prefabs/InterfaceRoot":30,"./sound/SoundAssets":32,"./sound/SoundManager":33,"./textures/TextureGenerator":34,"./textures/TextureLoader":35,"./textures/TextureWorker":36,"./util/Log":40}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals = (function () {
@@ -242,6 +242,7 @@ var Updater = (function () {
             var obj = _c[_b];
             this.objects.push(obj);
         }
+        this.objectsToAdd = [];
     };
     Updater.prototype.add = function (obj, ifNotAdded) {
         if (ifNotAdded === void 0) { ifNotAdded = false; }
@@ -267,6 +268,13 @@ var Updater = (function () {
             this.objectsToAdd.splice(index, 1);
         }
     };
+    Updater.prototype.printAll = function () {
+        console.log("All updateables:");
+        for (var _i = 0, _a = this.objects.concat(this.objectsToAdd); _i < _a.length; _i++) {
+            var obj = _a[_i];
+            console.log("   " + obj);
+        }
+    };
     return Updater;
 }());
 exports.default = Updater;
@@ -281,8 +289,7 @@ var Level_1 = require("./Level");
 var IDObjectGroup_1 = require("../util/IDObjectGroup");
 var BattleDisplay_1 = require("./display/BattleDisplay");
 var SparseGrid_1 = require("../ds/SparseGrid");
-var Globals_1 = require("../Globals");
-var Timer_1 = require("../util/Timer");
+var Animation_1 = require("./display/animation/Animation");
 var Battle = (function () {
     /**
      * It's a battle!
@@ -381,17 +388,17 @@ var Battle = (function () {
         unit.y = y;
         var display = unit.display;
         if (display) {
-            var timeTaken = Globals_1.default.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
+            /*var timeTaken = Globals.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
             if (this._animationTime > 0) {
-                var timer = new Timer_1.default().init(this._animationTime, function () {
-                    display.tracePath(path, timeTaken);
-                    ;
+                var timer = new Timer().init(this._animationTime, ()=> {
+                    display.tracePath(path, timeTaken);;
                 }).start();
-            }
-            else {
+            } else {
                 display.tracePath(path, timeTaken);
             }
-            this._animationTime += timeTaken;
+
+            this._animationTime += timeTaken;*/
+            var animation = Animation_1.default.moveUnit(unit, path).start();
         }
         this.onUnitAction(unit);
         this.updateAllUnitPathing();
@@ -577,7 +584,7 @@ var Battle = (function () {
             if (!tileUnit && unit.canReachTile(x, y)) {
                 this.moveUnit(unit, x, y, unit.getPathToPosition(x, y));
             }
-            else if (tileUnit && unit.canAttackUnit(tileUnit)) {
+            else if (tileUnit && unit.isHostileToUnit(tileUnit)) {
                 if (unit.inRangeToAttack(tileUnit)) {
                     this.attackUnit(unit, tileUnit);
                 }
@@ -610,7 +617,7 @@ var Battle = (function () {
 }());
 exports.default = Battle;
 
-},{"../Game":1,"../Globals":2,"../ds/SparseGrid":14,"../util/IDObjectGroup":38,"../util/Timer":41,"./Level":6,"./Player":7,"./Unit":9,"./display/BattleDisplay":10}],6:[function(require,module,exports){
+},{"../Game":1,"../ds/SparseGrid":15,"../util/IDObjectGroup":39,"./Level":6,"./Player":7,"./Unit":9,"./display/BattleDisplay":10,"./display/animation/Animation":13}],6:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
@@ -692,7 +699,7 @@ var Player = (function () {
 }());
 exports.default = Player;
 
-},{"../util/IDObjectGroup":38}],8:[function(require,module,exports){
+},{"../util/IDObjectGroup":39}],8:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile = (function () {
@@ -1105,7 +1112,7 @@ var Unit = (function () {
         return this.pathableTiles.get(x, y) === true;
     };
     /** Irrespective of actions, range and such. Currently "belongs to a different player from" */
-    Unit.prototype.canAttackUnit = function (unit) {
+    Unit.prototype.isHostileToUnit = function (unit) {
         return this.player != unit.player;
     };
     Unit.prototype.inRangeToAttack = function (unit) {
@@ -1155,7 +1162,7 @@ var Unit = (function () {
 }());
 exports.default = Unit;
 
-},{"../ds/BinaryHeap":13,"../ds/SparseGrid":14,"./display/UnitDisplay":12}],10:[function(require,module,exports){
+},{"../ds/BinaryHeap":14,"../ds/SparseGrid":15,"./display/UnitDisplay":12}],10:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1273,7 +1280,7 @@ var BattleDisplay = (function (_super) {
     BattleDisplay.prototype.updateHover = function () {
         var x = this.mouseGridX;
         var y = this.mouseGridY;
-        this.levelDisplay.clearRoute();
+        this.levelDisplay.clearPath();
         if (this.hoveredUnitDisplay) {
             this.hoveredUnitDisplay.onMouseOut();
         }
@@ -1336,22 +1343,22 @@ var BattleDisplay = (function (_super) {
         this.updatePathingHover();
     };
     BattleDisplay.prototype.updatePathingHover = function () {
-        this.levelDisplay.clearRoute();
+        this.levelDisplay.clearPath();
         var x = this.mouseGridX;
         var y = this.mouseGridY;
         if (this.battle.ownUnitSelected()) {
             var unit = this.battle.selectedUnit;
             if (unit.canAct() && (unit.x != x || unit.y != y)) {
                 if (unit.canReachTile(x, y)) {
-                    this.levelDisplay.showRoute(unit.getPathToPosition(x, y));
+                    this.levelDisplay.showPath(unit.getPathToPosition(x, y));
                 }
                 else {
                     var tileUnit = this.battle.getUnitAtPosition(x, y);
-                    if (tileUnit && unit.canAttackUnit(tileUnit)) {
+                    if (tileUnit && unit.isHostileToUnit(tileUnit)) {
                         if (!unit.inRangeToAttack(tileUnit)) {
                             var pos = unit.getPositionToAttackUnit(tileUnit);
                             if (pos) {
-                                this.levelDisplay.showRoute(unit.getPathToPosition(pos[0], pos[1]));
+                                this.levelDisplay.showPath(unit.getPathToPosition(pos[0], pos[1]));
                             }
                         }
                     }
@@ -1363,7 +1370,7 @@ var BattleDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../interface/AttachInfo":17,"../../interface/ElementList":19,"../../interface/InputManager":20,"../../interface/TextElement":26,"../../util/Vector2D":43}],11:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../interface/AttachInfo":18,"../../interface/ElementList":20,"../../interface/InputManager":21,"../../interface/TextElement":27,"../../util/Vector2D":44}],11:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1412,18 +1419,18 @@ var LevelDisplay = (function (_super) {
     LevelDisplay.prototype.clearPathing = function () {
         this.pathingGraphics.clear();
     };
-    LevelDisplay.prototype.showRoute = function (route, color, alpha) {
+    LevelDisplay.prototype.showPath = function (path, color, alpha) {
         if (color === void 0) { color = 0x000000; }
         if (alpha === void 0) { alpha = 0.3; }
         this.routeGraphics.beginFill(color, alpha);
         var size = Globals_1.default.gridSize;
-        for (var _i = 0, route_1 = route; _i < route_1.length; _i++) {
-            var coords = route_1[_i];
+        for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
+            var coords = path_1[_i];
             this.routeGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
         }
         this.routeGraphics.endFill();
     };
-    LevelDisplay.prototype.clearRoute = function () {
+    LevelDisplay.prototype.clearPath = function () {
         this.routeGraphics.clear();
     };
     //TODO TODO TODO make this not garbage (make a tilemap)
@@ -1473,6 +1480,7 @@ var TracePathInfo = (function () {
     function TracePathInfo() {
         this.timeElapsed = 0;
         this.duration = 0;
+        this.callback = null;
     }
     return TracePathInfo;
 }());
@@ -1529,10 +1537,11 @@ var UnitDisplay = (function (_super) {
     UnitDisplay.prototype.update = function (timeElapsed) {
         this.updateMovement(timeElapsed);
     };
-    UnitDisplay.prototype.tracePath = function (path, duration) {
+    UnitDisplay.prototype.tracePath = function (path, duration, callback) {
         var info = new TracePathInfo();
         info.path = path;
         info.duration = duration;
+        info.callback = callback;
         this.tracePathInfo = info;
         //then it's taken care of in update
     };
@@ -1588,6 +1597,9 @@ var UnitDisplay = (function (_super) {
                 var pos = info.path[info.path.length - 1];
                 this.setGridPosition(pos[0], pos[1]);
                 this.tracePathInfo = null; //done
+                if (info.callback) {
+                    info.callback();
+                }
             }
             else {
                 var numCells = info.path.length - 1; //don't include the start cell
@@ -1611,7 +1623,152 @@ var UnitDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = UnitDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../util/TextUtil":40}],13:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../util/TextUtil":41}],13:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var Timer_1 = require("../../../util/Timer");
+var Globals_1 = require("../../../Globals");
+/**
+ * Wraps a function with a callback, to perform long actions in a logical sequence (or multiple sequences).
+ * Meant to be chained together.
+ */
+var Animation = (function () {
+    /**
+     *
+     * @param action A function which accepts a callback to be performed when it has finished. A unit of animation.
+     * @param callback Will be called once this and all its descendents have finished.
+     * @param maxTime If the action does not fire its callback within this many seconds, go on without it.
+     */
+    function Animation(action, callback, maxTime) {
+        if (callback === void 0) { callback = null; }
+        if (maxTime === void 0) { maxTime = 5; }
+        this._id = -1;
+        this.callback = null;
+        this.parent = null;
+        this.children = null;
+        this.started = false;
+        this.actionComplete = false;
+        this.childrenFinished = false;
+        this.timer = null;
+        this._id = Animation.nextId++;
+        this.action = action;
+        this.callback = callback;
+        this.maxTime = maxTime;
+    }
+    Object.defineProperty(Animation.prototype, "finished", {
+        get: function () { return this.actionComplete && (this.children === null || this.childrenFinished); },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Animation.prototype, "id", {
+        get: function () { return this._id; },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * Go! As a convenience, if the parent has not started. Starts that instead.
+     */
+    Animation.prototype.start = function () {
+        var _this = this;
+        if (this.started)
+            return;
+        if (this.parent && !this.parent.started) {
+            this.parent.start();
+            return;
+        }
+        this.started = true;
+        var actionCallback = function () {
+            _this.onActionComplete();
+        };
+        this.action(actionCallback);
+        if (this.maxTime > 0) {
+            this.timer = new Timer_1.default().init(this.maxTime, actionCallback).start();
+        }
+    };
+    /**
+     * Sets the animation to be performed after this one, and returns it (not this).
+     *
+     * NOTE: Doesn't work after calling start
+     */
+    Animation.prototype.then = function (animation) {
+        if (this.started)
+            return this;
+        if (!this.children)
+            this.children = [];
+        this.children.push(animation);
+        animation.parent = this;
+        return animation;
+    };
+    Animation.prototype.onActionComplete = function () {
+        if (this.actionComplete)
+            return;
+        this.actionComplete = true;
+        if (this.timer && this.timer.active) {
+            this.timer.stop();
+        }
+        if (this.children) {
+            for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
+                var child = _a[_i];
+                child.start();
+            }
+        }
+        else {
+            this.onFinished();
+        }
+    };
+    Animation.prototype.onChildFinished = function () {
+        if (this.childrenFinished)
+            return;
+        //sure this is O(n^2) but how often are you going to have more than one child? let alone more than a handful
+        for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
+            var child = _a[_i];
+            if (!child.finished)
+                return;
+        }
+        this.childrenFinished = true;
+        this.onFinished();
+    };
+    Animation.prototype.onFinished = function () {
+        if (this.callback)
+            this.callback();
+        if (this.parent)
+            this.parent.onChildFinished();
+    };
+    //////////////////////////////////////////////////
+    // Static convenience constructors
+    //////////////////////////////////////////////////
+    Animation.wait = function (duration, callback) {
+        if (callback === void 0) { callback = null; }
+        var action = function (cb) {
+            var timer = new Timer_1.default().init(duration, cb).start();
+        };
+        return new Animation(action, callback, duration + 0.5);
+    };
+    Animation.moveUnit = function (unit, path, callback, duration) {
+        if (callback === void 0) { callback = null; }
+        if (duration === void 0) { duration = -1; }
+        if (duration < 0) {
+            duration = (path.length - 1) * Globals_1.default.timeToTraverseTile;
+        }
+        var action = function (cb) {
+            if (unit.display) {
+                unit.display.tracePath(path, duration, cb);
+            }
+            else {
+                cb();
+            }
+        };
+        return new Animation(action, callback, duration + 0.5);
+    };
+    Animation.prototype.toString = function () {
+        return "Anim " + this.id + " (" + (Math.round(performance.now()) / 1000) + ")";
+    };
+    Animation.nextId = 1;
+    return Animation;
+}());
+exports.default = Animation;
+
+},{"../../../Globals":2,"../../../util/Timer":42}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -1821,7 +1978,7 @@ var BinaryHeap = (function () {
 }());
 exports.default = BinaryHeap;
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -1938,7 +2095,7 @@ var SparseGrid = (function () {
 }());
 exports.default = SparseGrid;
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent = (function () {
@@ -1994,7 +2151,7 @@ var GameEvent = (function () {
 }());
 exports.default = GameEvent;
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("./GameEvent");
@@ -2056,7 +2213,7 @@ var GameEventHandler = (function () {
 }());
 exports.default = GameEventHandler;
 
-},{"./GameEvent":15}],17:[function(require,module,exports){
+},{"./GameEvent":16}],18:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -2082,7 +2239,7 @@ var AttachInfo = (function () {
 }());
 exports.default = AttachInfo;
 
-},{"../util/Vector2D":43}],18:[function(require,module,exports){
+},{"../util/Vector2D":44}],19:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -2177,7 +2334,7 @@ var BaseButton = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = BaseButton;
 
-},{"../events/GameEvent":15,"./InterfaceElement":21}],19:[function(require,module,exports){
+},{"../events/GameEvent":16,"./InterfaceElement":22}],20:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -2335,7 +2492,7 @@ var ElementList = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = ElementList;
 
-},{"./InterfaceElement":21}],20:[function(require,module,exports){
+},{"./InterfaceElement":22}],21:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/jquery.d.ts"/>
@@ -2585,7 +2742,7 @@ var keyNames = {
     "39": "RIGHT"
 };
 
-},{"../Game":1,"../events/GameEvent":15,"../util/Vector2D":43}],21:[function(require,module,exports){
+},{"../Game":1,"../events/GameEvent":16,"../util/Vector2D":44}],22:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3009,7 +3166,7 @@ var InterfaceElement = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = InterfaceElement;
 
-},{"../Game":1,"../events/GameEventHandler":16,"../util/Vector2D":43,"./InputManager":20,"./ResizeInfo":24}],22:[function(require,module,exports){
+},{"../Game":1,"../events/GameEventHandler":17,"../util/Vector2D":44,"./InputManager":21,"./ResizeInfo":25}],23:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3047,7 +3204,7 @@ var MaskElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = MaskElement;
 
-},{"./InterfaceElement":21}],23:[function(require,module,exports){
+},{"./InterfaceElement":22}],24:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3119,7 +3276,7 @@ var Panel = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = Panel;
 
-},{"../textures/TextureGenerator":33,"./InterfaceElement":21}],24:[function(require,module,exports){
+},{"../textures/TextureGenerator":34,"./InterfaceElement":22}],25:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -3147,7 +3304,7 @@ var ResizeInfo = (function () {
 }());
 exports.default = ResizeInfo;
 
-},{"../util/AssetCache":36,"../util/Vector2D":43}],25:[function(require,module,exports){
+},{"../util/AssetCache":37,"../util/Vector2D":44}],26:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3242,7 +3399,7 @@ var TextButton = (function (_super) {
 }(BaseButton_1.default));
 exports.default = TextButton;
 
-},{"../events/GameEvent":15,"../textures/TextureGenerator":33,"../util/AssetCache":36,"./AttachInfo":17,"./BaseButton":18,"./TextElement":26}],26:[function(require,module,exports){
+},{"../events/GameEvent":16,"../textures/TextureGenerator":34,"../util/AssetCache":37,"./AttachInfo":18,"./BaseButton":19,"./TextElement":27}],27:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3322,7 +3479,7 @@ var TextElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextElement;
 
-},{"./InterfaceElement":21}],27:[function(require,module,exports){
+},{"./InterfaceElement":22}],28:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3495,7 +3652,7 @@ var TextField = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextField;
 
-},{"../events/GameEvent":15,"../util/Vector2D":43,"./AttachInfo":17,"./InterfaceElement":21,"./MaskElement":22,"./Panel":23,"./TextElement":26}],28:[function(require,module,exports){
+},{"../events/GameEvent":16,"../util/Vector2D":44,"./AttachInfo":18,"./InterfaceElement":22,"./MaskElement":23,"./Panel":24,"./TextElement":27}],29:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3673,7 +3830,7 @@ var GenericListDialog = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = GenericListDialog;
 
-},{"../../events/GameEvent":15,"../AttachInfo":17,"../ElementList":19,"../InterfaceElement":21,"../Panel":23,"../TextButton":25,"../TextElement":26,"../TextField":27,"./TextFieldListManager":30}],29:[function(require,module,exports){
+},{"../../events/GameEvent":16,"../AttachInfo":18,"../ElementList":20,"../InterfaceElement":22,"../Panel":24,"../TextButton":26,"../TextElement":27,"../TextField":28,"./TextFieldListManager":31}],30:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3787,7 +3944,7 @@ var InterfaceRoot = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = InterfaceRoot;
 
-},{"../AttachInfo":17,"../InputManager":20,"../InterfaceElement":21,"../TextButton":25,"./GenericListDialog":28}],30:[function(require,module,exports){
+},{"../AttachInfo":18,"../InputManager":21,"../InterfaceElement":22,"../TextButton":26,"./GenericListDialog":29}],31:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3852,7 +4009,7 @@ var TextFieldListManager = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = TextFieldListManager;
 
-},{"../../events/GameEvent":15,"../../events/GameEventHandler":16,"../InputManager":20}],31:[function(require,module,exports){
+},{"../../events/GameEvent":16,"../../events/GameEventHandler":17,"../InputManager":21}],32:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mainMenuMusic = [
@@ -3864,7 +4021,7 @@ exports.interfaceSounds = [
     ["ui/nope", "sound/ui/nope.ogg"]
 ];
 
-},{}],32:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var SoundLoadRequest = (function () {
@@ -3957,7 +4114,7 @@ var SoundManager = (function () {
 }());
 exports.default = SoundManager;
 
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
@@ -3984,7 +4141,7 @@ function buttonBackground(width, height, type) {
 }
 exports.buttonBackground = buttonBackground;
 
-},{"../Game":1}],34:[function(require,module,exports){
+},{"../Game":1}],35:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -4051,7 +4208,7 @@ var TextureLoader = (function () {
 }());
 exports.default = TextureLoader;
 
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
@@ -4193,7 +4350,7 @@ var TextureWorker = (function () {
 }());
 exports.default = TextureWorker;
 
-},{"../util/ColorUtil":37}],36:[function(require,module,exports){
+},{"../util/ColorUtil":38}],37:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var AssetCache = (function () {
@@ -4244,7 +4401,7 @@ var AssetCache = (function () {
 }());
 exports.default = AssetCache;
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function rgbToNumber(r, g, b) {
@@ -4267,7 +4424,7 @@ function rgbaString(r, g, b, a) {
 }
 exports.rgbaString = rgbaString;
 
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var IDObjectGroup = (function () {
@@ -4323,7 +4480,7 @@ var IDObjectGroup = (function () {
 }());
 exports.default = IDObjectGroup;
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /*
@@ -4375,7 +4532,7 @@ function log(typeName, msg) {
 }
 exports.log = log;
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4429,14 +4586,16 @@ var TextSprite = (function (_super) {
 }(PIXI.Sprite));
 exports.TextSprite = TextSprite;
 
-},{"../Game":1}],41:[function(require,module,exports){
+},{"../Game":1}],42:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
 var Timer = (function () {
     function Timer() {
+        this._id = -1;
         this._active = true;
         this._addedToUpdater = false;
+        this._id = Timer.nextId++;
     }
     Object.defineProperty(Timer.prototype, "duration", {
         get: function () { return this._duration; },
@@ -4453,9 +4612,15 @@ var Timer = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Timer.prototype, "id", {
+        get: function () { return this._id; },
+        enumerable: true,
+        configurable: true
+    });
     Timer.prototype.init = function (time, onFinish) {
         this._duration = time;
         this._onFinish = onFinish;
+        this._currentTime = 0;
         return this;
     };
     Timer.prototype.update = function (timeElapsed) {
@@ -4464,36 +4629,48 @@ var Timer = (function () {
             if (this._currentTime >= this._duration) {
                 this._active = false;
                 this.setUpdating(false);
+                Game_1.default.instance.updater.printAll();
                 this._onFinish();
             }
         }
     };
     Timer.prototype.start = function () {
-        this._currentTime = 0;
         this._active = true;
         this.setUpdating(true);
+        return this;
     };
-    Timer.prototype.pause = function () {
+    Timer.prototype.stop = function () {
         this._active = false;
         this.setUpdating(false);
     };
-    Timer.prototype.resume = function () {
+    /*public pause() {
+        this._active = false;
+        this.setUpdating(false);
+    }
+
+    public resume() {
         this._active = true;
         this.setUpdating(true);
-    };
+    }*/
     Timer.prototype.setUpdating = function (updating) {
         if (updating && !this._addedToUpdater) {
             Game_1.default.instance.updater.add(this);
+            this._addedToUpdater = true;
         }
         else if (!updating && this._addedToUpdater) {
             Game_1.default.instance.updater.remove(this);
+            this._addedToUpdater = false;
         }
     };
+    Timer.prototype.toString = function () {
+        return "Timer " + this.id + " (" + this._currentTime + " / " + this._duration + ")";
+    };
+    Timer.nextId = 1;
     return Timer;
 }());
 exports.default = Timer;
 
-},{"../Game":1}],42:[function(require,module,exports){
+},{"../Game":1}],43:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function noop() { }
@@ -4575,7 +4752,7 @@ function isCoordinate(x) {
 }
 exports.isCoordinate = isCoordinate;
 
-},{}],43:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Util = require("./Util");
@@ -4695,4 +4872,4 @@ var Vector2D = (function () {
 }());
 exports.default = Vector2D;
 
-},{"./Util":42}]},{},[3]);
+},{"./Util":43}]},{},[3]);

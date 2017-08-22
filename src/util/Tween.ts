@@ -84,8 +84,10 @@ export default class Tween {
 	private setUpdating(updating) {
 		if (updating && !this._addedToUpdater) {
 			Game.instance.updater.add(this);
+			this._addedToUpdater = true;
 		} else if (!updating && this._addedToUpdater) {
 			Game.instance.updater.remove(this);
+			this._addedToUpdater = false;
 		}
 	}
 

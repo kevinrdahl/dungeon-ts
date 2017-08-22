@@ -46,18 +46,18 @@ var LevelDisplay = (function (_super) {
     LevelDisplay.prototype.clearPathing = function () {
         this.pathingGraphics.clear();
     };
-    LevelDisplay.prototype.showRoute = function (route, color, alpha) {
+    LevelDisplay.prototype.showPath = function (path, color, alpha) {
         if (color === void 0) { color = 0x000000; }
         if (alpha === void 0) { alpha = 0.3; }
         this.routeGraphics.beginFill(color, alpha);
         var size = Globals_1.default.gridSize;
-        for (var _i = 0, route_1 = route; _i < route_1.length; _i++) {
-            var coords = route_1[_i];
+        for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
+            var coords = path_1[_i];
             this.routeGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
         }
         this.routeGraphics.endFill();
     };
-    LevelDisplay.prototype.clearRoute = function () {
+    LevelDisplay.prototype.clearPath = function () {
         this.routeGraphics.clear();
     };
     //TODO TODO TODO make this not garbage (make a tilemap)

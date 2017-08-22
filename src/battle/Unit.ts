@@ -24,7 +24,7 @@ class PathingNode {
 export default class Unit {
 	private static _nextID:number = 1;
 	private _id:number;
-	private static readonly adjacentOffsets: Array<Array<number>> = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+	private static readonly adjacentOffsets: number[][] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
 	public player:Player = null;
 	public battle:Battle = null;
@@ -252,7 +252,7 @@ export default class Unit {
 		return closestCoords;
 	}
 
-	public getPathToPosition(targetX:number, targetY:number, fromX = Number.NEGATIVE_INFINITY, fromY = Number.NEGATIVE_INFINITY):Array<Array<number>> {
+	public getPathToPosition(targetX:number, targetY:number, fromX = Number.NEGATIVE_INFINITY, fromY = Number.NEGATIVE_INFINITY):number[][] {
 		//A*
 		//todo: add additional heuristic cost based on environment hazards
 
@@ -341,8 +341,8 @@ export default class Unit {
 		return null;
 	}
 
-	private traceRoute(node:PathingNode):Array<Array<number>> {
-		var route:Array<Array<number>> = [];
+	private traceRoute(node:PathingNode):number[][] {
+		var route:number[][] = [];
 
 		while (node != null) {
 			route.unshift([node.x, node.y]);

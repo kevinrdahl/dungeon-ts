@@ -115,7 +115,7 @@ var BattleDisplay = (function (_super) {
     BattleDisplay.prototype.updateHover = function () {
         var x = this.mouseGridX;
         var y = this.mouseGridY;
-        this.levelDisplay.clearRoute();
+        this.levelDisplay.clearPath();
         if (this.hoveredUnitDisplay) {
             this.hoveredUnitDisplay.onMouseOut();
         }
@@ -178,22 +178,22 @@ var BattleDisplay = (function (_super) {
         this.updatePathingHover();
     };
     BattleDisplay.prototype.updatePathingHover = function () {
-        this.levelDisplay.clearRoute();
+        this.levelDisplay.clearPath();
         var x = this.mouseGridX;
         var y = this.mouseGridY;
         if (this.battle.ownUnitSelected()) {
             var unit = this.battle.selectedUnit;
             if (unit.canAct() && (unit.x != x || unit.y != y)) {
                 if (unit.canReachTile(x, y)) {
-                    this.levelDisplay.showRoute(unit.getPathToPosition(x, y));
+                    this.levelDisplay.showPath(unit.getPathToPosition(x, y));
                 }
                 else {
                     var tileUnit = this.battle.getUnitAtPosition(x, y);
-                    if (tileUnit && unit.canAttackUnit(tileUnit)) {
+                    if (tileUnit && unit.isHostileToUnit(tileUnit)) {
                         if (!unit.inRangeToAttack(tileUnit)) {
                             var pos = unit.getPositionToAttackUnit(tileUnit);
                             if (pos) {
-                                this.levelDisplay.showRoute(unit.getPathToPosition(pos[0], pos[1]));
+                                this.levelDisplay.showPath(unit.getPathToPosition(pos[0], pos[1]));
                             }
                         }
                     }

@@ -25,6 +25,7 @@ export default class Updater {
 		for (var obj of this.objectsToAdd) {
 			this.objects.push(obj);
 		}
+		this.objectsToAdd = [];
 	}
 
 	public add(obj:IUpdateable, ifNotAdded:boolean = false) {
@@ -50,6 +51,13 @@ export default class Updater {
 		index = this.objectsToAdd.indexOf(obj);
 		if (index > -1) {
 			this.objectsToAdd.splice(index, 1);
+		}
+	}
+
+	public printAll() {
+		console.log("All updateables:");
+		for (var obj of this.objects.concat(this.objectsToAdd)) {
+			console.log("   " + obj);
 		}
 	}
 }

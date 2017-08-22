@@ -72,9 +72,11 @@ var Tween = (function () {
     Tween.prototype.setUpdating = function (updating) {
         if (updating && !this._addedToUpdater) {
             Game_1.default.instance.updater.add(this);
+            this._addedToUpdater = true;
         }
         else if (!updating && this._addedToUpdater) {
             Game_1.default.instance.updater.remove(this);
+            this._addedToUpdater = false;
         }
     };
     Tween.easingFunctions = {

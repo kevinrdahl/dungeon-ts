@@ -7,6 +7,7 @@ import BattleDisplay from './display/BattleDisplay';
 import SparseGrid from '../ds/SparseGrid';
 import Globals from '../Globals';
 import Timer from '../util/Timer';
+import Animation from './display/animation/Animation';
 
 export default class Battle {
 	public players:IDObjectGroup<Player> = new IDObjectGroup<Player>();
@@ -89,7 +90,7 @@ export default class Battle {
 		unit.onDeselect();
 	}
 
-	public moveUnit(unit:Unit, x:number, y:number, path:Array<Array<number>> = null) {
+	public moveUnit(unit:Unit, x:number, y:number, path:number[][] = null) {
 		//This is going to have to step through the whole path and see what triggers
 		//(once that sort of thing is implemented, anyway)
 		this.unitPositions.unset(unit.x, unit.y);
@@ -99,7 +100,7 @@ export default class Battle {
 
 		var display = unit.display;
 		if (display) {
-			var timeTaken = Globals.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
+			/*var timeTaken = Globals.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
 			if (this._animationTime > 0) {
 				var timer = new Timer().init(this._animationTime, ()=> {
 					display.tracePath(path, timeTaken);;
@@ -108,7 +109,8 @@ export default class Battle {
 				display.tracePath(path, timeTaken);
 			}
 
-			this._animationTime += timeTaken;
+			this._animationTime += timeTaken;*/
+			var animation = Animation.moveUnit(unit, path).start();
 		}
 
 		this.onUnitAction(unit);

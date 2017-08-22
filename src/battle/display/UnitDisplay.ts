@@ -8,7 +8,8 @@ import Globals from '../../Globals';
 class TracePathInfo {
 	public timeElapsed = 0;
 	public duration = 0;
-	public path:Array<Array<number>>;
+	public path:number[][];
+	public callback:()=>void = null;
 }
 
 export default class UnitDisplay extends PIXI.Container {
@@ -68,10 +69,11 @@ export default class UnitDisplay extends PIXI.Container {
 		this.updateMovement(timeElapsed);
 	}
 
-	public tracePath(path:Array<Array<number>>, duration:number) {
+	public tracePath(path:number[][], duration:number, callback:()=>void) {
 		var info = new TracePathInfo();
 		info.path = path;
 		info.duration = duration;
+		info.callback = callback;
 		this.tracePathInfo = info;
 
 		//then it's taken care of in update
@@ -137,6 +139,10 @@ export default class UnitDisplay extends PIXI.Container {
 				var pos = info.path[info.path.length - 1];
 				this.setGridPosition(pos[0], pos[1]);
 				this.tracePathInfo = null; //done
+				if (info.callback) {
+					info.callback();
+				}
+
 			} else {
 				var numCells = info.path.length - 1; //don't include the start cell
 				var timePerCell = info.duration / numCells;

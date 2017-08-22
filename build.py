@@ -4,7 +4,7 @@ import time
 import subprocess
 
 shellCommands = [
-	'tsc --alwaysStrict',
+	'tsc --alwaysStrict --noImplicitThis',
 	'browserify build/Main.js -o public/js/dungeon.js'
 ]
 

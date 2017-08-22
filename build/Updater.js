@@ -20,6 +20,7 @@ var Updater = (function () {
             var obj = _c[_b];
             this.objects.push(obj);
         }
+        this.objectsToAdd = [];
     };
     Updater.prototype.add = function (obj, ifNotAdded) {
         if (ifNotAdded === void 0) { ifNotAdded = false; }
@@ -43,6 +44,13 @@ var Updater = (function () {
         index = this.objectsToAdd.indexOf(obj);
         if (index > -1) {
             this.objectsToAdd.splice(index, 1);
+        }
+    };
+    Updater.prototype.printAll = function () {
+        console.log("All updateables:");
+        for (var _i = 0, _a = this.objects.concat(this.objectsToAdd); _i < _a.length; _i++) {
+            var obj = _a[_i];
+            console.log("   " + obj);
         }
     };
     return Updater;

@@ -359,7 +359,7 @@ var Unit = (function () {
         return this.pathableTiles.get(x, y) === true;
     };
     /** Irrespective of actions, range and such. Currently "belongs to a different player from" */
-    Unit.prototype.canAttackUnit = function (unit) {
+    Unit.prototype.isHostileToUnit = function (unit) {
         return this.player != unit.player;
     };
     Unit.prototype.inRangeToAttack = function (unit) {

@@ -42,8 +42,8 @@ export default class SparseGrid<T> {
 		return this.get(x, y) != this.defaultValue;
 	}
 
-	public getAllCoordinates():Array<Array<number>> {
-		var allCoords: Array<Array<number>> = [];
+	public getAllCoordinates():number[][] {
+		var allCoords: number[][] = [];
 
 		for (var y in this.rows) {
 			for (var x in this.rows[y]) {
