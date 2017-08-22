@@ -4800,8 +4800,6 @@ var Tween = (function () {
         this._active = false;
         this._currentTime = 0;
         this._initialized = true;
-        var value = this._easingFunction(this._currentTime, this._startValue, this._endValue - this._startValue, this._duration);
-        console.log("AAAA " + value);
         return this;
     };
     Tween.prototype.start = function () {
