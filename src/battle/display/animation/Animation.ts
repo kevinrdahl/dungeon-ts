@@ -108,13 +108,18 @@ export default class Animation {
 		if (this.parent) this.parent.onChildFinished();
 	}
 
+	public toString(): string {
+		return "Anim " + this.id + " (" + (Math.round(performance.now()) / 1000) + ")";
+	}
+
 	//////////////////////////////////////////////////
 	// Static convenience constructors
 	//////////////////////////////////////////////////
 
 	public static wait(duration:number, callback:()=>void = null):Animation {
 		var action = (cb:()=>void) => {
-			var timer = new Timer().init(duration, cb).start();
+			if (duration > 0) var timer = new Timer().init(duration, cb).start();
+			else cb();
 		}
 
 		return new Animation(action, callback, duration + 0.5);
@@ -134,9 +139,5 @@ export default class Animation {
 		}
 
 		return new Animation(action, callback, duration + 0.5);
-	}
-
-	public toString():string {
-		return "Anim " + this.id + " (" + (Math.round(performance.now()) / 1000) + ")";
 	}
 }

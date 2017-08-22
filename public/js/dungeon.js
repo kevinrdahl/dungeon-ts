@@ -242,7 +242,7 @@ var Updater = (function () {
             var obj = _c[_b];
             this.objects.push(obj);
         }
-        this.objectsToAdd = [];
+        this.objectsToAdd.length = 0;
     };
     Updater.prototype.add = function (obj, ifNotAdded) {
         if (ifNotAdded === void 0) { ifNotAdded = false; }
@@ -1666,7 +1666,7 @@ var Animation = (function () {
         configurable: true
     });
     /**
-     * Go! As a convenience, if the parent has not started. Starts that instead.
+     * Go! As a convenience, if the parent has not started, starts that instead.
      */
     Animation.prototype.start = function () {
         var _this = this;
@@ -1734,6 +1734,9 @@ var Animation = (function () {
         if (this.parent)
             this.parent.onChildFinished();
     };
+    Animation.prototype.toString = function () {
+        return "Anim " + this.id + " (" + (Math.round(performance.now()) / 1000) + ")";
+    };
     //////////////////////////////////////////////////
     // Static convenience constructors
     //////////////////////////////////////////////////
@@ -1759,9 +1762,6 @@ var Animation = (function () {
             }
         };
         return new Animation(action, callback, duration + 0.5);
-    };
-    Animation.prototype.toString = function () {
-        return "Anim " + this.id + " (" + (Math.round(performance.now()) / 1000) + ")";
     };
     Animation.nextId = 1;
     return Animation;

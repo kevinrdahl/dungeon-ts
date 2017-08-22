@@ -20,7 +20,7 @@ var Updater = (function () {
             var obj = _c[_b];
             this.objects.push(obj);
         }
-        this.objectsToAdd = [];
+        this.objectsToAdd.length = 0;
     };
     Updater.prototype.add = function (obj, ifNotAdded) {
         if (ifNotAdded === void 0) { ifNotAdded = false; }

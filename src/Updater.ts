@@ -25,7 +25,7 @@ export default class Updater {
 		for (var obj of this.objectsToAdd) {
 			this.objects.push(obj);
 		}
-		this.objectsToAdd = [];
+		this.objectsToAdd.length = 0;
 	}
 
 	public add(obj:IUpdateable, ifNotAdded:boolean = false) {
