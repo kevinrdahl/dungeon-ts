@@ -382,6 +382,8 @@ var Battle = (function (_super) {
         }
         this.beginTurn(this.players.list[0]);
         this.updateAllUnitPathing();
+        this.display.updatePathingDisplay();
+        this.display.updatePathingHover();
     };
     ////////////////////////////////////////////////////////////
     // Player actions
@@ -416,16 +418,6 @@ var Battle = (function (_super) {
         unit.y = y;
         var display = unit.display;
         if (display) {
-            /*var timeTaken = Globals.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
-            if (this._animationTime > 0) {
-                var timer = new Timer().init(this._animationTime, ()=> {
-                    display.tracePath(path, timeTaken);;
-                }).start();
-            } else {
-                display.tracePath(path, timeTaken);
-            }
-
-            this._animationTime += timeTaken;*/
             var animation = Animation_1.default.moveUnit(unit, path);
             this.queueAnimation(animation);
         }
@@ -444,10 +436,14 @@ var Battle = (function (_super) {
             console.log("Battle: " + attacker + " isn't in range to attack " + target);
             return;
         }
-        var animation = Animation_1.default.attackUnit(attacker, target);
+        target.takeDamage(attacker.attackDamage, attacker);
+        var onHit = Animation_1.default.unitTakeDamage(target);
+        if (!target.alive) {
+            onHit.then(Animation_1.default.unitDie(target));
+        }
+        var animation = Animation_1.default.unitAttack(attacker, target, onHit);
         this.queueAnimation(animation);
         //there will be a LOT to change here
-        target.takeDamage(attacker.attackDamage, attacker);
         this.onUnitAction(attacker);
     };
     Battle.prototype.beginTurn = function (player) {
@@ -601,7 +597,6 @@ var Battle = (function (_super) {
         }
         this.units.remove(unit);
         this.unitPositions.unset(unit.x, unit.y);
-        this.sendNewEvent(GameEvent_1.default.types.battle.UNITREMOVED, unit);
         this.updateAllUnitPathing();
     };
     ////////////////////////////////////////////////////////////
@@ -642,6 +637,8 @@ var Battle = (function (_super) {
     ////////////////////////////////////////////////////////////
     /** Perform the default action for that tile */
     Battle.prototype.rightClickTile = function (x, y) {
+        if (this.animating)
+            return;
         var unit = this._selectedUnit;
         if (this.ownUnitSelected() && unit.canAct()) {
             this.initAnimation();
@@ -1263,23 +1260,6 @@ var BattleDisplay = (function (_super) {
             _this.updatePathingDisplay();
             _this.updatePathingHover();
         };
-        _this.onUnitRemoved = function (e) {
-            var unit = e.data;
-            if (unit) {
-                if (unit.display) {
-                    _this.removeUnitDisplay(unit.display);
-                }
-                else {
-                    for (var _i = 0, _a = _this._unitDisplays; _i < _a.length; _i++) {
-                        var display = _a[_i];
-                        if (display.unit === unit) {
-                            _this.removeUnitDisplay(display);
-                            break;
-                        }
-                    }
-                }
-            }
-        };
         return _this;
     }
     Object.defineProperty(BattleDisplay.prototype, "battle", {
@@ -1614,11 +1594,6 @@ var UnitDisplay = (function (_super) {
         _this.yTween = null;
         _this.tweening = false;
         _this.unit = null;
-        _this.onUnitRemoved = function (e) {
-            if (e.data == _this.unit) {
-                _this.cleanUp();
-            }
-        };
         _this.onAnimation = function (e) {
             if (e.type == GameEvent_1.default.types.battle.ANIMATIONCOMPLETE) {
                 _this.updatePosition();
@@ -1710,6 +1685,10 @@ var UnitDisplay = (function (_super) {
         this.x = this.unit.x * Globals_1.default.gridSize;
         this.y = this.unit.y * Globals_1.default.gridSize;
     };
+    /** Just multiplies by grid size but hey */
+    UnitDisplay.prototype.getGridPosition = function (gridX, gridY) {
+        return [gridX * Globals_1.default.gridSize, gridY * Globals_1.default.gridSize];
+    };
     UnitDisplay.prototype.updateActions = function () {
         this.updateState();
     };
@@ -1787,7 +1766,6 @@ var UnitDisplay = (function (_super) {
         this.listenersAdded = true;
         this.unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         this.unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
-        this.unit.battle.addEventListener(GameEvent_1.default.types.battle.UNITREMOVED, this.onUnitRemoved);
     };
     UnitDisplay.prototype.removeListeners = function () {
         if (!this.listenersAdded)
@@ -1795,7 +1773,6 @@ var UnitDisplay = (function (_super) {
         this.listenersAdded = false;
         this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
-        this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.UNITREMOVED, this.onUnitRemoved);
     };
     return UnitDisplay;
 }(PIXI.Container));
@@ -1852,12 +1829,12 @@ var Animation = (function () {
         if (setCallback === void 0) { setCallback = null; }
         if (this.started)
             return;
-        if (setCallback)
-            this.callback = setCallback;
         if (this.parent && !this.parent.started) {
-            this.parent.start();
+            this.parent.start(setCallback);
             return;
         }
+        if (setCallback)
+            this.callback = setCallback;
         this.started = true;
         var actionCallback = function () {
             _this.onActionComplete();
@@ -1948,21 +1925,67 @@ var Animation = (function () {
         };
         return new Animation(action, callback, duration + 0.5);
     };
-    Animation.attackUnit = function (attacker, target, callback) {
+    /** Lunge, do onHit and come back, callback */
+    Animation.unitAttack = function (attacker, target, onHit, callback) {
+        if (onHit === void 0) { onHit = null; }
         if (callback === void 0) { callback = null; }
-        var d1 = attacker.display;
+        var lunge = Animation.unitLunge(attacker, target, callback);
+        var comeBack = Animation.unitReturnToPosition(attacker);
+        lunge.then(comeBack);
+        if (onHit)
+            lunge.then(onHit);
+        return lunge;
+    };
+    Animation.unitLunge = function (unit, target, callback) {
+        if (callback === void 0) { callback = null; }
+        var d1 = unit.display;
         var d2 = target.display;
-        d1.updatePosition(); //make sure it's at the unit's position
+        d1.updatePosition();
+        d2.updatePosition();
         var action = function (cb) {
-            var x0 = d1.x;
-            var y0 = d1.y;
             d1.tweenTo(d2.x, d2.y, 0.2, Tween_1.default.easingFunctions.quadEaseIn, function () {
-                d1.tweenTo(x0, y0, 0.4, Tween_1.default.easingFunctions.cubeEaseOut, function () {
-                    cb();
-                });
+                cb();
             });
         };
-        return new Animation(action, callback, 2);
+        return new Animation(action, callback, 1);
+    };
+    Animation.unitReturnToPosition = function (unit, callback) {
+        if (callback === void 0) { callback = null; }
+        var d = unit.display;
+        var pos = d.getGridPosition(unit.x, unit.y);
+        var action = function (cb) {
+            d.tweenTo(pos[0], pos[1], 0.4, Tween_1.default.easingFunctions.cubeEaseOut, function () {
+                cb();
+            });
+        };
+        return new Animation(action, callback, 1);
+    };
+    Animation.unitTakeDamage = function (unit, callback) {
+        if (callback === void 0) { callback = null; }
+        var d = unit.display;
+        var action = function (cb) {
+            var tween = new Tween_1.default().init(d, "rotation", 0, Math.PI / 180 * 360, 0.5, Tween_1.default.easingFunctions.quadEaseInOut);
+            tween.onFinish = function () {
+                d.rotation = 0;
+                cb();
+            };
+            tween.start();
+        };
+        return new Animation(action, callback, 1);
+    };
+    Animation.unitDie = function (unit, callback) {
+        if (callback === void 0) { callback = null; }
+        var d = unit.display;
+        var battleDisplay = unit.battle.display;
+        var action = function (cb) {
+            var tween = new Tween_1.default().init(d, "alpha", 1, 0, 0.5, Tween_1.default.easingFunctions.quadEaseOut);
+            tween.onFinish = function () {
+                battleDisplay.removeUnitDisplay(d);
+                cb();
+            };
+            tween.start();
+        };
+        return new Animation(action, callback, 1);
     };
     Animation.nextId = 1;
     return Animation;
@@ -2348,8 +2371,7 @@ var GameEvent = (function () {
         battle: {
             ANIMATIONSTART: "animation start",
             ANIMATIONCOMPLETE: "animation complete",
-            UNITSELECTIONCHANGED: "unit selection changed",
-            UNITREMOVED: "unit removed"
+            UNITSELECTIONCHANGED: "unit selection changed"
         }
     };
     GameEvent._pool = [];

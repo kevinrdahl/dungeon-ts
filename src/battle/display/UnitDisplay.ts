@@ -119,6 +119,11 @@ export default class UnitDisplay extends PIXI.Container {
 		this.y = this.unit.y * Globals.gridSize;
 	}
 
+	/** Just multiplies by grid size but hey */
+	public getGridPosition(gridX:number, gridY:number):number[] {
+		return [gridX * Globals.gridSize, gridY * Globals.gridSize];
+	}
+
 	public updateActions() {
 		this.updateState();
 	}
@@ -209,7 +214,6 @@ export default class UnitDisplay extends PIXI.Container {
 		this.listenersAdded = true;
 		this.unit.battle.addEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
 		this.unit.battle.addEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
-		this.unit.battle.addEventListener(GameEvent.types.battle.UNITREMOVED, this.onUnitRemoved);
 	}
 
 	private removeListeners() {
@@ -218,13 +222,6 @@ export default class UnitDisplay extends PIXI.Container {
 		this.listenersAdded = false;
 		this.unit.battle.removeEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
 		this.unit.battle.removeEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
-		this.unit.battle.removeEventListener(GameEvent.types.battle.UNITREMOVED, this.onUnitRemoved);
-	}
-
-	private onUnitRemoved = (e: GameEvent) => {
-		if (e.data == this.unit) {
-			this.cleanUp();
-		}
 	}
 
 	private onAnimation = (e: GameEvent) => {

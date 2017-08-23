@@ -39,11 +39,6 @@ var UnitDisplay = (function (_super) {
         _this.yTween = null;
         _this.tweening = false;
         _this.unit = null;
-        _this.onUnitRemoved = function (e) {
-            if (e.data == _this.unit) {
-                _this.cleanUp();
-            }
-        };
         _this.onAnimation = function (e) {
             if (e.type == GameEvent_1.default.types.battle.ANIMATIONCOMPLETE) {
                 _this.updatePosition();
@@ -135,6 +130,10 @@ var UnitDisplay = (function (_super) {
         this.x = this.unit.x * Globals_1.default.gridSize;
         this.y = this.unit.y * Globals_1.default.gridSize;
     };
+    /** Just multiplies by grid size but hey */
+    UnitDisplay.prototype.getGridPosition = function (gridX, gridY) {
+        return [gridX * Globals_1.default.gridSize, gridY * Globals_1.default.gridSize];
+    };
     UnitDisplay.prototype.updateActions = function () {
         this.updateState();
     };
@@ -212,7 +211,6 @@ var UnitDisplay = (function (_super) {
         this.listenersAdded = true;
         this.unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         this.unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
-        this.unit.battle.addEventListener(GameEvent_1.default.types.battle.UNITREMOVED, this.onUnitRemoved);
     };
     UnitDisplay.prototype.removeListeners = function () {
         if (!this.listenersAdded)
@@ -220,7 +218,6 @@ var UnitDisplay = (function (_super) {
         this.listenersAdded = false;
         this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
-        this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.UNITREMOVED, this.onUnitRemoved);
     };
     return UnitDisplay;
 }(PIXI.Container));

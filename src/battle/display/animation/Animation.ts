@@ -3,6 +3,7 @@ import Tween from '../../../util/Tween';
 import Unit from '../../Unit';
 import UnitDisplay from '../UnitDisplay';
 import Globals from '../../../Globals';
+import Vector2D from '../../../util/Vector2D';
 
 /**
  * Wraps a function with a callback, to perform long actions in a logical sequence (or multiple sequences).
@@ -45,11 +46,11 @@ export default class Animation {
 	 */
 	public start(setCallback:()=>void = null) {
 		if (this.started) return;
-		if (setCallback) this.callback = setCallback;
 		if (this.parent && !this.parent.started) {
-			this.parent.start();
+			this.parent.start(setCallback);
 			return;
 		}
+		if (setCallback) this.callback = setCallback;
 		this.started = true;
 
 		var actionCallback = () => {
@@ -143,21 +144,71 @@ export default class Animation {
 		return new Animation(action, callback, duration + 0.5);
 	}
 
-	public static attackUnit(attacker:Unit, target:Unit, callback:()=>void = null):Animation {
-		var d1 = attacker.display;
+	/** Lunge, do onHit and come back, callback */
+	public static unitAttack(attacker:Unit, target:Unit, onHit:Animation = null, callback:()=>void = null):Animation {
+		var lunge = Animation.unitLunge(attacker, target, callback);
+		var comeBack = Animation.unitReturnToPosition(attacker);
+		lunge.then(comeBack);
+		if (onHit) lunge.then(onHit);
+		return lunge;
+	}
+
+	public static unitLunge(unit:Unit, target:Unit, callback:()=>void = null):Animation {
+		var d1 = unit.display;
 		var d2 = target.display;
-		d1.updatePosition(); //make sure it's at the unit's position
+		d1.updatePosition();
+		d2.updatePosition();
 
 		var action = (cb:()=>void) => {
-			var x0 = d1.x;
-			var y0 = d1.y;
 			d1.tweenTo(d2.x, d2.y, 0.2, Tween.easingFunctions.quadEaseIn, () => {
-				d1.tweenTo(x0, y0, 0.4, Tween.easingFunctions.cubeEaseOut, () => {
-					cb();
-				});
+				cb();
 			});
 		}
 
-		return new Animation(action, callback, 2);
+		return new Animation(action, callback, 1);
+	}
+
+	public static unitReturnToPosition(unit:Unit, callback:()=>void = null):Animation {
+		var d = unit.display;
+		var pos = d.getGridPosition(unit.x, unit.y);
+
+		var action = (cb:()=>void) => {
+			d.tweenTo(pos[0], pos[1], 0.4, Tween.easingFunctions.cubeEaseOut, () => {
+				cb();
+			});
+		}
+
+		return new Animation(action, callback, 1);
+	}
+
+	public static unitTakeDamage(unit:Unit, callback:()=>void = null):Animation {
+		var d = unit.display;
+
+		var action = (cb:()=>void) => {
+			var tween = new Tween().init(d, "rotation", 0, Math.PI / 180 * 360, 0.5, Tween.easingFunctions.quadEaseInOut);
+			tween.onFinish = () => {
+				d.rotation = 0;
+				cb();
+			}
+			tween.start();
+		}
+
+		return new Animation(action, callback, 1);
+	}
+
+	public static unitDie(unit:Unit, callback:()=>void = null):Animation {
+		var d = unit.display;
+		var battleDisplay = unit.battle.display;
+
+		var action = (cb:()=>void) => {
+			var tween = new Tween().init(d, "alpha", 1, 0, 0.5, Tween.easingFunctions.quadEaseOut);
+			tween.onFinish = () => {
+				battleDisplay.removeUnitDisplay(d);
+				cb();
+			}
+			tween.start();
+		}
+
+		return new Animation(action, callback, 1);
 	}
 }

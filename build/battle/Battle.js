@@ -100,6 +100,8 @@ var Battle = (function (_super) {
         }
         this.beginTurn(this.players.list[0]);
         this.updateAllUnitPathing();
+        this.display.updatePathingDisplay();
+        this.display.updatePathingHover();
     };
     ////////////////////////////////////////////////////////////
     // Player actions
@@ -134,16 +136,6 @@ var Battle = (function (_super) {
         unit.y = y;
         var display = unit.display;
         if (display) {
-            /*var timeTaken = Globals.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
-            if (this._animationTime > 0) {
-                var timer = new Timer().init(this._animationTime, ()=> {
-                    display.tracePath(path, timeTaken);;
-                }).start();
-            } else {
-                display.tracePath(path, timeTaken);
-            }
-
-            this._animationTime += timeTaken;*/
             var animation = Animation_1.default.moveUnit(unit, path);
             this.queueAnimation(animation);
         }
@@ -162,10 +154,14 @@ var Battle = (function (_super) {
             console.log("Battle: " + attacker + " isn't in range to attack " + target);
             return;
         }
-        var animation = Animation_1.default.attackUnit(attacker, target);
+        target.takeDamage(attacker.attackDamage, attacker);
+        var onHit = Animation_1.default.unitTakeDamage(target);
+        if (!target.alive) {
+            onHit.then(Animation_1.default.unitDie(target));
+        }
+        var animation = Animation_1.default.unitAttack(attacker, target, onHit);
         this.queueAnimation(animation);
         //there will be a LOT to change here
-        target.takeDamage(attacker.attackDamage, attacker);
         this.onUnitAction(attacker);
     };
     Battle.prototype.beginTurn = function (player) {
@@ -319,7 +315,6 @@ var Battle = (function (_super) {
         }
         this.units.remove(unit);
         this.unitPositions.unset(unit.x, unit.y);
-        this.sendNewEvent(GameEvent_1.default.types.battle.UNITREMOVED, unit);
         this.updateAllUnitPathing();
     };
     ////////////////////////////////////////////////////////////
@@ -360,6 +355,8 @@ var Battle = (function (_super) {
     ////////////////////////////////////////////////////////////
     /** Perform the default action for that tile */
     Battle.prototype.rightClickTile = function (x, y) {
+        if (this.animating)
+            return;
         var unit = this._selectedUnit;
         if (this.ownUnitSelected() && unit.canAct()) {
             this.initAnimation();

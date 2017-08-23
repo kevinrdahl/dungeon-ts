@@ -39,23 +39,6 @@ var BattleDisplay = (function (_super) {
             _this.updatePathingDisplay();
             _this.updatePathingHover();
         };
-        _this.onUnitRemoved = function (e) {
-            var unit = e.data;
-            if (unit) {
-                if (unit.display) {
-                    _this.removeUnitDisplay(unit.display);
-                }
-                else {
-                    for (var _i = 0, _a = _this._unitDisplays; _i < _a.length; _i++) {
-                        var display = _a[_i];
-                        if (display.unit === unit) {
-                            _this.removeUnitDisplay(display);
-                            break;
-                        }
-                    }
-                }
-            }
-        };
         return _this;
     }
     Object.defineProperty(BattleDisplay.prototype, "battle", {

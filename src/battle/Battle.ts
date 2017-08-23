@@ -75,6 +75,8 @@ export default class Battle extends GameEventHandler {
 
 		this.beginTurn(this.players.list[0]);
 		this.updateAllUnitPathing();
+		this.display.updatePathingDisplay();
+		this.display.updatePathingHover();
 	}
 
 	////////////////////////////////////////////////////////////
@@ -113,16 +115,6 @@ export default class Battle extends GameEventHandler {
 
 		var display = unit.display;
 		if (display) {
-			/*var timeTaken = Globals.timeToTraverseTile * (path.length - 1); //-1 since path includes the start cell
-			if (this._animationTime > 0) {
-				var timer = new Timer().init(this._animationTime, ()=> {
-					display.tracePath(path, timeTaken);;
-				}).start();
-			} else {
-				display.tracePath(path, timeTaken);
-			}
-
-			this._animationTime += timeTaken;*/
 			var animation = Animation.moveUnit(unit, path);
 			this.queueAnimation(animation);
 		}
@@ -146,11 +138,17 @@ export default class Battle extends GameEventHandler {
 			return;
 		}
 
-		var animation = Animation.attackUnit(attacker, target);
+		target.takeDamage(attacker.attackDamage, attacker);
+		var onHit = Animation.unitTakeDamage(target);
+		if (!target.alive) {
+			onHit.then(Animation.unitDie(target));
+		}
+
+		var animation = Animation.unitAttack(attacker, target, onHit);
 		this.queueAnimation(animation);
 
 		//there will be a LOT to change here
-		target.takeDamage(attacker.attackDamage, attacker);
+
 		this.onUnitAction(attacker);
 	}
 
@@ -326,8 +324,6 @@ export default class Battle extends GameEventHandler {
 		this.units.remove(unit);
 		this.unitPositions.unset(unit.x, unit.y);
 
-		this.sendNewEvent(GameEvent.types.battle.UNITREMOVED, unit);
-
 		this.updateAllUnitPathing();
 	}
 
@@ -378,6 +374,8 @@ export default class Battle extends GameEventHandler {
 
 	/** Perform the default action for that tile */
 	public rightClickTile(x: number, y: number) {
+		if (this.animating) return;
+
 		var unit = this._selectedUnit;
 		if (this.ownUnitSelected() && unit.canAct()) {
 			this.initAnimation();

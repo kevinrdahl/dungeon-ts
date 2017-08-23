@@ -254,20 +254,4 @@ export default class BattleDisplay extends PIXI.Container {
 		this.updatePathingDisplay();
 		this.updatePathingHover();
 	}
-
-	private onUnitRemoved = (e:GameEvent) => {
-		var unit:Unit = e.data;
-		if (unit) {
-			if (unit.display) {
-				this.removeUnitDisplay(unit.display);
-			} else {
-				for (var display of this._unitDisplays) {
-					if (display.unit === unit) {
-						this.removeUnitDisplay(display);
-						break;
-					}
-				}
-			}
-		}
-	}
 }

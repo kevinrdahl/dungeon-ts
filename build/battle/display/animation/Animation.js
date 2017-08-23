@@ -48,12 +48,12 @@ var Animation = (function () {
         if (setCallback === void 0) { setCallback = null; }
         if (this.started)
             return;
-        if (setCallback)
-            this.callback = setCallback;
         if (this.parent && !this.parent.started) {
-            this.parent.start();
+            this.parent.start(setCallback);
             return;
         }
+        if (setCallback)
+            this.callback = setCallback;
         this.started = true;
         var actionCallback = function () {
             _this.onActionComplete();
@@ -144,21 +144,67 @@ var Animation = (function () {
         };
         return new Animation(action, callback, duration + 0.5);
     };
-    Animation.attackUnit = function (attacker, target, callback) {
+    /** Lunge, do onHit and come back, callback */
+    Animation.unitAttack = function (attacker, target, onHit, callback) {
+        if (onHit === void 0) { onHit = null; }
         if (callback === void 0) { callback = null; }
-        var d1 = attacker.display;
+        var lunge = Animation.unitLunge(attacker, target, callback);
+        var comeBack = Animation.unitReturnToPosition(attacker);
+        lunge.then(comeBack);
+        if (onHit)
+            lunge.then(onHit);
+        return lunge;
+    };
+    Animation.unitLunge = function (unit, target, callback) {
+        if (callback === void 0) { callback = null; }
+        var d1 = unit.display;
         var d2 = target.display;
-        d1.updatePosition(); //make sure it's at the unit's position
+        d1.updatePosition();
+        d2.updatePosition();
         var action = function (cb) {
-            var x0 = d1.x;
-            var y0 = d1.y;
             d1.tweenTo(d2.x, d2.y, 0.2, Tween_1.default.easingFunctions.quadEaseIn, function () {
-                d1.tweenTo(x0, y0, 0.4, Tween_1.default.easingFunctions.cubeEaseOut, function () {
-                    cb();
-                });
+                cb();
             });
         };
-        return new Animation(action, callback, 2);
+        return new Animation(action, callback, 1);
+    };
+    Animation.unitReturnToPosition = function (unit, callback) {
+        if (callback === void 0) { callback = null; }
+        var d = unit.display;
+        var pos = d.getGridPosition(unit.x, unit.y);
+        var action = function (cb) {
+            d.tweenTo(pos[0], pos[1], 0.4, Tween_1.default.easingFunctions.cubeEaseOut, function () {
+                cb();
+            });
+        };
+        return new Animation(action, callback, 1);
+    };
+    Animation.unitTakeDamage = function (unit, callback) {
+        if (callback === void 0) { callback = null; }
+        var d = unit.display;
+        var action = function (cb) {
+            var tween = new Tween_1.default().init(d, "rotation", 0, Math.PI / 180 * 360, 0.5, Tween_1.default.easingFunctions.quadEaseInOut);
+            tween.onFinish = function () {
+                d.rotation = 0;
+                cb();
+            };
+            tween.start();
+        };
+        return new Animation(action, callback, 1);
+    };
+    Animation.unitDie = function (unit, callback) {
+        if (callback === void 0) { callback = null; }
+        var d = unit.display;
+        var battleDisplay = unit.battle.display;
+        var action = function (cb) {
+            var tween = new Tween_1.default().init(d, "alpha", 1, 0, 0.5, Tween_1.default.easingFunctions.quadEaseOut);
+            tween.onFinish = function () {
+                battleDisplay.removeUnitDisplay(d);
+                cb();
+            };
+            tween.start();
+        };
+        return new Animation(action, callback, 1);
     };
     Animation.nextId = 1;
     return Animation;
