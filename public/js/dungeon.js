@@ -200,7 +200,7 @@ var Globals = (function () {
     function Globals() {
     }
     Globals.gridSize = 24;
-    Globals.timeToTraverseTile = 0.05;
+    Globals.timeToTraverseTile = 0.075;
     return Globals;
 }());
 exports.default = Globals;
@@ -1801,7 +1801,7 @@ var Animation = (function () {
         this.actionComplete = false;
         this.numChildrenFinished = 0;
         this.timer = null;
-        this._mode = 0; //simultaneous
+        this._mode = 0; //branching
         this.name = "some animation";
         this._id = Animation.nextId++;
         this.action = action;
@@ -1875,7 +1875,7 @@ var Animation = (function () {
             this.timer.stop();
         }
         if (this.children) {
-            if (this.mode === Animation.modes.simultaneous) {
+            if (this.mode === Animation.modes.branching) {
                 for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
                     var child = _a[_i];
                     child.start();
@@ -2028,7 +2028,7 @@ var Animation = (function () {
     };
     Animation.nextId = 1;
     Animation.modes = {
-        simultaneous: 0,
+        branching: 0,
         sequential: 1
     };
     return Animation;

@@ -14,7 +14,7 @@ export default class Animation {
 	private _id:number = -1;
 
 	public static readonly modes = {
-		simultaneous: 0,
+		branching: 0,
 		sequential: 1
 	}
 
@@ -28,7 +28,7 @@ export default class Animation {
 	private numChildrenFinished = 0;
 	private maxTime:number;
 	private timer:Timer = null;
-	private _mode = 0; //simultaneous
+	private _mode = 0; //branching
 
 	public name = "some animation";
 
@@ -97,7 +97,7 @@ export default class Animation {
 		}
 
 		if (this.children) {
-			if (this.mode === Animation.modes.simultaneous) {
+			if (this.mode === Animation.modes.branching) {
 				for (var child of this.children) {
 					child.start();
 				}

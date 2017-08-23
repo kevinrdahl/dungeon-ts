@@ -4,7 +4,7 @@ var Globals = (function () {
     function Globals() {
     }
     Globals.gridSize = 24;
-    Globals.timeToTraverseTile = 0.05;
+    Globals.timeToTraverseTile = 0.075;
     return Globals;
 }());
 exports.default = Globals;
