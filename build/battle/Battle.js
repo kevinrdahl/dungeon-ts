@@ -39,8 +39,7 @@ var Battle = (function (_super) {
         _this.unitPositions = new SparseGrid_1.default(null);
         _this._turnNumber = 0;
         //animation
-        _this.firstAnimation = null;
-        _this.lastAnimation = null;
+        _this.animationSequence = null;
         _this._animating = false;
         _this._visible = visible;
         return _this;
@@ -224,17 +223,16 @@ var Battle = (function (_super) {
         }
     };
     Battle.prototype.initAnimation = function () {
-        this.firstAnimation = null;
-        this.lastAnimation = null;
+        this.animationSequence = null;
         this._animating = false;
     };
     Battle.prototype.beginAnimation = function () {
         var _this = this;
-        if (this._animating || this.firstAnimation == null)
+        if (this._animating || this.animationSequence == null)
             return;
         this._animating = true;
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONSTART);
-        this.firstAnimation.start(function () {
+        this.animationSequence.start(function () {
             _this.onAnimationComplete();
         });
     };
@@ -243,14 +241,11 @@ var Battle = (function (_super) {
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE);
     };
     Battle.prototype.queueAnimation = function (animation) {
-        if (this.firstAnimation == null) {
-            this.firstAnimation = animation;
-            this.lastAnimation = animation;
+        if (this.animationSequence == null) {
+            this.animationSequence = Animation_1.default.noop();
+            this.animationSequence.mode = Animation_1.default.modes.sequential;
         }
-        else {
-            this.lastAnimation.then(animation);
-            this.lastAnimation = animation;
-        }
+        this.animationSequence.then(animation);
     };
     ////////////////////////////////////////////////////////////
     // Book keeping

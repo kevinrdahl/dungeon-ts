@@ -321,8 +321,7 @@ var Battle = (function (_super) {
         _this.unitPositions = new SparseGrid_1.default(null);
         _this._turnNumber = 0;
         //animation
-        _this.firstAnimation = null;
-        _this.lastAnimation = null;
+        _this.animationSequence = null;
         _this._animating = false;
         _this._visible = visible;
         return _this;
@@ -506,17 +505,16 @@ var Battle = (function (_super) {
         }
     };
     Battle.prototype.initAnimation = function () {
-        this.firstAnimation = null;
-        this.lastAnimation = null;
+        this.animationSequence = null;
         this._animating = false;
     };
     Battle.prototype.beginAnimation = function () {
         var _this = this;
-        if (this._animating || this.firstAnimation == null)
+        if (this._animating || this.animationSequence == null)
             return;
         this._animating = true;
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONSTART);
-        this.firstAnimation.start(function () {
+        this.animationSequence.start(function () {
             _this.onAnimationComplete();
         });
     };
@@ -525,14 +523,11 @@ var Battle = (function (_super) {
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE);
     };
     Battle.prototype.queueAnimation = function (animation) {
-        if (this.firstAnimation == null) {
-            this.firstAnimation = animation;
-            this.lastAnimation = animation;
+        if (this.animationSequence == null) {
+            this.animationSequence = Animation_1.default.noop();
+            this.animationSequence.mode = Animation_1.default.modes.sequential;
         }
-        else {
-            this.lastAnimation.then(animation);
-            this.lastAnimation = animation;
-        }
+        this.animationSequence.then(animation);
     };
     ////////////////////////////////////////////////////////////
     // Book keeping
@@ -1804,20 +1799,34 @@ var Animation = (function () {
         this.children = null;
         this.started = false;
         this.actionComplete = false;
-        this.childrenFinished = false;
+        this.numChildrenFinished = 0;
         this.timer = null;
+        this._mode = 0; //simultaneous
+        this.name = "some animation";
         this._id = Animation.nextId++;
         this.action = action;
         this.callback = callback;
         this.maxTime = maxTime;
     }
+    Object.defineProperty(Animation.prototype, "childrenFinished", {
+        get: function () { return this.children === null || this.numChildrenFinished >= this.children.length; },
+        enumerable: true,
+        configurable: true
+    });
     Object.defineProperty(Animation.prototype, "finished", {
-        get: function () { return this.actionComplete && (this.children === null || this.childrenFinished); },
+        get: function () { return this.actionComplete && this.childrenFinished; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Animation.prototype, "id", {
         get: function () { return this._id; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Animation.prototype, "mode", {
+        get: function () { return this._mode; },
+        set: function (mode) { if (!this.started)
+            this._mode = mode; },
         enumerable: true,
         configurable: true
     });
@@ -1866,9 +1875,18 @@ var Animation = (function () {
             this.timer.stop();
         }
         if (this.children) {
-            for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
-                var child = _a[_i];
-                child.start();
+            if (this.mode === Animation.modes.simultaneous) {
+                for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
+                    var child = _a[_i];
+                    child.start();
+                }
+            }
+            else if (this.mode === Animation.modes.sequential) {
+                this.children[0].start();
+            }
+            else {
+                console.error("Animation has an invalid mode!");
+                console.log(this);
             }
         }
         else {
@@ -1878,14 +1896,13 @@ var Animation = (function () {
     Animation.prototype.onChildFinished = function () {
         if (this.childrenFinished)
             return;
-        //sure this is O(n^2) but how often are you going to have more than one child? let alone more than a handful
-        for (var _i = 0, _a = this.children; _i < _a.length; _i++) {
-            var child = _a[_i];
-            if (!child.finished)
-                return;
+        this.numChildrenFinished += 1;
+        if (this.childrenFinished) {
+            this.onFinished();
         }
-        this.childrenFinished = true;
-        this.onFinished();
+        else if (this.mode === Animation.modes.sequential) {
+            this.children[this.numChildrenFinished].start();
+        }
     };
     Animation.prototype.onFinished = function () {
         if (this.callback)
@@ -1899,6 +1916,16 @@ var Animation = (function () {
     //////////////////////////////////////////////////
     // Static convenience constructors
     //////////////////////////////////////////////////
+    /** Use this to wrap other animations */
+    Animation.noop = function (callback) {
+        if (callback === void 0) { callback = null; }
+        var action = function (cb) {
+            cb();
+        };
+        var anim = new Animation(action, callback, -1);
+        anim.name = "noop";
+        return anim;
+    };
     Animation.wait = function (duration, callback) {
         if (callback === void 0) { callback = null; }
         var action = function (cb) {
@@ -1907,7 +1934,9 @@ var Animation = (function () {
             else
                 cb();
         };
-        return new Animation(action, callback, duration + 0.5);
+        var anim = new Animation(action, callback, duration + 0.5);
+        anim.name = "wait " + duration;
+        return anim;
     };
     Animation.moveUnit = function (unit, path, callback, duration) {
         if (callback === void 0) { callback = null; }
@@ -1923,7 +1952,9 @@ var Animation = (function () {
                 cb();
             }
         };
-        return new Animation(action, callback, duration + 0.5);
+        var anim = new Animation(action, callback, duration + 0.5);
+        anim.name = "move " + unit;
+        return anim;
     };
     /** Lunge, do onHit and come back, callback */
     Animation.unitAttack = function (attacker, target, onHit, callback) {
@@ -1947,7 +1978,9 @@ var Animation = (function () {
                 cb();
             });
         };
-        return new Animation(action, callback, 1);
+        var anim = new Animation(action, callback, 1);
+        anim.name = "lunge " + unit + " at " + target;
+        return anim;
     };
     Animation.unitReturnToPosition = function (unit, callback) {
         if (callback === void 0) { callback = null; }
@@ -1958,7 +1991,9 @@ var Animation = (function () {
                 cb();
             });
         };
-        return new Animation(action, callback, 1);
+        var anim = new Animation(action, callback, 1);
+        anim.name = "return " + unit;
+        return anim;
     };
     Animation.unitTakeDamage = function (unit, callback) {
         if (callback === void 0) { callback = null; }
@@ -1971,7 +2006,9 @@ var Animation = (function () {
             };
             tween.start();
         };
-        return new Animation(action, callback, 1);
+        var anim = new Animation(action, callback, 1);
+        anim.name = "damage " + unit;
+        return anim;
     };
     Animation.unitDie = function (unit, callback) {
         if (callback === void 0) { callback = null; }
@@ -1985,9 +2022,15 @@ var Animation = (function () {
             };
             tween.start();
         };
-        return new Animation(action, callback, 1);
+        var anim = new Animation(action, callback, 1);
+        anim.name = "kill " + unit;
+        return anim;
     };
     Animation.nextId = 1;
+    Animation.modes = {
+        simultaneous: 0,
+        sequential: 1
+    };
     return Animation;
 }());
 exports.default = Animation;

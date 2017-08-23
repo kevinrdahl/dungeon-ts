@@ -13,6 +13,11 @@ export default class Animation {
 	private static nextId:number = 1;
 	private _id:number = -1;
 
+	public static readonly modes = {
+		simultaneous: 0,
+		sequential: 1
+	}
+
 	private action: (callback: () => void) => void;
 	private callback:()=>void = null;
 
@@ -20,13 +25,19 @@ export default class Animation {
 	private children:Array<Animation> = null;
 	private started:boolean = false;
 	private actionComplete:boolean = false;
-	private childrenFinished:boolean = false;
+	private numChildrenFinished = 0;
 	private maxTime:number;
 	private timer:Timer = null;
+	private _mode = 0; //simultaneous
 
-	private get finished():boolean { return this.actionComplete && (this.children === null || this.childrenFinished); }
+	public name = "some animation";
+
+	private get childrenFinished():boolean { return this.children === null || this.numChildrenFinished >= this.children.length; }
+	private get finished():boolean { return this.actionComplete && this.childrenFinished; }
 
 	get id():number { return this._id; }
+	get mode():number { return this._mode; }
+	set mode(mode) { if (!this.started) this._mode = mode; }
 
 	/**
 	 *
@@ -86,8 +97,15 @@ export default class Animation {
 		}
 
 		if (this.children) {
-			for (var child of this.children) {
-				child.start();
+			if (this.mode === Animation.modes.simultaneous) {
+				for (var child of this.children) {
+					child.start();
+				}
+			} else if (this.mode === Animation.modes.sequential) {
+				this.children[0].start();
+			} else {
+				console.error("Animation has an invalid mode!");
+				console.log(this);
 			}
 		} else {
 			this.onFinished();
@@ -96,14 +114,14 @@ export default class Animation {
 
 	private onChildFinished() {
 		if (this.childrenFinished) return;
+		this.numChildrenFinished += 1;
 
-		//sure this is O(n^2) but how often are you going to have more than one child? let alone more than a handful
-		for (var child of this.children) {
-			if (!child.finished) return;
+		if (this.childrenFinished) {
+			this.onFinished();
+		} else if (this.mode === Animation.modes.sequential) {
+			this.children[this.numChildrenFinished].start();
 		}
 
-		this.childrenFinished = true;
-		this.onFinished();
 	}
 
 	private onFinished() {
@@ -119,13 +137,25 @@ export default class Animation {
 	// Static convenience constructors
 	//////////////////////////////////////////////////
 
+	/** Use this to wrap other animations */
+	public static noop(callback:()=>void = null):Animation {
+		var action = (cb:()=>void) => {
+			cb();
+		}
+		var anim = new Animation(action, callback, -1);
+		anim.name = "noop";
+		return anim;
+	}
+
 	public static wait(duration:number, callback:()=>void = null):Animation {
 		var action = (cb:()=>void) => {
 			if (duration > 0) var timer = new Timer().init(duration, cb).start();
 			else cb();
 		}
 
-		return new Animation(action, callback, duration + 0.5);
+		var anim = new Animation(action, callback, duration + 0.5);
+		anim.name = "wait " + duration;
+		return anim;
 	}
 
 	public static moveUnit(unit:Unit, path:number[][], callback:()=>void = null, duration:number = -1):Animation {
@@ -141,7 +171,9 @@ export default class Animation {
 			}
 		}
 
-		return new Animation(action, callback, duration + 0.5);
+		var anim = new Animation(action, callback, duration + 0.5);
+		anim.name = "move " + unit;
+		return anim;
 	}
 
 	/** Lunge, do onHit and come back, callback */
@@ -165,7 +197,9 @@ export default class Animation {
 			});
 		}
 
-		return new Animation(action, callback, 1);
+		var anim = new Animation(action, callback, 1);
+		anim.name = "lunge " + unit + " at " + target;
+		return anim;
 	}
 
 	public static unitReturnToPosition(unit:Unit, callback:()=>void = null):Animation {
@@ -178,7 +212,9 @@ export default class Animation {
 			});
 		}
 
-		return new Animation(action, callback, 1);
+		var anim = new Animation(action, callback, 1);
+		anim.name = "return " + unit;
+		return anim;
 	}
 
 	public static unitTakeDamage(unit:Unit, callback:()=>void = null):Animation {
@@ -193,7 +229,9 @@ export default class Animation {
 			tween.start();
 		}
 
-		return new Animation(action, callback, 1);
+		var anim = new Animation(action, callback, 1);
+		anim.name = "damage " + unit;
+		return anim;
 	}
 
 	public static unitDie(unit:Unit, callback:()=>void = null):Animation {
@@ -209,6 +247,8 @@ export default class Animation {
 			tween.start();
 		}
 
-		return new Animation(action, callback, 1);
+		var anim = new Animation(action, callback, 1);
+		anim.name = "kill " + unit;
+		return anim;
 	}
 }

@@ -32,8 +32,7 @@ export default class Battle extends GameEventHandler {
 	private _turnNumber = 0;
 
 	//animation
-	private firstAnimation:Animation = null;
-	private lastAnimation:Animation = null;
+	private animationSequence:Animation = null;
 	private _animating:boolean = false;
 
 	/**
@@ -219,17 +218,16 @@ export default class Battle extends GameEventHandler {
 	}
 
 	private initAnimation() {
-		this.firstAnimation = null;
-		this.lastAnimation = null;
+		this.animationSequence = null;
 		this._animating = false;
 	}
 
 	private beginAnimation() {
-		if (this._animating || this.firstAnimation == null) return;
+		if (this._animating || this.animationSequence == null) return;
 
 		this._animating = true;
 		this.sendNewEvent(GameEvent.types.battle.ANIMATIONSTART)
-		this.firstAnimation.start(() => {
+		this.animationSequence.start(() => {
 			this.onAnimationComplete();
 		});
 	}
@@ -240,13 +238,11 @@ export default class Battle extends GameEventHandler {
 	}
 
 	private queueAnimation(animation:Animation) {
-		if (this.firstAnimation == null) {
-			this.firstAnimation = animation;
-			this.lastAnimation = animation;
-		} else {
-			this.lastAnimation.then(animation);
-			this.lastAnimation = animation;
+		if (this.animationSequence == null) {
+			this.animationSequence = Animation.noop();
+			this.animationSequence.mode = Animation.modes.sequential;
 		}
+		this.animationSequence.then(animation);
 	}
 
 	////////////////////////////////////////////////////////////
