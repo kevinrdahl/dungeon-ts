@@ -1,4 +1,14 @@
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
 var Player_1 = require("./Player");
@@ -8,26 +18,32 @@ var IDObjectGroup_1 = require("../util/IDObjectGroup");
 var BattleDisplay_1 = require("./display/BattleDisplay");
 var SparseGrid_1 = require("../ds/SparseGrid");
 var Animation_1 = require("./display/animation/Animation");
-var Battle = (function () {
+var GameEvent_1 = require("../events/GameEvent");
+var GameEventHandler_1 = require("../events/GameEventHandler");
+var Battle = (function (_super) {
+    __extends(Battle, _super);
     /**
      * It's a battle!
      * @param visible Determines whether this Battle should be displayed. False for peer authentication if I ever get around to it.
      */
     function Battle(visible) {
         if (visible === void 0) { visible = true; }
-        this.players = new IDObjectGroup_1.default();
-        this.units = new IDObjectGroup_1.default();
-        this.level = null;
-        this._display = null;
-        this._selectedUnit = null;
-        this._currentPlayer = null;
-        this.initialized = false;
-        this.unitPositions = new SparseGrid_1.default(null);
-        this._animationTime = 0;
-        this.firstAnimation = null;
-        this.lastAnimation = null;
-        this.animating = false;
-        this._visible = visible;
+        var _this = _super.call(this) || this;
+        _this.players = new IDObjectGroup_1.default();
+        _this.units = new IDObjectGroup_1.default();
+        _this.level = null;
+        _this._display = null;
+        _this._selectedUnit = null;
+        _this._currentPlayer = null;
+        _this.initialized = false;
+        _this.unitPositions = new SparseGrid_1.default(null);
+        _this._animationTime = 0;
+        //animation
+        _this.firstAnimation = null;
+        _this.lastAnimation = null;
+        _this._animating = false;
+        _this._visible = visible;
+        return _this;
     }
     Object.defineProperty(Battle.prototype, "visible", {
         get: function () { return this._visible; },
@@ -51,6 +67,11 @@ var Battle = (function () {
     });
     Object.defineProperty(Battle.prototype, "animationTime", {
         get: function () { return this._animationTime; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Battle.prototype, "animating", {
+        get: function () { return this._animating; },
         enumerable: true,
         configurable: true
     });
@@ -86,18 +107,22 @@ var Battle = (function () {
     Battle.prototype.selectUnit = function (unit) {
         if (unit == this._selectedUnit)
             return;
-        this.deselectUnit();
+        this.deselectUnit(false);
         this._selectedUnit = unit;
         if (unit) {
             unit.onSelect();
         }
+        this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
     };
-    Battle.prototype.deselectUnit = function () {
+    Battle.prototype.deselectUnit = function (sendEvent) {
+        if (sendEvent === void 0) { sendEvent = true; }
         if (!this._selectedUnit)
             return;
         var unit = this._selectedUnit;
         this._selectedUnit = null;
         unit.onDeselect();
+        if (sendEvent)
+            this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
     };
     Battle.prototype.moveUnit = function (unit, x, y, path) {
         if (path === void 0) { path = null; }
@@ -191,16 +216,21 @@ var Battle = (function () {
     Battle.prototype.initAnimation = function () {
         this.firstAnimation = null;
         this.lastAnimation = null;
-        this.animating = false;
+        this._animating = false;
     };
     Battle.prototype.beginAnimation = function () {
         var _this = this;
-        if (this.animating || this.firstAnimation == null)
+        if (this._animating || this.firstAnimation == null)
             return;
-        this.animating = true;
+        this._animating = true;
+        this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONSTART);
         this.firstAnimation.start(function () {
-            _this.animating = false;
+            _this.onAnimationComplete();
         });
+    };
+    Battle.prototype.onAnimationComplete = function () {
+        this._animating = false;
+        this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE);
     };
     Battle.prototype.queueAnimation = function (animation) {
         if (this.firstAnimation == null) {
@@ -330,7 +360,7 @@ var Battle = (function () {
                 if (unit.inRangeToAttack(tileUnit)) {
                     this.attackUnit(unit, tileUnit);
                 }
-                else {
+                else if (unit.actionsRemaining > 1) {
                     var pos = unit.getPositionToAttackUnit(tileUnit);
                     if (pos) {
                         this.moveUnit(unit, pos[0], pos[1], unit.getPathToPosition(pos[0], pos[1]));
@@ -356,5 +386,5 @@ var Battle = (function () {
         this._display.scale.set(3, 3);
     };
     return Battle;
-}());
+}(GameEventHandler_1.default));
 exports.default = Battle;

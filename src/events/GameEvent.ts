@@ -15,6 +15,11 @@ export default class GameEvent {
 			KEY:"key",
 			TAB:"tab",
 			SUBMIT:"submit"
+		},
+		battle: {
+			ANIMATIONSTART:"animation start",
+			ANIMATIONCOMPLETE:"animation complete",
+			UNITSELECTIONCHANGED:"unit selection changed"
 		}
 	}
 

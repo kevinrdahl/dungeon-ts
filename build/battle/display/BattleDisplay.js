@@ -15,6 +15,7 @@ var Game_1 = require("../../Game");
 var Vector2D_1 = require("../../util/Vector2D");
 var InputManager_1 = require("../../interface/InputManager");
 var Globals_1 = require("../../Globals");
+var GameEvent_1 = require("../../events/GameEvent");
 var ElementList_1 = require("../../interface/ElementList");
 var AttachInfo_1 = require("../../interface/AttachInfo");
 var TextElement_1 = require("../../interface/TextElement");
@@ -28,6 +29,15 @@ var BattleDisplay = (function (_super) {
         _this.mouseGridX = Number.NEGATIVE_INFINITY;
         _this.mouseGridY = Number.NEGATIVE_INFINITY;
         _this.hoveredUnitDisplay = null;
+        _this.onAnimation = function (e) {
+            console.log("Update it!");
+            _this.updatePathingDisplay();
+            _this.updatePathingHover();
+        };
+        _this.onUnitSelectionChanged = function (e) {
+            _this.updatePathingDisplay();
+            _this.updatePathingHover();
+        };
         return _this;
     }
     Object.defineProperty(BattleDisplay.prototype, "battle", {
@@ -49,6 +59,9 @@ var BattleDisplay = (function (_super) {
         this._battle = battle;
         this.addChild(this._unitContainer);
         Game_1.default.instance.updater.add(this);
+        battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+        battle.addEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
     };
     BattleDisplay.prototype.setLevelDisplay = function (display) {
         if (this._levelDisplay) {
@@ -94,13 +107,11 @@ var BattleDisplay = (function (_super) {
         if (!unitClicked) {
             this._battle.deselectUnit();
         }
-        this.updatePathingDisplay();
         this.updateDebugPanel();
     };
     BattleDisplay.prototype.onRightClick = function (coords) {
         var gridCoords = this.viewToGrid(coords);
         this._battle.rightClickTile(gridCoords.x, gridCoords.y);
-        this.updatePathingDisplay();
         this.updateDebugPanel();
     };
     /**
@@ -155,6 +166,8 @@ var BattleDisplay = (function (_super) {
     };
     BattleDisplay.prototype.updatePathingDisplay = function () {
         this.levelDisplay.clearPathing();
+        if (this._battle.animating)
+            return;
         var unit = this.battle.selectedUnit;
         if (unit && (unit.canAct() || !this.battle.ownUnitSelected())) {
             if (this.battle.ownUnitSelected()) {
@@ -175,10 +188,11 @@ var BattleDisplay = (function (_super) {
                 this.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
             }
         }
-        this.updatePathingHover();
     };
     BattleDisplay.prototype.updatePathingHover = function () {
         this.levelDisplay.clearPath();
+        if (this._battle.animating)
+            return;
         var x = this.mouseGridX;
         var y = this.mouseGridY;
         if (this.battle.ownUnitSelected()) {
@@ -190,7 +204,7 @@ var BattleDisplay = (function (_super) {
                 else {
                     var tileUnit = this.battle.getUnitAtPosition(x, y);
                     if (tileUnit && unit.isHostileToUnit(tileUnit)) {
-                        if (!unit.inRangeToAttack(tileUnit)) {
+                        if (!unit.inRangeToAttack(tileUnit) && unit.actionsRemaining > 1) {
                             var pos = unit.getPositionToAttackUnit(tileUnit);
                             if (pos) {
                                 this.levelDisplay.showPath(unit.getPathToPosition(pos[0], pos[1]));

@@ -15,6 +15,7 @@ var Game_1 = require("../../Game");
 var TextUtil = require("../../util/TextUtil");
 var Globals_1 = require("../../Globals");
 var Tween_1 = require("../../util/Tween");
+var GameEvent_1 = require("../../events/GameEvent");
 var TracePathInfo = (function () {
     function TracePathInfo() {
         this.timeElapsed = 0;
@@ -33,10 +34,17 @@ var UnitDisplay = (function (_super) {
         _this.hover = false;
         _this.selected = false;
         _this.tracePathInfo = null;
+        _this.listenersAdded = false;
         _this.xTween = null;
         _this.yTween = null;
         _this.tweening = false;
         _this.unit = null;
+        _this.onAnimation = function (e) {
+            if (e.type == GameEvent_1.default.types.battle.ANIMATIONCOMPLETE) {
+                _this.updatePosition();
+            }
+            _this.updateState();
+        };
         return _this;
     }
     UnitDisplay.prototype.initUnit = function (unit) {
@@ -75,6 +83,11 @@ var UnitDisplay = (function (_super) {
         this.addChild(this.idText);
         this.updatePosition();
         Game_1.default.instance.updater.add(this, true);
+        if (!this.listenersAdded) {
+            this.listenersAdded = true;
+            unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+            unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        }
     };
     UnitDisplay.prototype.update = function (timeElapsed) {
         if (!this.tweening) {
@@ -146,7 +159,7 @@ var UnitDisplay = (function (_super) {
             if (noActions) {
                 this.sprite.tint = 0x666666;
             }
-            else if (this.hover) {
+            else if (this.hover && !this.unit.battle.animating) {
                 this.sprite.tint = 0xaaffaa;
             }
             else {

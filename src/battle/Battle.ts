@@ -8,8 +8,10 @@ import SparseGrid from '../ds/SparseGrid';
 import Globals from '../Globals';
 import Timer from '../util/Timer';
 import Animation from './display/animation/Animation';
+import GameEvent from '../events/GameEvent';
+import GameEventHandler from '../events/GameEventHandler';
 
-export default class Battle {
+export default class Battle extends GameEventHandler {
 	public players:IDObjectGroup<Player> = new IDObjectGroup<Player>();
 	public units: IDObjectGroup<Unit> = new IDObjectGroup<Unit>();
 	public level:Level = null;
@@ -19,6 +21,7 @@ export default class Battle {
 	get selectedUnit():Unit { return this._selectedUnit; }
 	get currentPlayer():Player { return this._currentPlayer; }
 	get animationTime():number { return this._animationTime; }
+	get animating():boolean { return this._animating; }
 
 	private _visible:boolean;
 	private _display:BattleDisplay = null;
@@ -28,11 +31,17 @@ export default class Battle {
 	private unitPositions:SparseGrid<Unit> = new SparseGrid<Unit>(null);
 	private _animationTime:number = 0;
 
+	//animation
+	private firstAnimation:Animation = null;
+	private lastAnimation:Animation = null;
+	private _animating:boolean = false;
+
 	/**
 	 * It's a battle!
 	 * @param visible Determines whether this Battle should be displayed. False for peer authentication if I ever get around to it.
 	 */
 	constructor(visible:boolean = true) {
+		super();
 		this._visible = visible;
 	}
 
@@ -75,19 +84,23 @@ export default class Battle {
 	public selectUnit(unit:Unit) {
 		if (unit == this._selectedUnit) return;
 
-		this.deselectUnit();
+		this.deselectUnit(false);
 		this._selectedUnit = unit;
 		if (unit) {
 			unit.onSelect();
 		}
+
+		this.sendNewEvent(GameEvent.types.battle.UNITSELECTIONCHANGED);
 	}
 
-	public deselectUnit() {
+	public deselectUnit(sendEvent = true) {
 		if (!this._selectedUnit) return;
 
 		var unit = this._selectedUnit;
 		this._selectedUnit = null;
 		unit.onDeselect();
+
+		if (sendEvent) this.sendNewEvent(GameEvent.types.battle.UNITSELECTIONCHANGED);
 	}
 
 	public moveUnit(unit:Unit, x:number, y:number, path:number[][] = null) {
@@ -193,23 +206,25 @@ export default class Battle {
 		}
 	}
 
-	private firstAnimation:Animation = null;
-	private lastAnimation:Animation = null;
-	private animating:boolean = false;
-
 	private initAnimation() {
 		this.firstAnimation = null;
 		this.lastAnimation = null;
-		this.animating = false;
+		this._animating = false;
 	}
 
 	private beginAnimation() {
-		if (this.animating || this.firstAnimation == null) return;
+		if (this._animating || this.firstAnimation == null) return;
 
-		this.animating = true;
+		this._animating = true;
+		this.sendNewEvent(GameEvent.types.battle.ANIMATIONSTART)
 		this.firstAnimation.start(() => {
-			this.animating = false;
+			this.onAnimationComplete();
 		});
+	}
+
+	private onAnimationComplete() {
+		this._animating = false;
+		this.sendNewEvent(GameEvent.types.battle.ANIMATIONCOMPLETE);
 	}
 
 	private queueAnimation(animation:Animation) {
@@ -362,7 +377,7 @@ export default class Battle {
 			else if (tileUnit && unit.isHostileToUnit(tileUnit)) {
 				if (unit.inRangeToAttack(tileUnit)) {
 					this.attackUnit(unit, tileUnit);
-				} else {
+				} else if (unit.actionsRemaining > 1) {
 					var pos = unit.getPositionToAttackUnit(tileUnit);
 					if (pos) {
 						this.moveUnit(unit, pos[0], pos[1], unit.getPathToPosition(pos[0], pos[1]));

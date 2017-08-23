@@ -5,6 +5,7 @@ import Game from '../../Game';
 import * as TextUtil from '../../util/TextUtil';
 import Globals from '../../Globals';
 import Tween from '../../util/Tween';
+import GameEvent from '../../events/GameEvent';
 
 class TracePathInfo {
 	public timeElapsed = 0;
@@ -20,6 +21,7 @@ export default class UnitDisplay extends PIXI.Container {
 	private hover:boolean = false;
 	private selected:boolean = false;
 	private tracePathInfo:TracePathInfo = null;
+	private listenersAdded = false;
 
 	private xTween:Tween = null;
 	private yTween:Tween = null;
@@ -68,6 +70,12 @@ export default class UnitDisplay extends PIXI.Container {
 
 		this.updatePosition();
 		Game.instance.updater.add(this, true);
+
+		if (!this.listenersAdded) {
+			this.listenersAdded = true;
+			unit.battle.addEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+			unit.battle.addEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
+		}
 	}
 
 	public update(timeElapsed:number) {
@@ -140,6 +148,13 @@ export default class UnitDisplay extends PIXI.Container {
 		this.updateState();
 	}
 
+	private onAnimation = (e:GameEvent) => {
+		if (e.type == GameEvent.types.battle.ANIMATIONCOMPLETE) {
+			this.updatePosition();
+		}
+		this.updateState();
+	}
+
 	private updateState() {
 		var noActions = (this.unit.actionsRemaining == 0);
 
@@ -149,7 +164,7 @@ export default class UnitDisplay extends PIXI.Container {
 			if (noActions) {
 				this.sprite.tint = 0x666666;
 			}
-			else if (this.hover) {
+			else if (this.hover && !this.unit.battle.animating) {
 				this.sprite.tint = 0xaaffaa;
 			} else {
 				this.sprite.tint = 0xffffff;

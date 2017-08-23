@@ -6,6 +6,7 @@ import InputManager from '../../interface/InputManager';
 import Globals from '../../Globals';
 import Battle from '../Battle';
 import Unit from '../Unit';
+import GameEvent from '../../events/GameEvent';
 
 import UnitDisplay from './UnitDisplay';
 import LevelDisplay from './LevelDisplay';
@@ -36,6 +37,9 @@ export default class BattleDisplay extends PIXI.Container {
 		this._battle = battle;
 		this.addChild(this._unitContainer);
 		Game.instance.updater.add(this);
+		battle.addEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
+		battle.addEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+		battle.addEventListener(GameEvent.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
 	}
 
 	public setLevelDisplay(display:LevelDisplay) {
@@ -91,7 +95,6 @@ export default class BattleDisplay extends PIXI.Container {
 			this._battle.deselectUnit();
 		}
 
-		this.updatePathingDisplay();
 		this.updateDebugPanel();
 	}
 
@@ -99,7 +102,6 @@ export default class BattleDisplay extends PIXI.Container {
 		var gridCoords = this.viewToGrid(coords);
 		this._battle.rightClickTile(gridCoords.x, gridCoords.y);
 
-		this.updatePathingDisplay();
 		this.updateDebugPanel();
 	}
 
@@ -167,6 +169,7 @@ export default class BattleDisplay extends PIXI.Container {
 
 	public updatePathingDisplay() {
 		this.levelDisplay.clearPathing();
+		if (this._battle.animating) return;
 
 		var unit = this.battle.selectedUnit;
 		if (unit && (unit.canAct() || !this.battle.ownUnitSelected())) {
@@ -186,12 +189,11 @@ export default class BattleDisplay extends PIXI.Container {
 				this.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
 			}
 		}
-
-		this.updatePathingHover();
 	}
 
 	public updatePathingHover() {
 		this.levelDisplay.clearPath();
+		if (this._battle.animating) return;
 
 		var x = this.mouseGridX;
 		var y = this.mouseGridY;
@@ -204,7 +206,7 @@ export default class BattleDisplay extends PIXI.Container {
 				} else {
 					var tileUnit = this.battle.getUnitAtPosition(x, y);
 					if (tileUnit && unit.isHostileToUnit(tileUnit)) {
-						if (!unit.inRangeToAttack(tileUnit)) {
+						if (!unit.inRangeToAttack(tileUnit) && unit.actionsRemaining > 1) {
 							var pos = unit.getPositionToAttackUnit(tileUnit);
 							if (pos) {
 								this.levelDisplay.showPath(unit.getPathToPosition(pos[0], pos[1]));
@@ -214,5 +216,16 @@ export default class BattleDisplay extends PIXI.Container {
 				}
 			}
 		}
+	}
+
+	private onAnimation = (e:GameEvent) => {
+		console.log("Update it!");
+		this.updatePathingDisplay();
+		this.updatePathingHover();
+	}
+
+	private onUnitSelectionChanged = (e:GameEvent) {
+		this.updatePathingDisplay();
+		this.updatePathingHover();
 	}
 }

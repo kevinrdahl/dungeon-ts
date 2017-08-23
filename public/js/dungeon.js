@@ -281,6 +281,16 @@ exports.default = Updater;
 
 },{}],5:[function(require,module,exports){
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
 var Player_1 = require("./Player");
@@ -290,26 +300,32 @@ var IDObjectGroup_1 = require("../util/IDObjectGroup");
 var BattleDisplay_1 = require("./display/BattleDisplay");
 var SparseGrid_1 = require("../ds/SparseGrid");
 var Animation_1 = require("./display/animation/Animation");
-var Battle = (function () {
+var GameEvent_1 = require("../events/GameEvent");
+var GameEventHandler_1 = require("../events/GameEventHandler");
+var Battle = (function (_super) {
+    __extends(Battle, _super);
     /**
      * It's a battle!
      * @param visible Determines whether this Battle should be displayed. False for peer authentication if I ever get around to it.
      */
     function Battle(visible) {
         if (visible === void 0) { visible = true; }
-        this.players = new IDObjectGroup_1.default();
-        this.units = new IDObjectGroup_1.default();
-        this.level = null;
-        this._display = null;
-        this._selectedUnit = null;
-        this._currentPlayer = null;
-        this.initialized = false;
-        this.unitPositions = new SparseGrid_1.default(null);
-        this._animationTime = 0;
-        this.firstAnimation = null;
-        this.lastAnimation = null;
-        this.animating = false;
-        this._visible = visible;
+        var _this = _super.call(this) || this;
+        _this.players = new IDObjectGroup_1.default();
+        _this.units = new IDObjectGroup_1.default();
+        _this.level = null;
+        _this._display = null;
+        _this._selectedUnit = null;
+        _this._currentPlayer = null;
+        _this.initialized = false;
+        _this.unitPositions = new SparseGrid_1.default(null);
+        _this._animationTime = 0;
+        //animation
+        _this.firstAnimation = null;
+        _this.lastAnimation = null;
+        _this._animating = false;
+        _this._visible = visible;
+        return _this;
     }
     Object.defineProperty(Battle.prototype, "visible", {
         get: function () { return this._visible; },
@@ -333,6 +349,11 @@ var Battle = (function () {
     });
     Object.defineProperty(Battle.prototype, "animationTime", {
         get: function () { return this._animationTime; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Battle.prototype, "animating", {
+        get: function () { return this._animating; },
         enumerable: true,
         configurable: true
     });
@@ -368,18 +389,22 @@ var Battle = (function () {
     Battle.prototype.selectUnit = function (unit) {
         if (unit == this._selectedUnit)
             return;
-        this.deselectUnit();
+        this.deselectUnit(false);
         this._selectedUnit = unit;
         if (unit) {
             unit.onSelect();
         }
+        this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
     };
-    Battle.prototype.deselectUnit = function () {
+    Battle.prototype.deselectUnit = function (sendEvent) {
+        if (sendEvent === void 0) { sendEvent = true; }
         if (!this._selectedUnit)
             return;
         var unit = this._selectedUnit;
         this._selectedUnit = null;
         unit.onDeselect();
+        if (sendEvent)
+            this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
     };
     Battle.prototype.moveUnit = function (unit, x, y, path) {
         if (path === void 0) { path = null; }
@@ -473,16 +498,21 @@ var Battle = (function () {
     Battle.prototype.initAnimation = function () {
         this.firstAnimation = null;
         this.lastAnimation = null;
-        this.animating = false;
+        this._animating = false;
     };
     Battle.prototype.beginAnimation = function () {
         var _this = this;
-        if (this.animating || this.firstAnimation == null)
+        if (this._animating || this.firstAnimation == null)
             return;
-        this.animating = true;
+        this._animating = true;
+        this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONSTART);
         this.firstAnimation.start(function () {
-            _this.animating = false;
+            _this.onAnimationComplete();
         });
+    };
+    Battle.prototype.onAnimationComplete = function () {
+        this._animating = false;
+        this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE);
     };
     Battle.prototype.queueAnimation = function (animation) {
         if (this.firstAnimation == null) {
@@ -612,7 +642,7 @@ var Battle = (function () {
                 if (unit.inRangeToAttack(tileUnit)) {
                     this.attackUnit(unit, tileUnit);
                 }
-                else {
+                else if (unit.actionsRemaining > 1) {
                     var pos = unit.getPositionToAttackUnit(tileUnit);
                     if (pos) {
                         this.moveUnit(unit, pos[0], pos[1], unit.getPathToPosition(pos[0], pos[1]));
@@ -638,10 +668,10 @@ var Battle = (function () {
         this._display.scale.set(3, 3);
     };
     return Battle;
-}());
+}(GameEventHandler_1.default));
 exports.default = Battle;
 
-},{"../Game":1,"../ds/SparseGrid":15,"../util/IDObjectGroup":39,"./Level":6,"./Player":7,"./Unit":9,"./display/BattleDisplay":10,"./display/animation/Animation":13}],6:[function(require,module,exports){
+},{"../Game":1,"../ds/SparseGrid":15,"../events/GameEvent":16,"../events/GameEventHandler":17,"../util/IDObjectGroup":39,"./Level":6,"./Player":7,"./Unit":9,"./display/BattleDisplay":10,"./display/animation/Animation":13}],6:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
@@ -1204,6 +1234,7 @@ var Game_1 = require("../../Game");
 var Vector2D_1 = require("../../util/Vector2D");
 var InputManager_1 = require("../../interface/InputManager");
 var Globals_1 = require("../../Globals");
+var GameEvent_1 = require("../../events/GameEvent");
 var ElementList_1 = require("../../interface/ElementList");
 var AttachInfo_1 = require("../../interface/AttachInfo");
 var TextElement_1 = require("../../interface/TextElement");
@@ -1217,6 +1248,15 @@ var BattleDisplay = (function (_super) {
         _this.mouseGridX = Number.NEGATIVE_INFINITY;
         _this.mouseGridY = Number.NEGATIVE_INFINITY;
         _this.hoveredUnitDisplay = null;
+        _this.onAnimation = function (e) {
+            console.log("Update it!");
+            _this.updatePathingDisplay();
+            _this.updatePathingHover();
+        };
+        _this.onUnitSelectionChanged = function (e) {
+            _this.updatePathingDisplay();
+            _this.updatePathingHover();
+        };
         return _this;
     }
     Object.defineProperty(BattleDisplay.prototype, "battle", {
@@ -1238,6 +1278,9 @@ var BattleDisplay = (function (_super) {
         this._battle = battle;
         this.addChild(this._unitContainer);
         Game_1.default.instance.updater.add(this);
+        battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+        battle.addEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
     };
     BattleDisplay.prototype.setLevelDisplay = function (display) {
         if (this._levelDisplay) {
@@ -1283,13 +1326,11 @@ var BattleDisplay = (function (_super) {
         if (!unitClicked) {
             this._battle.deselectUnit();
         }
-        this.updatePathingDisplay();
         this.updateDebugPanel();
     };
     BattleDisplay.prototype.onRightClick = function (coords) {
         var gridCoords = this.viewToGrid(coords);
         this._battle.rightClickTile(gridCoords.x, gridCoords.y);
-        this.updatePathingDisplay();
         this.updateDebugPanel();
     };
     /**
@@ -1344,6 +1385,8 @@ var BattleDisplay = (function (_super) {
     };
     BattleDisplay.prototype.updatePathingDisplay = function () {
         this.levelDisplay.clearPathing();
+        if (this._battle.animating)
+            return;
         var unit = this.battle.selectedUnit;
         if (unit && (unit.canAct() || !this.battle.ownUnitSelected())) {
             if (this.battle.ownUnitSelected()) {
@@ -1364,10 +1407,11 @@ var BattleDisplay = (function (_super) {
                 this.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
             }
         }
-        this.updatePathingHover();
     };
     BattleDisplay.prototype.updatePathingHover = function () {
         this.levelDisplay.clearPath();
+        if (this._battle.animating)
+            return;
         var x = this.mouseGridX;
         var y = this.mouseGridY;
         if (this.battle.ownUnitSelected()) {
@@ -1379,7 +1423,7 @@ var BattleDisplay = (function (_super) {
                 else {
                     var tileUnit = this.battle.getUnitAtPosition(x, y);
                     if (tileUnit && unit.isHostileToUnit(tileUnit)) {
-                        if (!unit.inRangeToAttack(tileUnit)) {
+                        if (!unit.inRangeToAttack(tileUnit) && unit.actionsRemaining > 1) {
                             var pos = unit.getPositionToAttackUnit(tileUnit);
                             if (pos) {
                                 this.levelDisplay.showPath(unit.getPathToPosition(pos[0], pos[1]));
@@ -1394,7 +1438,7 @@ var BattleDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../interface/AttachInfo":18,"../../interface/ElementList":20,"../../interface/InputManager":21,"../../interface/TextElement":27,"../../util/Vector2D":45}],11:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":16,"../../interface/AttachInfo":18,"../../interface/ElementList":20,"../../interface/InputManager":21,"../../interface/TextElement":27,"../../util/Vector2D":45}],11:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1501,6 +1545,7 @@ var Game_1 = require("../../Game");
 var TextUtil = require("../../util/TextUtil");
 var Globals_1 = require("../../Globals");
 var Tween_1 = require("../../util/Tween");
+var GameEvent_1 = require("../../events/GameEvent");
 var TracePathInfo = (function () {
     function TracePathInfo() {
         this.timeElapsed = 0;
@@ -1519,10 +1564,17 @@ var UnitDisplay = (function (_super) {
         _this.hover = false;
         _this.selected = false;
         _this.tracePathInfo = null;
+        _this.listenersAdded = false;
         _this.xTween = null;
         _this.yTween = null;
         _this.tweening = false;
         _this.unit = null;
+        _this.onAnimation = function (e) {
+            if (e.type == GameEvent_1.default.types.battle.ANIMATIONCOMPLETE) {
+                _this.updatePosition();
+            }
+            _this.updateState();
+        };
         return _this;
     }
     UnitDisplay.prototype.initUnit = function (unit) {
@@ -1561,6 +1613,11 @@ var UnitDisplay = (function (_super) {
         this.addChild(this.idText);
         this.updatePosition();
         Game_1.default.instance.updater.add(this, true);
+        if (!this.listenersAdded) {
+            this.listenersAdded = true;
+            unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+            unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        }
     };
     UnitDisplay.prototype.update = function (timeElapsed) {
         if (!this.tweening) {
@@ -1632,7 +1689,7 @@ var UnitDisplay = (function (_super) {
             if (noActions) {
                 this.sprite.tint = 0x666666;
             }
-            else if (this.hover) {
+            else if (this.hover && !this.unit.battle.animating) {
                 this.sprite.tint = 0xaaffaa;
             }
             else {
@@ -1674,7 +1731,7 @@ var UnitDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = UnitDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../util/TextUtil":41,"../../util/Tween":43}],13:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":16,"../../util/TextUtil":41,"../../util/Tween":43}],13:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Timer_1 = require("../../../util/Timer");
@@ -2217,6 +2274,11 @@ var GameEvent = (function () {
             KEY: "key",
             TAB: "tab",
             SUBMIT: "submit"
+        },
+        battle: {
+            ANIMATIONSTART: "animation start",
+            ANIMATIONCOMPLETE: "animation complete",
+            UNITSELECTIONCHANGED: "unit selection changed"
         }
     };
     GameEvent._pool = [];
