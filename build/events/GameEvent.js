@@ -49,7 +49,8 @@ var GameEvent = (function () {
         battle: {
             ANIMATIONSTART: "animation start",
             ANIMATIONCOMPLETE: "animation complete",
-            UNITSELECTIONCHANGED: "unit selection changed"
+            UNITSELECTIONCHANGED: "unit selection changed",
+            UNITREMOVED: "unit removed"
         }
     };
     GameEvent._pool = [];

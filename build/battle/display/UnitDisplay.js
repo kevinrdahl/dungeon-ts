@@ -39,6 +39,11 @@ var UnitDisplay = (function (_super) {
         _this.yTween = null;
         _this.tweening = false;
         _this.unit = null;
+        _this.onUnitRemoved = function (e) {
+            if (e.data == _this.unit) {
+                _this.cleanUp();
+            }
+        };
         _this.onAnimation = function (e) {
             if (e.type == GameEvent_1.default.types.battle.ANIMATIONCOMPLETE) {
                 _this.updatePosition();
@@ -47,6 +52,13 @@ var UnitDisplay = (function (_super) {
         };
         return _this;
     }
+    Object.defineProperty(UnitDisplay.prototype, "battleIsAnimating", {
+        get: function () {
+            return this.unit && this.unit.battle && this.unit.battle.animating;
+        },
+        enumerable: true,
+        configurable: true
+    });
     UnitDisplay.prototype.initUnit = function (unit) {
         this.unit = unit;
         if (this.sprite) {
@@ -83,11 +95,7 @@ var UnitDisplay = (function (_super) {
         this.addChild(this.idText);
         this.updatePosition();
         Game_1.default.instance.updater.add(this, true);
-        if (!this.listenersAdded) {
-            this.listenersAdded = true;
-            unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
-            unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
-        }
+        this.addListeners();
     };
     UnitDisplay.prototype.update = function (timeElapsed) {
         if (!this.tweening) {
@@ -134,6 +142,7 @@ var UnitDisplay = (function (_super) {
         if (this.parent) {
             this.parent.removeChild(this);
         }
+        this.removeListeners();
     };
     UnitDisplay.prototype.onClick = function () {
         this.unit.select();
@@ -159,7 +168,7 @@ var UnitDisplay = (function (_super) {
             if (noActions) {
                 this.sprite.tint = 0x666666;
             }
-            else if (this.hover && !this.unit.battle.animating) {
+            else if (this.hover && !this.battleIsAnimating) {
                 this.sprite.tint = 0xaaffaa;
             }
             else {
@@ -196,6 +205,22 @@ var UnitDisplay = (function (_super) {
         x *= Globals_1.default.gridSize;
         y *= Globals_1.default.gridSize;
         this.position.set(x, y);
+    };
+    UnitDisplay.prototype.addListeners = function () {
+        if (this.listenersAdded)
+            return;
+        this.listenersAdded = true;
+        this.unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+        this.unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        this.unit.battle.addEventListener(GameEvent_1.default.types.battle.UNITREMOVED, this.onUnitRemoved);
+    };
+    UnitDisplay.prototype.removeListeners = function () {
+        if (!this.listenersAdded)
+            return;
+        this.listenersAdded = false;
+        this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+        this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.UNITREMOVED, this.onUnitRemoved);
     };
     return UnitDisplay;
 }(PIXI.Container));

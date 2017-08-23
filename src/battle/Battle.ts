@@ -20,8 +20,8 @@ export default class Battle extends GameEventHandler {
 	get display():BattleDisplay { return this._display; }
 	get selectedUnit():Unit { return this._selectedUnit; }
 	get currentPlayer():Player { return this._currentPlayer; }
-	get animationTime():number { return this._animationTime; }
 	get animating():boolean { return this._animating; }
+	get turnNumber():number { return this._turnNumber; }
 
 	private _visible:boolean;
 	private _display:BattleDisplay = null;
@@ -29,7 +29,7 @@ export default class Battle extends GameEventHandler {
 	private _currentPlayer:Player = null;
 	private initialized:boolean = false;
 	private unitPositions:SparseGrid<Unit> = new SparseGrid<Unit>(null);
-	private _animationTime:number = 0;
+	private _turnNumber = 0;
 
 	//animation
 	private firstAnimation:Animation = null;
@@ -159,6 +159,10 @@ export default class Battle extends GameEventHandler {
 			this.endTurn();
 		}
 
+		if (this.players.list.indexOf(player) === 0) {
+			this._turnNumber += 1;
+		}
+
 		this._currentPlayer = player;
 		if (this._display) {
 			this._display.updateDebugPanel();
@@ -174,6 +178,16 @@ export default class Battle extends GameEventHandler {
 				unit.onActionsChanged();
 			}
 		}
+
+		var action = (callback:()=>void) => {
+			if (this.display) {
+				this.display.showTurnBegin(callback);
+			} else {
+				callback();
+			}
+		}
+		var anim = new Animation(action);
+		this.queueAnimation(anim);
 
 		//select next player and start their turn
 		var index = (this._currentPlayer != null) ? (this.players.list.indexOf(this._currentPlayer) + 1) % this.players.count : 0;
@@ -311,11 +325,9 @@ export default class Battle extends GameEventHandler {
 
 		this.units.remove(unit);
 		this.unitPositions.unset(unit.x, unit.y);
-		if (unit.battle == this) {
-			unit.battle = null;
-		}
 
-		unit.onRemoveFromBattle();
+		this.sendNewEvent(GameEvent.types.battle.UNITREMOVED, unit);
+
 		this.updateAllUnitPathing();
 	}
 

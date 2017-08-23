@@ -37,7 +37,7 @@ var Battle = (function (_super) {
         _this._currentPlayer = null;
         _this.initialized = false;
         _this.unitPositions = new SparseGrid_1.default(null);
-        _this._animationTime = 0;
+        _this._turnNumber = 0;
         //animation
         _this.firstAnimation = null;
         _this.lastAnimation = null;
@@ -65,13 +65,13 @@ var Battle = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(Battle.prototype, "animationTime", {
-        get: function () { return this._animationTime; },
+    Object.defineProperty(Battle.prototype, "animating", {
+        get: function () { return this._animating; },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(Battle.prototype, "animating", {
-        get: function () { return this._animating; },
+    Object.defineProperty(Battle.prototype, "turnNumber", {
+        get: function () { return this._turnNumber; },
         enumerable: true,
         configurable: true
     });
@@ -172,12 +172,16 @@ var Battle = (function (_super) {
         if (this._currentPlayer != null) {
             this.endTurn();
         }
+        if (this.players.list.indexOf(player) === 0) {
+            this._turnNumber += 1;
+        }
         this._currentPlayer = player;
         if (this._display) {
             this._display.updateDebugPanel();
         }
     };
     Battle.prototype.endTurn = function () {
+        var _this = this;
         this.deselectUnit();
         if (this._currentPlayer) {
             for (var _i = 0, _a = this._currentPlayer.units.list; _i < _a.length; _i++) {
@@ -186,6 +190,16 @@ var Battle = (function (_super) {
                 unit.onActionsChanged();
             }
         }
+        var action = function (callback) {
+            if (_this.display) {
+                _this.display.showTurnBegin(callback);
+            }
+            else {
+                callback();
+            }
+        };
+        var anim = new Animation_1.default(action);
+        this.queueAnimation(anim);
         //select next player and start their turn
         var index = (this._currentPlayer != null) ? (this.players.list.indexOf(this._currentPlayer) + 1) % this.players.count : 0;
         this._currentPlayer = null;
@@ -305,10 +319,7 @@ var Battle = (function (_super) {
         }
         this.units.remove(unit);
         this.unitPositions.unset(unit.x, unit.y);
-        if (unit.battle == this) {
-            unit.battle = null;
-        }
-        unit.onRemoveFromBattle();
+        this.sendNewEvent(GameEvent_1.default.types.battle.UNITREMOVED, unit);
         this.updateAllUnitPathing();
     };
     ////////////////////////////////////////////////////////////

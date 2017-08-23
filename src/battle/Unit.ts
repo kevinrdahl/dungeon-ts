@@ -66,13 +66,6 @@ export default class Unit {
 		}
 	}
 
-	public onRemoveFromBattle() {
-		if (this.display) {
-			this.display.cleanUp();
-			this.display = null;
-		}
-	}
-
 	public onSelect() {
 		if (this.display) this.display.setSelected(true);
 	}

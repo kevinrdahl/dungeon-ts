@@ -16,6 +16,8 @@ var Vector2D_1 = require("../../util/Vector2D");
 var InputManager_1 = require("../../interface/InputManager");
 var Globals_1 = require("../../Globals");
 var GameEvent_1 = require("../../events/GameEvent");
+var TextUtil = require("../../util/TextUtil");
+var Tween_1 = require("../../util/Tween");
 var ElementList_1 = require("../../interface/ElementList");
 var AttachInfo_1 = require("../../interface/AttachInfo");
 var TextElement_1 = require("../../interface/TextElement");
@@ -30,13 +32,29 @@ var BattleDisplay = (function (_super) {
         _this.mouseGridY = Number.NEGATIVE_INFINITY;
         _this.hoveredUnitDisplay = null;
         _this.onAnimation = function (e) {
-            console.log("Update it!");
             _this.updatePathingDisplay();
             _this.updatePathingHover();
         };
         _this.onUnitSelectionChanged = function (e) {
             _this.updatePathingDisplay();
             _this.updatePathingHover();
+        };
+        _this.onUnitRemoved = function (e) {
+            var unit = e.data;
+            if (unit) {
+                if (unit.display) {
+                    _this.removeUnitDisplay(unit.display);
+                }
+                else {
+                    for (var _i = 0, _a = _this._unitDisplays; _i < _a.length; _i++) {
+                        var display = _a[_i];
+                        if (display.unit === unit) {
+                            _this.removeUnitDisplay(display);
+                            break;
+                        }
+                    }
+                }
+            }
         };
         return _this;
     }
@@ -214,6 +232,28 @@ var BattleDisplay = (function (_super) {
                 }
             }
         }
+    };
+    BattleDisplay.prototype.showTurnBegin = function (callback) {
+        var player = this.battle.currentPlayer;
+        var str = "Player " + player.id + "\nTurn" + this._battle.turnNumber;
+        var text = new PIXI.Text(str, TextUtil.styles.unitID);
+        this.addChild(text);
+        var width = Game_1.default.instance.stage.width / this.scale.x;
+        var height = Game_1.default.instance.stage.height / this.scale.y;
+        var targetX = width / 2 - text.width / 2;
+        var targetY = height / 2 - text.height / 2;
+        text.y = targetY;
+        var tween1 = new Tween_1.default().init(text, "x", -text.height, targetX, 0.5, Tween_1.default.easingFunctions.quartEaseOut);
+        tween1.onFinish = function () {
+            var tween2 = new Tween_1.default().init(text, "x", targetX, width, 0.5, Tween_1.default.easingFunctions.quartEaseIn);
+            tween2.onFinish = function () {
+                if (text.parent)
+                    text.parent.removeChild(text);
+                callback();
+            };
+            tween2.start();
+        };
+        tween1.start();
     };
     return BattleDisplay;
 }(PIXI.Container));

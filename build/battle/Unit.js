@@ -78,12 +78,6 @@ var Unit = (function () {
             this.initDisplay();
         }
     };
-    Unit.prototype.onRemoveFromBattle = function () {
-        if (this.display) {
-            this.display.cleanUp();
-            this.display = null;
-        }
-    };
     Unit.prototype.onSelect = function () {
         if (this.display)
             this.display.setSelected(true);

@@ -27,6 +27,10 @@ export default class UnitDisplay extends PIXI.Container {
 	private yTween:Tween = null;
 	private tweening:boolean = false;
 
+	get battleIsAnimating():boolean {
+		return this.unit && this.unit.battle && this.unit.battle.animating;
+	}
+
 	public unit:Unit = null;
 
 	constructor() {
@@ -71,11 +75,7 @@ export default class UnitDisplay extends PIXI.Container {
 		this.updatePosition();
 		Game.instance.updater.add(this, true);
 
-		if (!this.listenersAdded) {
-			this.listenersAdded = true;
-			unit.battle.addEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
-			unit.battle.addEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
-		}
+		this.addListeners();
 	}
 
 	public update(timeElapsed:number) {
@@ -127,6 +127,8 @@ export default class UnitDisplay extends PIXI.Container {
 		if (this.parent) {
 			this.parent.removeChild(this);
 		}
+
+		this.removeListeners();
 	}
 
 	public onClick() {
@@ -148,13 +150,6 @@ export default class UnitDisplay extends PIXI.Container {
 		this.updateState();
 	}
 
-	private onAnimation = (e:GameEvent) => {
-		if (e.type == GameEvent.types.battle.ANIMATIONCOMPLETE) {
-			this.updatePosition();
-		}
-		this.updateState();
-	}
-
 	private updateState() {
 		var noActions = (this.unit.actionsRemaining == 0);
 
@@ -164,7 +159,7 @@ export default class UnitDisplay extends PIXI.Container {
 			if (noActions) {
 				this.sprite.tint = 0x666666;
 			}
-			else if (this.hover && !this.unit.battle.animating) {
+			else if (this.hover && !this.battleIsAnimating) {
 				this.sprite.tint = 0xaaffaa;
 			} else {
 				this.sprite.tint = 0xffffff;
@@ -206,5 +201,36 @@ export default class UnitDisplay extends PIXI.Container {
 		y *= Globals.gridSize;
 
 		this.position.set(x, y);
+	}
+
+	private addListeners() {
+		if (this.listenersAdded) return;
+
+		this.listenersAdded = true;
+		this.unit.battle.addEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+		this.unit.battle.addEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
+		this.unit.battle.addEventListener(GameEvent.types.battle.UNITREMOVED, this.onUnitRemoved);
+	}
+
+	private removeListeners() {
+		if (!this.listenersAdded) return;
+
+		this.listenersAdded = false;
+		this.unit.battle.removeEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+		this.unit.battle.removeEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
+		this.unit.battle.removeEventListener(GameEvent.types.battle.UNITREMOVED, this.onUnitRemoved);
+	}
+
+	private onUnitRemoved = (e: GameEvent) => {
+		if (e.data == this.unit) {
+			this.cleanUp();
+		}
+	}
+
+	private onAnimation = (e: GameEvent) => {
+		if (e.type == GameEvent.types.battle.ANIMATIONCOMPLETE) {
+			this.updatePosition();
+		}
+		this.updateState();
 	}
 }

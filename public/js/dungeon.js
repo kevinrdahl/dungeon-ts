@@ -319,7 +319,7 @@ var Battle = (function (_super) {
         _this._currentPlayer = null;
         _this.initialized = false;
         _this.unitPositions = new SparseGrid_1.default(null);
-        _this._animationTime = 0;
+        _this._turnNumber = 0;
         //animation
         _this.firstAnimation = null;
         _this.lastAnimation = null;
@@ -347,13 +347,13 @@ var Battle = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(Battle.prototype, "animationTime", {
-        get: function () { return this._animationTime; },
+    Object.defineProperty(Battle.prototype, "animating", {
+        get: function () { return this._animating; },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(Battle.prototype, "animating", {
-        get: function () { return this._animating; },
+    Object.defineProperty(Battle.prototype, "turnNumber", {
+        get: function () { return this._turnNumber; },
         enumerable: true,
         configurable: true
     });
@@ -454,12 +454,16 @@ var Battle = (function (_super) {
         if (this._currentPlayer != null) {
             this.endTurn();
         }
+        if (this.players.list.indexOf(player) === 0) {
+            this._turnNumber += 1;
+        }
         this._currentPlayer = player;
         if (this._display) {
             this._display.updateDebugPanel();
         }
     };
     Battle.prototype.endTurn = function () {
+        var _this = this;
         this.deselectUnit();
         if (this._currentPlayer) {
             for (var _i = 0, _a = this._currentPlayer.units.list; _i < _a.length; _i++) {
@@ -468,6 +472,16 @@ var Battle = (function (_super) {
                 unit.onActionsChanged();
             }
         }
+        var action = function (callback) {
+            if (_this.display) {
+                _this.display.showTurnBegin(callback);
+            }
+            else {
+                callback();
+            }
+        };
+        var anim = new Animation_1.default(action);
+        this.queueAnimation(anim);
         //select next player and start their turn
         var index = (this._currentPlayer != null) ? (this.players.list.indexOf(this._currentPlayer) + 1) % this.players.count : 0;
         this._currentPlayer = null;
@@ -587,10 +601,7 @@ var Battle = (function (_super) {
         }
         this.units.remove(unit);
         this.unitPositions.unset(unit.x, unit.y);
-        if (unit.battle == this) {
-            unit.battle = null;
-        }
-        unit.onRemoveFromBattle();
+        this.sendNewEvent(GameEvent_1.default.types.battle.UNITREMOVED, unit);
         this.updateAllUnitPathing();
     };
     ////////////////////////////////////////////////////////////
@@ -883,12 +894,6 @@ var Unit = (function () {
     Unit.prototype.onAddToBattle = function () {
         if (this.battle.visible) {
             this.initDisplay();
-        }
-    };
-    Unit.prototype.onRemoveFromBattle = function () {
-        if (this.display) {
-            this.display.cleanUp();
-            this.display = null;
         }
     };
     Unit.prototype.onSelect = function () {
@@ -1235,6 +1240,8 @@ var Vector2D_1 = require("../../util/Vector2D");
 var InputManager_1 = require("../../interface/InputManager");
 var Globals_1 = require("../../Globals");
 var GameEvent_1 = require("../../events/GameEvent");
+var TextUtil = require("../../util/TextUtil");
+var Tween_1 = require("../../util/Tween");
 var ElementList_1 = require("../../interface/ElementList");
 var AttachInfo_1 = require("../../interface/AttachInfo");
 var TextElement_1 = require("../../interface/TextElement");
@@ -1249,13 +1256,29 @@ var BattleDisplay = (function (_super) {
         _this.mouseGridY = Number.NEGATIVE_INFINITY;
         _this.hoveredUnitDisplay = null;
         _this.onAnimation = function (e) {
-            console.log("Update it!");
             _this.updatePathingDisplay();
             _this.updatePathingHover();
         };
         _this.onUnitSelectionChanged = function (e) {
             _this.updatePathingDisplay();
             _this.updatePathingHover();
+        };
+        _this.onUnitRemoved = function (e) {
+            var unit = e.data;
+            if (unit) {
+                if (unit.display) {
+                    _this.removeUnitDisplay(unit.display);
+                }
+                else {
+                    for (var _i = 0, _a = _this._unitDisplays; _i < _a.length; _i++) {
+                        var display = _a[_i];
+                        if (display.unit === unit) {
+                            _this.removeUnitDisplay(display);
+                            break;
+                        }
+                    }
+                }
+            }
         };
         return _this;
     }
@@ -1434,11 +1457,33 @@ var BattleDisplay = (function (_super) {
             }
         }
     };
+    BattleDisplay.prototype.showTurnBegin = function (callback) {
+        var player = this.battle.currentPlayer;
+        var str = "Player " + player.id + "\nTurn" + this._battle.turnNumber;
+        var text = new PIXI.Text(str, TextUtil.styles.unitID);
+        this.addChild(text);
+        var width = Game_1.default.instance.stage.width / this.scale.x;
+        var height = Game_1.default.instance.stage.height / this.scale.y;
+        var targetX = width / 2 - text.width / 2;
+        var targetY = height / 2 - text.height / 2;
+        text.y = targetY;
+        var tween1 = new Tween_1.default().init(text, "x", -text.height, targetX, 0.5, Tween_1.default.easingFunctions.quartEaseOut);
+        tween1.onFinish = function () {
+            var tween2 = new Tween_1.default().init(text, "x", targetX, width, 0.5, Tween_1.default.easingFunctions.quartEaseIn);
+            tween2.onFinish = function () {
+                if (text.parent)
+                    text.parent.removeChild(text);
+                callback();
+            };
+            tween2.start();
+        };
+        tween1.start();
+    };
     return BattleDisplay;
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":16,"../../interface/AttachInfo":18,"../../interface/ElementList":20,"../../interface/InputManager":21,"../../interface/TextElement":27,"../../util/Vector2D":45}],11:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":16,"../../interface/AttachInfo":18,"../../interface/ElementList":20,"../../interface/InputManager":21,"../../interface/TextElement":27,"../../util/TextUtil":41,"../../util/Tween":43,"../../util/Vector2D":45}],11:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1569,6 +1614,11 @@ var UnitDisplay = (function (_super) {
         _this.yTween = null;
         _this.tweening = false;
         _this.unit = null;
+        _this.onUnitRemoved = function (e) {
+            if (e.data == _this.unit) {
+                _this.cleanUp();
+            }
+        };
         _this.onAnimation = function (e) {
             if (e.type == GameEvent_1.default.types.battle.ANIMATIONCOMPLETE) {
                 _this.updatePosition();
@@ -1577,6 +1627,13 @@ var UnitDisplay = (function (_super) {
         };
         return _this;
     }
+    Object.defineProperty(UnitDisplay.prototype, "battleIsAnimating", {
+        get: function () {
+            return this.unit && this.unit.battle && this.unit.battle.animating;
+        },
+        enumerable: true,
+        configurable: true
+    });
     UnitDisplay.prototype.initUnit = function (unit) {
         this.unit = unit;
         if (this.sprite) {
@@ -1613,11 +1670,7 @@ var UnitDisplay = (function (_super) {
         this.addChild(this.idText);
         this.updatePosition();
         Game_1.default.instance.updater.add(this, true);
-        if (!this.listenersAdded) {
-            this.listenersAdded = true;
-            unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
-            unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
-        }
+        this.addListeners();
     };
     UnitDisplay.prototype.update = function (timeElapsed) {
         if (!this.tweening) {
@@ -1664,6 +1717,7 @@ var UnitDisplay = (function (_super) {
         if (this.parent) {
             this.parent.removeChild(this);
         }
+        this.removeListeners();
     };
     UnitDisplay.prototype.onClick = function () {
         this.unit.select();
@@ -1689,7 +1743,7 @@ var UnitDisplay = (function (_super) {
             if (noActions) {
                 this.sprite.tint = 0x666666;
             }
-            else if (this.hover && !this.unit.battle.animating) {
+            else if (this.hover && !this.battleIsAnimating) {
                 this.sprite.tint = 0xaaffaa;
             }
             else {
@@ -1726,6 +1780,22 @@ var UnitDisplay = (function (_super) {
         x *= Globals_1.default.gridSize;
         y *= Globals_1.default.gridSize;
         this.position.set(x, y);
+    };
+    UnitDisplay.prototype.addListeners = function () {
+        if (this.listenersAdded)
+            return;
+        this.listenersAdded = true;
+        this.unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+        this.unit.battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        this.unit.battle.addEventListener(GameEvent_1.default.types.battle.UNITREMOVED, this.onUnitRemoved);
+    };
+    UnitDisplay.prototype.removeListeners = function () {
+        if (!this.listenersAdded)
+            return;
+        this.listenersAdded = false;
+        this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+        this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        this.unit.battle.removeEventListener(GameEvent_1.default.types.battle.UNITREMOVED, this.onUnitRemoved);
     };
     return UnitDisplay;
 }(PIXI.Container));
@@ -2278,7 +2348,8 @@ var GameEvent = (function () {
         battle: {
             ANIMATIONSTART: "animation start",
             ANIMATIONCOMPLETE: "animation complete",
-            UNITSELECTIONCHANGED: "unit selection changed"
+            UNITSELECTIONCHANGED: "unit selection changed",
+            UNITREMOVED: "unit removed"
         }
     };
     GameEvent._pool = [];

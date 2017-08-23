@@ -7,6 +7,8 @@ import Globals from '../../Globals';
 import Battle from '../Battle';
 import Unit from '../Unit';
 import GameEvent from '../../events/GameEvent';
+import * as TextUtil from '../../util/TextUtil'
+import Tween from '../../util/Tween';
 
 import UnitDisplay from './UnitDisplay';
 import LevelDisplay from './LevelDisplay';
@@ -218,14 +220,54 @@ export default class BattleDisplay extends PIXI.Container {
 		}
 	}
 
+	public showTurnBegin(callback:()=>void) {
+		var player = this.battle.currentPlayer;
+		var str = "Player " + player.id + "\nTurn" + this._battle.turnNumber;
+		var text = new PIXI.Text(str, TextUtil.styles.unitID);
+
+		this.addChild(text);
+		var width = Game.instance.stage.width / this.scale.x;
+		var height = Game.instance.stage.height / this.scale.y;
+		var targetX = width / 2 - text.width / 2;
+		var targetY = height / 2 - text.height / 2;
+
+		text.y = targetY;
+
+		var tween1 = new Tween().init(text, "x", -text.height, targetX, 0.5, Tween.easingFunctions.quartEaseOut);
+		tween1.onFinish = () => {
+			var tween2 = new Tween().init(text, "x", targetX, width, 0.5, Tween.easingFunctions.quartEaseIn);
+			tween2.onFinish = () => {
+				if (text.parent) text.parent.removeChild(text);
+				callback();
+			}
+			tween2.start();
+		}
+		tween1.start();
+	}
+
 	private onAnimation = (e:GameEvent) => {
-		console.log("Update it!");
 		this.updatePathingDisplay();
 		this.updatePathingHover();
 	}
 
-	private onUnitSelectionChanged = (e:GameEvent) {
+	private onUnitSelectionChanged = (e:GameEvent) => {
 		this.updatePathingDisplay();
 		this.updatePathingHover();
+	}
+
+	private onUnitRemoved = (e:GameEvent) => {
+		var unit:Unit = e.data;
+		if (unit) {
+			if (unit.display) {
+				this.removeUnitDisplay(unit.display);
+			} else {
+				for (var display of this._unitDisplays) {
+					if (display.unit === unit) {
+						this.removeUnitDisplay(display);
+						break;
+					}
+				}
+			}
+		}
 	}
 }
