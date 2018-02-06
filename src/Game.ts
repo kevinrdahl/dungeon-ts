@@ -1,6 +1,9 @@
 /// <reference path="./declarations/pixi.js.d.ts"/>
 /// <reference path="./declarations/createjs/soundjs.d.ts"/>
 
+//User
+import User from './user/User';
+
 //Sound
 import SoundManager from './sound/SoundManager';
 import * as SoundAssets from './sound/SoundAssets';
@@ -30,6 +33,7 @@ import Battle from './battle/Battle';
 import * as Log from './util/Log';
 import Updater from './Updater';
 import Vector2D from './util/Vector2D';
+import RequestManager from './RequestManager';
 
 export default class Game extends GameEventHandler {
 	public static instance: Game = null;
@@ -44,8 +48,10 @@ export default class Game extends GameEventHandler {
 	public interfaceRoot: InterfaceRoot;
 	public textureLoader: TextureLoader;
 	public debugGraphics: PIXI.Graphics;
-	public textureWorker: TextureWorker;
+	//public textureWorker: TextureWorker;
 	public updater: Updater = new Updater();
+	public user:User = new User();
+	public staticUrl = "http://localhost:8000/static/dungeon/play";
 
 	get volatileGraphics(): PIXI.Graphics { this._volatileGraphics.clear(); return this._volatileGraphics }
 
@@ -82,7 +88,7 @@ export default class Game extends GameEventHandler {
 		PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
 
 		//Worker
-		this.textureWorker = new TextureWorker('js/worker.js');
+		//this.textureWorker = new TextureWorker('js/worker.js');
 
 		//Listen for resize
 		window.addEventListener('resize', () => this._documentResized = true);
@@ -167,7 +173,9 @@ export default class Game extends GameEventHandler {
 		this.interfaceRoot.addChild(loadingText);
 		loadingText.attachToParent(AttachInfo.Center);
 
-		this.textureLoader = new TextureLoader("textureMap2.png", "textureMap2.json", () => this.onTexturesLoaded());
+		var texUrl = this.staticUrl + "/textureMap2.png";
+		var mapUrl = this.staticUrl + "/textureMap2.json";
+		this.textureLoader = new TextureLoader(texUrl, mapUrl, () => this.onTexturesLoaded());
 	}
 
 	private onTexturesLoaded() {
@@ -179,11 +187,14 @@ export default class Game extends GameEventHandler {
 
 	private sendGraphicsToWorker() {
 		var data = this.textureLoader.getData();
-		this.textureWorker.putTextures(data);
+		//this.textureWorker.putTextures(data);
 	}
 
 	private loadSounds() {
 		var list = SoundAssets.interfaceSounds.concat(SoundAssets.mainMenuMusic);
+		for (var item of list) {
+			item[1] = this.staticUrl + "/" + item[1];
+		}
 		SoundManager.instance.load("initial", list, (which: string) => this.onSoundsLoaded(which), (which: string, progress: number) => this.onSoundsLoadedProgress(which, progress));
 
 		var loadingText: TextElement = this.interfaceRoot.getElementById("loadingText") as TextElement;
@@ -195,7 +206,7 @@ export default class Game extends GameEventHandler {
 			console.log("Sounds loaded!");
 			//SoundManager.instance.playMusic("music/fortress");
 			this.removeLoadingText();
-			this.initTestBattle();
+			this.loadUser("abc", "abcdefgh");
 		}
 	}
 
@@ -216,5 +227,17 @@ export default class Game extends GameEventHandler {
 		this._currentBattle = battle;
 
 		battle.init();
+	}
+
+	private loadUser(name:string, password:string) {
+		RequestManager.instance.makeRequest("login", {name:name, password:password},(data) => {
+			if (data) {
+				this.user.load(data);
+				this.user.startGame();
+				this.initTestBattle();
+			} else {
+				console.error("Unable to load user");
+			}
+		});
 	}
 }

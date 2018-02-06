@@ -13,12 +13,13 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+//User
+var User_1 = require("./user/User");
 //Sound
 var SoundManager_1 = require("./sound/SoundManager");
 var SoundAssets = require("./sound/SoundAssets");
 //Textures
 var TextureLoader_1 = require("./textures/TextureLoader");
-var TextureWorker_1 = require("./textures/TextureWorker");
 var TextureGenerator = require("./textures/TextureGenerator");
 //Interface
 var InputManager_1 = require("./interface/InputManager");
@@ -32,6 +33,7 @@ var Battle_1 = require("./battle/Battle");
 //Misc
 var Log = require("./util/Log");
 var Updater_1 = require("./Updater");
+var RequestManager_1 = require("./RequestManager");
 var Game = (function (_super) {
     __extends(Game, _super);
     function Game(viewDiv) {
@@ -42,7 +44,10 @@ var Game = (function (_super) {
         _this.viewDiv = null;
         _this.viewWidth = 500;
         _this.viewHeight = 500;
+        //public textureWorker: TextureWorker;
         _this.updater = new Updater_1.default();
+        _this.user = new User_1.default();
+        _this.staticUrl = "http://localhost:8000/static/dungeon/play";
         /*=== PRIVATE ===*/
         _this._volatileGraphics = new PIXI.Graphics(); //to be used when drawing to a RenderTexture
         _this._documentResized = true;
@@ -84,7 +89,7 @@ var Game = (function (_super) {
         this.viewDiv.appendChild(this.renderer.view);
         PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
         //Worker
-        this.textureWorker = new TextureWorker_1.default('js/worker.js');
+        //this.textureWorker = new TextureWorker('js/worker.js');
         //Listen for resize
         window.addEventListener('resize', function () { return _this._documentResized = true; });
         //Add root UI element
@@ -146,7 +151,9 @@ var Game = (function (_super) {
         loadingText.id = "loadingText";
         this.interfaceRoot.addChild(loadingText);
         loadingText.attachToParent(AttachInfo_1.default.Center);
-        this.textureLoader = new TextureLoader_1.default("textureMap2.png", "textureMap2.json", function () { return _this.onTexturesLoaded(); });
+        var texUrl = this.staticUrl + "/textureMap2.png";
+        var mapUrl = this.staticUrl + "/textureMap2.json";
+        this.textureLoader = new TextureLoader_1.default(texUrl, mapUrl, function () { return _this.onTexturesLoaded(); });
     };
     Game.prototype.onTexturesLoaded = function () {
         this.sendGraphicsToWorker();
@@ -155,11 +162,15 @@ var Game = (function (_super) {
     };
     Game.prototype.sendGraphicsToWorker = function () {
         var data = this.textureLoader.getData();
-        this.textureWorker.putTextures(data);
+        //this.textureWorker.putTextures(data);
     };
     Game.prototype.loadSounds = function () {
         var _this = this;
         var list = SoundAssets.interfaceSounds.concat(SoundAssets.mainMenuMusic);
+        for (var _i = 0, list_1 = list; _i < list_1.length; _i++) {
+            var item = list_1[_i];
+            item[1] = this.staticUrl + "/" + item[1];
+        }
         SoundManager_1.default.instance.load("initial", list, function (which) { return _this.onSoundsLoaded(which); }, function (which, progress) { return _this.onSoundsLoadedProgress(which, progress); });
         var loadingText = this.interfaceRoot.getElementById("loadingText");
         loadingText.text = "Loading sounds... (0%)";
@@ -169,7 +180,7 @@ var Game = (function (_super) {
             console.log("Sounds loaded!");
             //SoundManager.instance.playMusic("music/fortress");
             this.removeLoadingText();
-            this.initTestBattle();
+            this.loadUser("abc", "abcdefgh");
         }
     };
     Game.prototype.onSoundsLoadedProgress = function (which, progress) {
@@ -187,13 +198,26 @@ var Game = (function (_super) {
         this._currentBattle = battle;
         battle.init();
     };
+    Game.prototype.loadUser = function (name, password) {
+        var _this = this;
+        RequestManager_1.default.instance.makeRequest("login", { name: name, password: password }, function (data) {
+            if (data) {
+                _this.user.load(data);
+                _this.user.startGame();
+                _this.initTestBattle();
+            }
+            else {
+                console.error("Unable to load user");
+            }
+        });
+    };
     Game.instance = null;
     Game.useDebugGraphics = false;
     return Game;
 }(GameEventHandler_1.default));
 exports.default = Game;
 
-},{"./Updater":4,"./battle/Battle":5,"./events/GameEventHandler":17,"./interface/AttachInfo":18,"./interface/InputManager":21,"./interface/InterfaceElement":22,"./interface/TextElement":27,"./interface/prefabs/InterfaceRoot":30,"./sound/SoundAssets":32,"./sound/SoundManager":33,"./textures/TextureGenerator":34,"./textures/TextureLoader":35,"./textures/TextureWorker":36,"./util/Log":40}],2:[function(require,module,exports){
+},{"./RequestManager":4,"./Updater":5,"./battle/Battle":6,"./events/GameEventHandler":18,"./interface/AttachInfo":19,"./interface/InputManager":22,"./interface/InterfaceElement":23,"./interface/TextElement":28,"./interface/prefabs/InterfaceRoot":31,"./sound/SoundAssets":33,"./sound/SoundManager":34,"./textures/TextureGenerator":35,"./textures/TextureLoader":36,"./user/User":37,"./util/Log":40}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals = (function () {
@@ -220,6 +244,74 @@ var startFunc = function () {
 $(document).ready(startFunc);
 
 },{"./Game":1}],4:[function(require,module,exports){
+"use strict";
+/// <reference path="./declarations/jquery.d.ts"/>
+Object.defineProperty(exports, "__esModule", { value: true });
+var Log = require("./util/Log");
+var RequestManager = (function () {
+    function RequestManager(baseUrl) {
+        if (baseUrl === void 0) { baseUrl = null; }
+        this.baseUrl = "http://localhost:8000/dungeon";
+        this.requestQueue = [];
+        this.requestActive = false;
+        if (RequestManager.instance === null) {
+            RequestManager.instance = this;
+        }
+        else {
+            Log.log("error", "There's already a RequestManager!");
+            return;
+        }
+        if (baseUrl !== null)
+            this.baseUrl = baseUrl;
+    }
+    RequestManager.prototype.makeRequest = function (type, params, callback, instant) {
+        if (instant === void 0) { instant = false; }
+        if (instant || !this.requestActive) {
+            this.makeRequestInternal(type, params, callback, instant);
+        }
+        else {
+            this.requestQueue.push({
+                type: type,
+                params: params,
+                callback: callback
+            });
+        }
+    };
+    RequestManager.prototype.makeRequestInternal = function (type, params, callback, instant) {
+        var _this = this;
+        if (!instant)
+            this.requestActive = true;
+        console.log("REQUEST '" + type + "'");
+        console.log(params);
+        $.post(this.baseUrl + '/' + type, { "params": JSON.stringify(params) })
+            .done(function (data) {
+            console.log("RESPONSE '" + type + "'");
+            console.log(data);
+            callback(data);
+        })
+            .fail(function (e) {
+            console.log("Request '" + type + "' failed");
+            console.log(e);
+            callback(null);
+        })
+            .always(function () {
+            if (!instant) {
+                var request = _this.requestQueue.pop();
+                if (request) {
+                    _this.makeRequestInternal(request.type, request.params, request.callback, false);
+                }
+                else {
+                    _this.requestActive = false;
+                }
+            }
+        });
+    };
+    RequestManager.instance = new RequestManager();
+    return RequestManager;
+}());
+exports.default = RequestManager;
+
+},{"./util/Log":40}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Updater = (function () {
@@ -279,7 +371,7 @@ var Updater = (function () {
 }());
 exports.default = Updater;
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -674,7 +766,7 @@ var Battle = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Battle;
 
-},{"../Game":1,"../ds/SparseGrid":15,"../events/GameEvent":16,"../events/GameEventHandler":17,"../util/IDObjectGroup":39,"./Level":6,"./Player":7,"./Unit":9,"./display/BattleDisplay":10,"./display/animation/Animation":13}],6:[function(require,module,exports){
+},{"../Game":1,"../ds/SparseGrid":16,"../events/GameEvent":17,"../events/GameEventHandler":18,"../util/IDObjectGroup":39,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
@@ -721,7 +813,7 @@ var Level = (function () {
 }());
 exports.default = Level;
 
-},{"./Tile":8,"./display/LevelDisplay":11}],7:[function(require,module,exports){
+},{"./Tile":9,"./display/LevelDisplay":12}],8:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var IDObjectGroup_1 = require("../util/IDObjectGroup");
@@ -756,7 +848,7 @@ var Player = (function () {
 }());
 exports.default = Player;
 
-},{"../util/IDObjectGroup":39}],8:[function(require,module,exports){
+},{"../util/IDObjectGroup":39}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile = (function () {
@@ -807,7 +899,7 @@ var Tile = (function () {
 }());
 exports.default = Tile;
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var UnitDisplay_1 = require("./display/UnitDisplay");
@@ -1213,7 +1305,7 @@ var Unit = (function () {
 }());
 exports.default = Unit;
 
-},{"../ds/BinaryHeap":14,"../ds/SparseGrid":15,"./display/UnitDisplay":12}],10:[function(require,module,exports){
+},{"../ds/BinaryHeap":15,"../ds/SparseGrid":16,"./display/UnitDisplay":13}],11:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1458,7 +1550,7 @@ var BattleDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":16,"../../interface/AttachInfo":18,"../../interface/ElementList":20,"../../interface/InputManager":21,"../../interface/TextElement":27,"../../util/TextUtil":41,"../../util/Tween":43,"../../util/Vector2D":45}],11:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":17,"../../interface/AttachInfo":19,"../../interface/ElementList":21,"../../interface/InputManager":22,"../../interface/TextElement":28,"../../util/TextUtil":41,"../../util/Tween":43,"../../util/Vector2D":45}],12:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1547,7 +1639,7 @@ var LevelDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = LevelDisplay;
 
-},{"../../Game":1,"../../Globals":2}],12:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2}],13:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1773,7 +1865,7 @@ var UnitDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = UnitDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":16,"../../util/TextUtil":41,"../../util/Tween":43}],13:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":17,"../../util/TextUtil":41,"../../util/Tween":43}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Timer_1 = require("../../../util/Timer");
@@ -2035,7 +2127,7 @@ var Animation = (function () {
 }());
 exports.default = Animation;
 
-},{"../../../Globals":2,"../../../util/Timer":42,"../../../util/Tween":43}],14:[function(require,module,exports){
+},{"../../../Globals":2,"../../../util/Timer":42,"../../../util/Tween":43}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2245,7 +2337,7 @@ var BinaryHeap = (function () {
 }());
 exports.default = BinaryHeap;
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2362,7 +2454,7 @@ var SparseGrid = (function () {
 }());
 exports.default = SparseGrid;
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent = (function () {
@@ -2423,7 +2515,7 @@ var GameEvent = (function () {
 }());
 exports.default = GameEvent;
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("./GameEvent");
@@ -2485,7 +2577,7 @@ var GameEventHandler = (function () {
 }());
 exports.default = GameEventHandler;
 
-},{"./GameEvent":16}],18:[function(require,module,exports){
+},{"./GameEvent":17}],19:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -2511,7 +2603,7 @@ var AttachInfo = (function () {
 }());
 exports.default = AttachInfo;
 
-},{"../util/Vector2D":45}],19:[function(require,module,exports){
+},{"../util/Vector2D":45}],20:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -2606,7 +2698,7 @@ var BaseButton = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = BaseButton;
 
-},{"../events/GameEvent":16,"./InterfaceElement":22}],20:[function(require,module,exports){
+},{"../events/GameEvent":17,"./InterfaceElement":23}],21:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -2764,7 +2856,7 @@ var ElementList = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = ElementList;
 
-},{"./InterfaceElement":22}],21:[function(require,module,exports){
+},{"./InterfaceElement":23}],22:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/jquery.d.ts"/>
@@ -3014,7 +3106,7 @@ var keyNames = {
     "39": "RIGHT"
 };
 
-},{"../Game":1,"../events/GameEvent":16,"../util/Vector2D":45}],22:[function(require,module,exports){
+},{"../Game":1,"../events/GameEvent":17,"../util/Vector2D":45}],23:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3438,7 +3530,7 @@ var InterfaceElement = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = InterfaceElement;
 
-},{"../Game":1,"../events/GameEventHandler":17,"../util/Vector2D":45,"./InputManager":21,"./ResizeInfo":25}],23:[function(require,module,exports){
+},{"../Game":1,"../events/GameEventHandler":18,"../util/Vector2D":45,"./InputManager":22,"./ResizeInfo":26}],24:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3476,7 +3568,7 @@ var MaskElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = MaskElement;
 
-},{"./InterfaceElement":22}],24:[function(require,module,exports){
+},{"./InterfaceElement":23}],25:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3548,7 +3640,7 @@ var Panel = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = Panel;
 
-},{"../textures/TextureGenerator":34,"./InterfaceElement":22}],25:[function(require,module,exports){
+},{"../textures/TextureGenerator":35,"./InterfaceElement":23}],26:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -3576,7 +3668,7 @@ var ResizeInfo = (function () {
 }());
 exports.default = ResizeInfo;
 
-},{"../util/AssetCache":37,"../util/Vector2D":45}],26:[function(require,module,exports){
+},{"../util/AssetCache":38,"../util/Vector2D":45}],27:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3671,7 +3763,7 @@ var TextButton = (function (_super) {
 }(BaseButton_1.default));
 exports.default = TextButton;
 
-},{"../events/GameEvent":16,"../textures/TextureGenerator":34,"../util/AssetCache":37,"./AttachInfo":18,"./BaseButton":19,"./TextElement":27}],27:[function(require,module,exports){
+},{"../events/GameEvent":17,"../textures/TextureGenerator":35,"../util/AssetCache":38,"./AttachInfo":19,"./BaseButton":20,"./TextElement":28}],28:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3751,7 +3843,7 @@ var TextElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextElement;
 
-},{"./InterfaceElement":22}],28:[function(require,module,exports){
+},{"./InterfaceElement":23}],29:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3924,7 +4016,7 @@ var TextField = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextField;
 
-},{"../events/GameEvent":16,"../util/Vector2D":45,"./AttachInfo":18,"./InterfaceElement":22,"./MaskElement":23,"./Panel":24,"./TextElement":27}],29:[function(require,module,exports){
+},{"../events/GameEvent":17,"../util/Vector2D":45,"./AttachInfo":19,"./InterfaceElement":23,"./MaskElement":24,"./Panel":25,"./TextElement":28}],30:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4102,7 +4194,7 @@ var GenericListDialog = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = GenericListDialog;
 
-},{"../../events/GameEvent":16,"../AttachInfo":18,"../ElementList":20,"../InterfaceElement":22,"../Panel":24,"../TextButton":26,"../TextElement":27,"../TextField":28,"./TextFieldListManager":31}],30:[function(require,module,exports){
+},{"../../events/GameEvent":17,"../AttachInfo":19,"../ElementList":21,"../InterfaceElement":23,"../Panel":25,"../TextButton":27,"../TextElement":28,"../TextField":29,"./TextFieldListManager":32}],31:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4216,7 +4308,7 @@ var InterfaceRoot = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = InterfaceRoot;
 
-},{"../AttachInfo":18,"../InputManager":21,"../InterfaceElement":22,"../TextButton":26,"./GenericListDialog":29}],31:[function(require,module,exports){
+},{"../AttachInfo":19,"../InputManager":22,"../InterfaceElement":23,"../TextButton":27,"./GenericListDialog":30}],32:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4281,7 +4373,7 @@ var TextFieldListManager = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = TextFieldListManager;
 
-},{"../../events/GameEvent":16,"../../events/GameEventHandler":17,"../InputManager":21}],32:[function(require,module,exports){
+},{"../../events/GameEvent":17,"../../events/GameEventHandler":18,"../InputManager":22}],33:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mainMenuMusic = [
@@ -4293,7 +4385,7 @@ exports.interfaceSounds = [
     ["ui/nope", "sound/ui/nope.ogg"]
 ];
 
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var SoundLoadRequest = (function () {
@@ -4386,7 +4478,7 @@ var SoundManager = (function () {
 }());
 exports.default = SoundManager;
 
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
@@ -4413,7 +4505,7 @@ function buttonBackground(width, height, type) {
 }
 exports.buttonBackground = buttonBackground;
 
-},{"../Game":1}],35:[function(require,module,exports){
+},{"../Game":1}],36:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -4480,149 +4572,29 @@ var TextureLoader = (function () {
 }());
 exports.default = TextureLoader;
 
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-/// <reference path="../declarations/pixi.js.d.ts"/>
-var ColorUtil = require("../util/ColorUtil");
-/**
- * Wraps a Worker, and provides async functions for getting recolored sprites.
- * TODO: create sprite sheets, as per previous implementation
- *
- * NOTE: Most of the actual work is done in public/js/mmoo-worker.js, and due to
- * some funky TypeScript nonsense it must be written there.
- */
-var TextureWorker = (function () {
-    function TextureWorker(scriptURL) {
-        var _this = this;
-        this._requestNumber = 0;
-        this._callbacks = {};
-        this._worker = new Worker(scriptURL);
-        this._worker.onmessage = function (e) {
-            _this._onMessage(e.data);
-        };
+var User = (function () {
+    function User() {
+        this.loaded = false;
+        this.loadedData = null;
     }
-    TextureWorker.prototype.putTextures = function (texData) {
-        var imgData;
-        var msg;
-        for (var texName in texData) {
-            imgData = texData[texName];
-            msg = {
-                action: "newTexture",
-                params: {
-                    name: texName,
-                    width: imgData.width,
-                    height: imgData.height
-                },
-                data: imgData.data.buffer
-            };
-            this._worker.postMessage(msg, [msg.data]);
-        }
+    User.prototype.load = function (data) {
+        //probably take this out eventually
+        this.loadedData = data;
+        console.log("User: load");
+        //...
+        this.loaded = true;
     };
-    TextureWorker.prototype.getTexture = function (name, colorMap, callback) {
-        var requestKey = this._requestNumber.toString();
-        this._requestNumber += 1;
-        this._callbacks[requestKey] = callback;
-        this._worker.postMessage({
-            action: "getTexture",
-            params: {
-                name: name,
-                colorMap: colorMap,
-                requestKey: requestKey
-            }
-        });
-        return requestKey;
+    User.prototype.startGame = function () {
+        console.log("User: start game");
     };
-    TextureWorker.prototype._onMessage = function (msg) {
-        switch (msg.action) {
-            case "getTexture":
-                this.onGetTexture(msg.params, msg.data);
-                break;
-        }
-    };
-    TextureWorker.prototype.onGetTexture = function (params, data) {
-        var width = params.width;
-        var height = params.height;
-        var dataArray = new Uint8ClampedArray(data);
-        var requestKey = params.requestKey;
-        var callback = this._callbacks[requestKey];
-        if (callback) {
-            callback(requestKey, this.textureFromArray(dataArray, width, height));
-            delete this._callbacks[requestKey];
-        }
-    };
-    TextureWorker.prototype.textureFromArray = function (dataArray, width, height) {
-        try {
-            var imageData = new ImageData(dataArray, width, height); //if on Edge, this will throw an error
-        }
-        catch (e) {
-            return this.textureFromArrayEdge(dataArray, width, height);
-        }
-        var canvas = document.createElement('canvas');
-        var context = canvas.getContext('2d');
-        canvas.width = width;
-        canvas.height = height;
-        context.putImageData(imageData, 0, 0);
-        return PIXI.Texture.fromCanvas(canvas, PIXI.SCALE_MODES.NEAREST);
-    };
-    //probably slower, fallback for Edge which can't do ImageData constructors (why?!)
-    TextureWorker.prototype.textureFromArrayEdge = function (dataArray, width, height) {
-        var canvas = document.createElement('canvas');
-        var context = canvas.getContext('2d');
-        canvas.width = width;
-        canvas.height = height;
-        //use drawRect based on dataArray
-        var x = 0;
-        var y = 0;
-        var runStart = -1; //number of same RGBA
-        var same;
-        var drawX, drawW;
-        for (var i = 0; i < dataArray.length; i += 4) {
-            same = false;
-            if (x < width - 1)
-                same = this.compareRGBA(dataArray, i, i + 4);
-            if (same && runStart == -1) {
-                runStart = x;
-            }
-            else if (!same) {
-                if (runStart >= 0) {
-                    //print the run (which is this color)
-                    drawX = runStart;
-                    drawW = x - runStart + 1;
-                    runStart = -1;
-                }
-                else {
-                    //print just this
-                    drawX = x;
-                    drawW = 1;
-                }
-                //if not transparent
-                if (dataArray[i + 3] > 0) {
-                    context.fillStyle = ColorUtil.rgbString(dataArray[i], dataArray[i + 1], dataArray[i + 2]);
-                    context.fillRect(drawX, y, drawW, 1);
-                }
-            }
-            //(do nothing if on a run and next pixel is same rgba)
-            x += 1;
-            if (x == width) {
-                x = 0;
-                y += 1;
-            }
-        }
-        return PIXI.Texture.fromCanvas(canvas, PIXI.SCALE_MODES.NEAREST);
-    };
-    TextureWorker.prototype.compareRGBA = function (a, i1, i2) {
-        return (a[i1] == a[i2]
-            && a[i1 + 1] == a[i2 + 1]
-            && a[i1 + 2] == a[i2 + 2]
-            && a[i1 + 3] == a[i2 + 3]);
-    };
-    TextureWorker._supportsImageDataConstructor = -1;
-    return TextureWorker;
+    return User;
 }());
-exports.default = TextureWorker;
+exports.default = User;
 
-},{"../util/ColorUtil":38}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var AssetCache = (function () {
@@ -4672,29 +4644,6 @@ var AssetCache = (function () {
     return AssetCache;
 }());
 exports.default = AssetCache;
-
-},{}],38:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-function rgbToNumber(r, g, b) {
-    return (r << 16) + (g << 8) + b;
-}
-exports.rgbToNumber = rgbToNumber;
-function hexToRGB(hex) {
-    var r = hex >> 16;
-    var g = hex >> 8 & 0xFF;
-    var b = hex & 0xFF;
-    return [r, g, b];
-}
-exports.hexToRGB = hexToRGB;
-function rgbString(r, g, b) {
-    return "rgb(" + r + "," + g + "," + b + ")";
-}
-exports.rgbString = rgbString;
-function rgbaString(r, g, b, a) {
-    return "rgb(" + r + "," + g + "," + b + "," + a / 255 + ")";
-}
-exports.rgbaString = rgbaString;
 
 },{}],39:[function(require,module,exports){
 "use strict";

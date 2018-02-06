@@ -12,12 +12,13 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+//User
+var User_1 = require("./user/User");
 //Sound
 var SoundManager_1 = require("./sound/SoundManager");
 var SoundAssets = require("./sound/SoundAssets");
 //Textures
 var TextureLoader_1 = require("./textures/TextureLoader");
-var TextureWorker_1 = require("./textures/TextureWorker");
 var TextureGenerator = require("./textures/TextureGenerator");
 //Interface
 var InputManager_1 = require("./interface/InputManager");
@@ -31,6 +32,7 @@ var Battle_1 = require("./battle/Battle");
 //Misc
 var Log = require("./util/Log");
 var Updater_1 = require("./Updater");
+var RequestManager_1 = require("./RequestManager");
 var Game = (function (_super) {
     __extends(Game, _super);
     function Game(viewDiv) {
@@ -41,7 +43,10 @@ var Game = (function (_super) {
         _this.viewDiv = null;
         _this.viewWidth = 500;
         _this.viewHeight = 500;
+        //public textureWorker: TextureWorker;
         _this.updater = new Updater_1.default();
+        _this.user = new User_1.default();
+        _this.staticUrl = "http://localhost:8000/static/dungeon/play";
         /*=== PRIVATE ===*/
         _this._volatileGraphics = new PIXI.Graphics(); //to be used when drawing to a RenderTexture
         _this._documentResized = true;
@@ -83,7 +88,7 @@ var Game = (function (_super) {
         this.viewDiv.appendChild(this.renderer.view);
         PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
         //Worker
-        this.textureWorker = new TextureWorker_1.default('js/worker.js');
+        //this.textureWorker = new TextureWorker('js/worker.js');
         //Listen for resize
         window.addEventListener('resize', function () { return _this._documentResized = true; });
         //Add root UI element
@@ -145,7 +150,9 @@ var Game = (function (_super) {
         loadingText.id = "loadingText";
         this.interfaceRoot.addChild(loadingText);
         loadingText.attachToParent(AttachInfo_1.default.Center);
-        this.textureLoader = new TextureLoader_1.default("textureMap2.png", "textureMap2.json", function () { return _this.onTexturesLoaded(); });
+        var texUrl = this.staticUrl + "/textureMap2.png";
+        var mapUrl = this.staticUrl + "/textureMap2.json";
+        this.textureLoader = new TextureLoader_1.default(texUrl, mapUrl, function () { return _this.onTexturesLoaded(); });
     };
     Game.prototype.onTexturesLoaded = function () {
         this.sendGraphicsToWorker();
@@ -154,11 +161,15 @@ var Game = (function (_super) {
     };
     Game.prototype.sendGraphicsToWorker = function () {
         var data = this.textureLoader.getData();
-        this.textureWorker.putTextures(data);
+        //this.textureWorker.putTextures(data);
     };
     Game.prototype.loadSounds = function () {
         var _this = this;
         var list = SoundAssets.interfaceSounds.concat(SoundAssets.mainMenuMusic);
+        for (var _i = 0, list_1 = list; _i < list_1.length; _i++) {
+            var item = list_1[_i];
+            item[1] = this.staticUrl + "/" + item[1];
+        }
         SoundManager_1.default.instance.load("initial", list, function (which) { return _this.onSoundsLoaded(which); }, function (which, progress) { return _this.onSoundsLoadedProgress(which, progress); });
         var loadingText = this.interfaceRoot.getElementById("loadingText");
         loadingText.text = "Loading sounds... (0%)";
@@ -168,7 +179,7 @@ var Game = (function (_super) {
             console.log("Sounds loaded!");
             //SoundManager.instance.playMusic("music/fortress");
             this.removeLoadingText();
-            this.initTestBattle();
+            this.loadUser("abc", "abcdefgh");
         }
     };
     Game.prototype.onSoundsLoadedProgress = function (which, progress) {
@@ -185,6 +196,19 @@ var Game = (function (_super) {
         var battle = new Battle_1.default(true);
         this._currentBattle = battle;
         battle.init();
+    };
+    Game.prototype.loadUser = function (name, password) {
+        var _this = this;
+        RequestManager_1.default.instance.makeRequest("login", { name: name, password: password }, function (data) {
+            if (data) {
+                _this.user.load(data);
+                _this.user.startGame();
+                _this.initTestBattle();
+            }
+            else {
+                console.error("Unable to load user");
+            }
+        });
     };
     Game.instance = null;
     Game.useDebugGraphics = false;
