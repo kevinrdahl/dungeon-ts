@@ -69,6 +69,11 @@ var Game = (function (_super) {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Game.prototype, "currentBattle", {
+        get: function () { return this._currentBattle; },
+        enumerable: true,
+        configurable: true
+    });
     Game.prototype.init = function () {
         var _this = this;
         Log.setLogType("debug", new Log.LogType("", "#999"));
@@ -197,13 +202,16 @@ var Game = (function (_super) {
         this._currentBattle = battle;
         battle.init();
     };
+    Game.prototype.setCurrentBattle = function (battle) {
+        this._currentBattle = battle;
+    };
     Game.prototype.loadUser = function (name, password) {
         var _this = this;
         RequestManager_1.default.instance.makeRequest("login", { name: name, password: password }, function (data) {
             if (data) {
-                _this.user.load(data);
+                _this.user.load(data.data);
                 _this.user.startGame();
-                _this.initTestBattle();
+                //this.initTestBattle();
             }
             else {
                 console.error("Unable to load user");

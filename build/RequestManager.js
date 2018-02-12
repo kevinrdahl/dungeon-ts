@@ -2,6 +2,7 @@
 /// <reference path="./declarations/jquery.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
 var Log = require("./util/Log");
+var Game_1 = require("./Game");
 var RequestManager = (function () {
     function RequestManager(baseUrl) {
         if (baseUrl === void 0) { baseUrl = null; }
@@ -18,6 +19,10 @@ var RequestManager = (function () {
         if (baseUrl !== null)
             this.baseUrl = baseUrl;
     }
+    /**
+     * Makes an HTTP request! Most game-related requests should use makeUserRequest
+     * @param instant If false, the request will wait for others to complete (preferred)
+     */
     RequestManager.prototype.makeRequest = function (type, params, callback, instant) {
         if (instant === void 0) { instant = false; }
         if (instant || !this.requestActive) {
@@ -29,6 +34,22 @@ var RequestManager = (function () {
                 params: params,
                 callback: callback
             });
+        }
+    };
+    /**
+     * Same as makeRequest, but inserts user_id and token into the params
+     * @param instant If false, the request will wait for others to complete (preferred)
+     */
+    RequestManager.prototype.makeUserRequest = function (type, params, callback, instant) {
+        if (instant === void 0) { instant = false; }
+        var user = Game_1.default.instance.user;
+        if (user) {
+            params["user_id"] = user.userId;
+            params["token"] = user.token;
+            this.makeRequest(type, params, callback, instant);
+        }
+        else {
+            console.error("Trying to make a user request with no user");
         }
     };
     RequestManager.prototype.makeRequestInternal = function (type, params, callback, instant) {

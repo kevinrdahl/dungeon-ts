@@ -54,6 +54,7 @@ export default class Game extends GameEventHandler {
 	public staticUrl = "http://localhost:8000/static/dungeon/play";
 
 	get volatileGraphics(): PIXI.Graphics { this._volatileGraphics.clear(); return this._volatileGraphics }
+	get currentBattle():Battle { return this._currentBattle; }
 
 	/*=== PRIVATE ===*/
 	private _volatileGraphics = new PIXI.Graphics(); //to be used when drawing to a RenderTexture
@@ -229,12 +230,16 @@ export default class Game extends GameEventHandler {
 		battle.init();
 	}
 
+	public setCurrentBattle(battle:Battle) {
+		this._currentBattle = battle;
+	}
+
 	private loadUser(name:string, password:string) {
 		RequestManager.instance.makeRequest("login", {name:name, password:password},(data) => {
 			if (data) {
-				this.user.load(data);
+				this.user.load(data.data);
 				this.user.startGame();
-				this.initTestBattle();
+				//this.initTestBattle();
 			} else {
 				console.error("Unable to load user");
 			}

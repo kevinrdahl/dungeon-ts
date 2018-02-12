@@ -70,6 +70,11 @@ var Game = (function (_super) {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Game.prototype, "currentBattle", {
+        get: function () { return this._currentBattle; },
+        enumerable: true,
+        configurable: true
+    });
     Game.prototype.init = function () {
         var _this = this;
         Log.setLogType("debug", new Log.LogType("", "#999"));
@@ -198,13 +203,16 @@ var Game = (function (_super) {
         this._currentBattle = battle;
         battle.init();
     };
+    Game.prototype.setCurrentBattle = function (battle) {
+        this._currentBattle = battle;
+    };
     Game.prototype.loadUser = function (name, password) {
         var _this = this;
         RequestManager_1.default.instance.makeRequest("login", { name: name, password: password }, function (data) {
             if (data) {
-                _this.user.load(data);
+                _this.user.load(data.data);
                 _this.user.startGame();
-                _this.initTestBattle();
+                //this.initTestBattle();
             }
             else {
                 console.error("Unable to load user");
@@ -217,7 +225,7 @@ var Game = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Game;
 
-},{"./RequestManager":4,"./Updater":5,"./battle/Battle":6,"./events/GameEventHandler":18,"./interface/AttachInfo":19,"./interface/InputManager":22,"./interface/InterfaceElement":23,"./interface/TextElement":28,"./interface/prefabs/InterfaceRoot":31,"./sound/SoundAssets":33,"./sound/SoundManager":34,"./textures/TextureGenerator":35,"./textures/TextureLoader":36,"./user/User":37,"./util/Log":40}],2:[function(require,module,exports){
+},{"./RequestManager":4,"./Updater":5,"./battle/Battle":6,"./events/GameEventHandler":18,"./interface/AttachInfo":19,"./interface/InputManager":22,"./interface/InterfaceElement":23,"./interface/TextElement":28,"./interface/prefabs/InterfaceRoot":31,"./sound/SoundAssets":33,"./sound/SoundManager":34,"./textures/TextureGenerator":35,"./textures/TextureLoader":36,"./user/User":38,"./util/Log":43}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals = (function () {
@@ -248,6 +256,7 @@ $(document).ready(startFunc);
 /// <reference path="./declarations/jquery.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
 var Log = require("./util/Log");
+var Game_1 = require("./Game");
 var RequestManager = (function () {
     function RequestManager(baseUrl) {
         if (baseUrl === void 0) { baseUrl = null; }
@@ -264,6 +273,10 @@ var RequestManager = (function () {
         if (baseUrl !== null)
             this.baseUrl = baseUrl;
     }
+    /**
+     * Makes an HTTP request! Most game-related requests should use makeUserRequest
+     * @param instant If false, the request will wait for others to complete (preferred)
+     */
     RequestManager.prototype.makeRequest = function (type, params, callback, instant) {
         if (instant === void 0) { instant = false; }
         if (instant || !this.requestActive) {
@@ -275,6 +288,22 @@ var RequestManager = (function () {
                 params: params,
                 callback: callback
             });
+        }
+    };
+    /**
+     * Same as makeRequest, but inserts user_id and token into the params
+     * @param instant If false, the request will wait for others to complete (preferred)
+     */
+    RequestManager.prototype.makeUserRequest = function (type, params, callback, instant) {
+        if (instant === void 0) { instant = false; }
+        var user = Game_1.default.instance.user;
+        if (user) {
+            params["user_id"] = user.userId;
+            params["token"] = user.token;
+            this.makeRequest(type, params, callback, instant);
+        }
+        else {
+            console.error("Trying to make a user request with no user");
         }
     };
     RequestManager.prototype.makeRequestInternal = function (type, params, callback, instant) {
@@ -311,7 +340,7 @@ var RequestManager = (function () {
 }());
 exports.default = RequestManager;
 
-},{"./util/Log":40}],5:[function(require,module,exports){
+},{"./Game":1,"./util/Log":43}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Updater = (function () {
@@ -766,7 +795,7 @@ var Battle = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Battle;
 
-},{"../Game":1,"../ds/SparseGrid":16,"../events/GameEvent":17,"../events/GameEventHandler":18,"../util/IDObjectGroup":39,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
+},{"../Game":1,"../ds/SparseGrid":16,"../events/GameEvent":17,"../events/GameEventHandler":18,"../util/IDObjectGroup":42,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
@@ -848,7 +877,7 @@ var Player = (function () {
 }());
 exports.default = Player;
 
-},{"../util/IDObjectGroup":39}],9:[function(require,module,exports){
+},{"../util/IDObjectGroup":42}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile = (function () {
@@ -1550,7 +1579,7 @@ var BattleDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":17,"../../interface/AttachInfo":19,"../../interface/ElementList":21,"../../interface/InputManager":22,"../../interface/TextElement":28,"../../util/TextUtil":41,"../../util/Tween":43,"../../util/Vector2D":45}],12:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":17,"../../interface/AttachInfo":19,"../../interface/ElementList":21,"../../interface/InputManager":22,"../../interface/TextElement":28,"../../util/TextUtil":44,"../../util/Tween":46,"../../util/Vector2D":48}],12:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1865,7 +1894,7 @@ var UnitDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = UnitDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":17,"../../util/TextUtil":41,"../../util/Tween":43}],14:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":17,"../../util/TextUtil":44,"../../util/Tween":46}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Timer_1 = require("../../../util/Timer");
@@ -2127,7 +2156,7 @@ var Animation = (function () {
 }());
 exports.default = Animation;
 
-},{"../../../Globals":2,"../../../util/Timer":42,"../../../util/Tween":43}],15:[function(require,module,exports){
+},{"../../../Globals":2,"../../../util/Timer":45,"../../../util/Tween":46}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2603,7 +2632,7 @@ var AttachInfo = (function () {
 }());
 exports.default = AttachInfo;
 
-},{"../util/Vector2D":45}],20:[function(require,module,exports){
+},{"../util/Vector2D":48}],20:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3106,7 +3135,7 @@ var keyNames = {
     "39": "RIGHT"
 };
 
-},{"../Game":1,"../events/GameEvent":17,"../util/Vector2D":45}],23:[function(require,module,exports){
+},{"../Game":1,"../events/GameEvent":17,"../util/Vector2D":48}],23:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3530,7 +3559,7 @@ var InterfaceElement = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = InterfaceElement;
 
-},{"../Game":1,"../events/GameEventHandler":18,"../util/Vector2D":45,"./InputManager":22,"./ResizeInfo":26}],24:[function(require,module,exports){
+},{"../Game":1,"../events/GameEventHandler":18,"../util/Vector2D":48,"./InputManager":22,"./ResizeInfo":26}],24:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3668,7 +3697,7 @@ var ResizeInfo = (function () {
 }());
 exports.default = ResizeInfo;
 
-},{"../util/AssetCache":38,"../util/Vector2D":45}],27:[function(require,module,exports){
+},{"../util/AssetCache":41,"../util/Vector2D":48}],27:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3763,7 +3792,7 @@ var TextButton = (function (_super) {
 }(BaseButton_1.default));
 exports.default = TextButton;
 
-},{"../events/GameEvent":17,"../textures/TextureGenerator":35,"../util/AssetCache":38,"./AttachInfo":19,"./BaseButton":20,"./TextElement":28}],28:[function(require,module,exports){
+},{"../events/GameEvent":17,"../textures/TextureGenerator":35,"../util/AssetCache":41,"./AttachInfo":19,"./BaseButton":20,"./TextElement":28}],28:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4016,7 +4045,7 @@ var TextField = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextField;
 
-},{"../events/GameEvent":17,"../util/Vector2D":45,"./AttachInfo":19,"./InterfaceElement":23,"./MaskElement":24,"./Panel":25,"./TextElement":28}],30:[function(require,module,exports){
+},{"../events/GameEvent":17,"../util/Vector2D":48,"./AttachInfo":19,"./InterfaceElement":23,"./MaskElement":24,"./Panel":25,"./TextElement":28}],30:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4575,26 +4604,179 @@ exports.default = TextureLoader;
 },{}],37:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var Battle_1 = require("../battle/Battle");
+var Game_1 = require("../Game");
+var RequestManager_1 = require("../RequestManager");
+var BattleManager = (function () {
+    function BattleManager(user) {
+        this.battleData = [];
+        this.user = user;
+    }
+    Object.defineProperty(BattleManager.prototype, "currentBattle", {
+        get: function () { return Game_1.default.instance.currentBattle; },
+        enumerable: true,
+        configurable: true
+    });
+    BattleManager.prototype.load = function (data) {
+        console.log("BattleManager: load");
+        for (var _i = 0, _a = data.battles; _i < _a.length; _i++) {
+            var data = _a[_i];
+            this.battleData.push(data);
+        }
+    };
+    BattleManager.prototype.checkAnyBattleActive = function () {
+        for (var _i = 0, _a = this.battleData; _i < _a.length; _i++) {
+            var data = _a[_i];
+            if (data.state == BattleManager.STATE_ACTIVE)
+                return true;
+        }
+        return false;
+    };
+    /**
+     * When loading the game, if there is already an active battle, use this to jump into it
+     */
+    BattleManager.prototype.startActiveBattle = function () {
+        for (var _i = 0, _a = this.battleData; _i < _a.length; _i++) {
+            var data = _a[_i];
+            if (data.state == BattleManager.STATE_ACTIVE) {
+                var battle = new Battle_1.default(true);
+                Game_1.default.instance.setCurrentBattle(battle);
+                battle.init();
+                return;
+            }
+        }
+        console.warn("BattleManager: There was no active battle to start!");
+    };
+    /**
+     *
+     * @param dungeonId
+     * @param floor
+     * @param units The units to be sent
+     */
+    BattleManager.prototype.startBattle = function (dungeonId, floor, units) {
+        var _this = this;
+        var unitIds = units.map(function (u) { return u.id; });
+        RequestManager_1.default.instance.makeUserRequest("start_battle", {
+            "dungeon_id": dungeonId,
+            "floor": floor,
+            "unit_ids": unitIds
+        }, function (data) { _this.onStartBattle(data); });
+    };
+    BattleManager.prototype.onStartBattle = function (data) {
+        var battle = new Battle_1.default(true);
+        Game_1.default.instance.setCurrentBattle(battle);
+        battle.init();
+    };
+    //I'm not actually sure yet what all of these are supposed to mean
+    BattleManager.STATE_AVAILABLE = 0;
+    BattleManager.STATE_ACTIVE = 1;
+    BattleManager.STATE_WON = 2;
+    BattleManager.STATE_LOST = 3;
+    BattleManager.STATE_ABANDONED = 4;
+    return BattleManager;
+}());
+exports.default = BattleManager;
+
+},{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],38:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var BattleManager_1 = require("./BattleManager");
+var UserUnitManager_1 = require("./UserUnitManager");
+var Utils = require("../util/Util");
 var User = (function () {
     function User() {
         this.loaded = false;
         this.loadedData = null;
+        //managers
+        this.unitManager = new UserUnitManager_1.default(this);
+        this.battleManager = new BattleManager_1.default(this);
     }
     User.prototype.load = function (data) {
         //probably take this out eventually
         this.loadedData = data;
         console.log("User: load");
+        this.userId = data.user.id;
+        this.name = data.user.name;
+        this.stats = data.user.stats;
+        this.token = data.token;
+        this.unitManager.load(data);
+        this.battleManager.load(data);
         //...
         this.loaded = true;
+        console.log("User: load done");
     };
     User.prototype.startGame = function () {
         console.log("User: start game");
+        if (this.battleManager.checkAnyBattleActive()) {
+            console.log("Start from active battle");
+            this.battleManager.startActiveBattle();
+        }
+        else {
+            console.log("Start a new battle");
+            //choose up to 4 random units
+            var units = Utils.pickRandomSet(this.unitManager.units, 4);
+            this.battleManager.startBattle(1, 1, units);
+        }
     };
     return User;
 }());
 exports.default = User;
 
-},{}],38:[function(require,module,exports){
+},{"../util/Util":47,"./BattleManager":37,"./UserUnitManager":40}],39:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var UserUnit = (function () {
+    function UserUnit() {
+        this.id = -1;
+        this.name = "?";
+        this.level = 1;
+        this.stats = {};
+    }
+    UserUnit.prototype.load = function (data) {
+        this.id = data.id;
+        this.name = data.name;
+        this.level = data.level;
+        this.stats = data.stats;
+    };
+    return UserUnit;
+}());
+exports.default = UserUnit;
+
+},{}],40:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var UserUnit_1 = require("./UserUnit");
+var UserUnitManager = (function () {
+    function UserUnitManager(user) {
+        this.units = [];
+        this.unitsById = {};
+        this.user = user;
+    }
+    UserUnitManager.prototype.load = function (data) {
+        console.log("UnitManager: load");
+        for (var _i = 0, _a = data.units; _i < _a.length; _i++) {
+            var unitData = _a[_i];
+            var unit = new UserUnit_1.default();
+            unit.load(unitData);
+            this.addUnit(unit);
+        }
+    };
+    UserUnitManager.prototype.addUnit = function (unit) {
+        this.units.push(unit);
+        this.unitsById[unit.id] = unit;
+    };
+    UserUnitManager.prototype.removeUnit = function (unit) {
+        var index = this.units.indexOf(unit);
+        if (index == -1)
+            return;
+        this.units.splice(index, 1);
+        delete this.unitsById[unit.id];
+    };
+    return UserUnitManager;
+}());
+exports.default = UserUnitManager;
+
+},{"./UserUnit":39}],41:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var AssetCache = (function () {
@@ -4645,7 +4827,7 @@ var AssetCache = (function () {
 }());
 exports.default = AssetCache;
 
-},{}],39:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var IDObjectGroup = (function () {
@@ -4701,7 +4883,7 @@ var IDObjectGroup = (function () {
 }());
 exports.default = IDObjectGroup;
 
-},{}],40:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /*
@@ -4753,7 +4935,7 @@ function log(typeName, msg) {
 }
 exports.log = log;
 
-},{}],41:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4807,7 +4989,7 @@ var TextSprite = (function (_super) {
 }(PIXI.Sprite));
 exports.TextSprite = TextSprite;
 
-},{"../Game":1}],42:[function(require,module,exports){
+},{"../Game":1}],45:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -4890,7 +5072,7 @@ var Timer = (function () {
 }());
 exports.default = Timer;
 
-},{"../Game":1}],43:[function(require,module,exports){
+},{"../Game":1}],46:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -5052,7 +5234,7 @@ var Tween = (function () {
 }());
 exports.default = Tween;
 
-},{"../Game":1}],44:[function(require,module,exports){
+},{"../Game":1}],47:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function noop() { }
@@ -5071,6 +5253,41 @@ function shallowCopy(obj) {
     return ret;
 }
 exports.shallowCopy = shallowCopy;
+////////////////////////////////////////
+// Arrays
+////////////////////////////////////////
+function shuffleArray(array) {
+    var counter = array.length;
+    // While there are elements in the array
+    while (counter > 0) {
+        // Pick a random index
+        var index = Math.floor(Math.random() * counter);
+        // Decrease counter by 1
+        counter--;
+        // And swap the last element with it
+        var temp = array[counter];
+        array[counter] = array[index];
+        array[index] = temp;
+    }
+    return array;
+}
+exports.shuffleArray = shuffleArray;
+function pickRandom(array) {
+    var len = array.length;
+    if (len == 0)
+        return null;
+    return array[Math.floor(Math.random() * len)];
+}
+exports.pickRandom = pickRandom;
+function pickRandomSet(array, amount) {
+    array = array.slice();
+    var len = array.length;
+    if (len <= amount)
+        return array;
+    shuffleArray(array);
+    return array.slice(0, amount);
+}
+exports.pickRandomSet = pickRandomSet;
 ////////////////////////////////////////
 // Strings
 ////////////////////////////////////////
@@ -5134,7 +5351,7 @@ function isCoordinate(x) {
 }
 exports.isCoordinate = isCoordinate;
 
-},{}],45:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Util = require("./Util");
@@ -5254,4 +5471,4 @@ var Vector2D = (function () {
 }());
 exports.default = Vector2D;
 
-},{"./Util":44}]},{},[3]);
+},{"./Util":47}]},{},[3]);

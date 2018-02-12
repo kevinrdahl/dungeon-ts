@@ -16,6 +16,43 @@ export function shallowCopy(obj:Object):Object {
 }
 
 ////////////////////////////////////////
+// Arrays
+////////////////////////////////////////
+export function shuffleArray(array) {
+    let counter = array.length;
+
+    // While there are elements in the array
+    while (counter > 0) {
+        // Pick a random index
+        let index = Math.floor(Math.random() * counter);
+
+        // Decrease counter by 1
+        counter--;
+
+        // And swap the last element with it
+        let temp = array[counter];
+        array[counter] = array[index];
+        array[index] = temp;
+    }
+
+    return array;
+}
+
+export function pickRandom(array) {
+    var len = array.length;
+    if (len == 0) return null;
+    return array[Math.floor(Math.random() * len)];
+}
+
+export function pickRandomSet(array, amount) {
+    array = array.slice();
+    var len = array.length;
+    if (len <= amount) return array;
+    shuffleArray(array);
+    return array.slice(0, amount);
+}
+
+////////////////////////////////////////
 // Strings
 ////////////////////////////////////////
 /**

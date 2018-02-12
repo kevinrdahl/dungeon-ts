@@ -17,6 +17,41 @@ function shallowCopy(obj) {
 }
 exports.shallowCopy = shallowCopy;
 ////////////////////////////////////////
+// Arrays
+////////////////////////////////////////
+function shuffleArray(array) {
+    var counter = array.length;
+    // While there are elements in the array
+    while (counter > 0) {
+        // Pick a random index
+        var index = Math.floor(Math.random() * counter);
+        // Decrease counter by 1
+        counter--;
+        // And swap the last element with it
+        var temp = array[counter];
+        array[counter] = array[index];
+        array[index] = temp;
+    }
+    return array;
+}
+exports.shuffleArray = shuffleArray;
+function pickRandom(array) {
+    var len = array.length;
+    if (len == 0)
+        return null;
+    return array[Math.floor(Math.random() * len)];
+}
+exports.pickRandom = pickRandom;
+function pickRandomSet(array, amount) {
+    array = array.slice();
+    var len = array.length;
+    if (len <= amount)
+        return array;
+    shuffleArray(array);
+    return array.slice(0, amount);
+}
+exports.pickRandomSet = pickRandomSet;
+////////////////////////////////////////
 // Strings
 ////////////////////////////////////////
 /**
