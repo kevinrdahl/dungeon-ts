@@ -441,6 +441,8 @@ var Battle = (function (_super) {
         _this.initialized = false;
         _this.unitPositions = new SparseGrid_1.default(null);
         _this._turnNumber = 0;
+        _this._ended = false;
+        _this._winner = null;
         //animation
         _this.animationSequence = null;
         _this._animating = false;
@@ -474,6 +476,16 @@ var Battle = (function (_super) {
     });
     Object.defineProperty(Battle.prototype, "turnNumber", {
         get: function () { return this._turnNumber; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Battle.prototype, "ended", {
+        get: function () { return this._ended; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Battle.prototype, "winner", {
+        get: function () { return this._winner; },
         enumerable: true,
         configurable: true
     });
@@ -621,8 +633,11 @@ var Battle = (function (_super) {
                 this.deselectUnit();
             }
         }
-        if (this.shouldForceEndTurn()) {
-            this.endTurn();
+        this.checkEndBattle();
+        if (!this.ended) {
+            if (this.shouldForceEndTurn()) {
+                this.endTurn();
+            }
         }
     };
     Battle.prototype.initAnimation = function () {
@@ -676,6 +691,33 @@ var Battle = (function (_super) {
     };
     Battle.prototype.shouldForceEndTurn = function () {
         return this.getUnitsWithActions().length == 0;
+    };
+    /**
+     * Sees if the battle should end, and if it should, ends it
+     */
+    Battle.prototype.checkEndBattle = function () {
+        var _this = this;
+        if (this._ended)
+            return;
+        var undefeated = this.players.list.filter(function (player) {
+            return !player.checkDefeated();
+        });
+        if (undefeated.length == 1) {
+            this._ended = true;
+            this._winner = undefeated[0];
+        }
+        if (this._ended) {
+            var action = function (callback) {
+                if (_this.display) {
+                    _this.display.showEndGame(callback);
+                }
+                else {
+                    callback();
+                }
+            };
+            var anim = new Animation_1.default(action);
+            this.queueAnimation(anim);
+        }
     };
     ////////////////////////////////////////////////////////////
     // Adding and removing things
@@ -871,6 +913,14 @@ var Player = (function () {
         if (unit.player == this) {
             unit.player = null;
         }
+    };
+    Player.prototype.checkDefeated = function () {
+        for (var _i = 0, _a = this.units.list; _i < _a.length; _i++) {
+            var unit = _a[_i];
+            if (unit.alive)
+                return false;
+        }
+        return true;
     };
     Player._nextID = 1;
     return Player;
@@ -1572,6 +1622,24 @@ var BattleDisplay = (function (_super) {
                 callback();
             };
             tween2.start();
+        };
+        tween1.start();
+    };
+    BattleDisplay.prototype.showEndGame = function (callback) {
+        var winner = this.battle.winner;
+        var str = "Player " + winner.id + " wins!";
+        var text = new PIXI.Text(str, TextUtil.styles.unitID);
+        this.addChild(text);
+        var width = Game_1.default.instance.stage.width / this.scale.x;
+        var height = Game_1.default.instance.stage.height / this.scale.y;
+        var targetX = width / 2 - text.width / 2;
+        var targetY = height / 2 - text.height / 2;
+        text.y = targetY;
+        var tween1 = new Tween_1.default().init(text, "x", -text.height, targetX, 0.5, Tween_1.default.easingFunctions.quartEaseOut);
+        tween1.onFinish = function () {
+            if (text.parent)
+                text.parent.removeChild(text);
+            callback();
         };
         tween1.start();
     };

@@ -22,6 +22,8 @@ export default class Battle extends GameEventHandler {
 	get currentPlayer():Player { return this._currentPlayer; }
 	get animating():boolean { return this._animating; }
 	get turnNumber():number { return this._turnNumber; }
+	get ended():boolean { return this._ended; }
+	get winner():Player { return this._winner; }
 
 	private _visible:boolean;
 	private _display:BattleDisplay = null;
@@ -30,6 +32,9 @@ export default class Battle extends GameEventHandler {
 	private initialized:boolean = false;
 	private unitPositions:SparseGrid<Unit> = new SparseGrid<Unit>(null);
 	private _turnNumber = 0;
+
+	private _ended = false;
+	private _winner:Player = null;
 
 	//animation
 	private animationSequence:Animation = null;
@@ -212,8 +217,11 @@ export default class Battle extends GameEventHandler {
 			}
 		}
 
-		if (this.shouldForceEndTurn()) {
-			this.endTurn();
+		this.checkEndBattle();
+		if (!this.ended) {
+			if (this.shouldForceEndTurn()) {
+				this.endTurn();
+			}
 		}
 	}
 
@@ -275,6 +283,34 @@ export default class Battle extends GameEventHandler {
 
 	public shouldForceEndTurn():boolean {
 		return this.getUnitsWithActions().length == 0;
+	}
+
+	/**
+	 * Sees if the battle should end, and if it should, ends it
+	 */
+	public checkEndBattle() {
+		if (this._ended) return;
+
+		var undefeated = this.players.list.filter(function(player:Player) {
+			return !player.checkDefeated();
+		});
+
+		if (undefeated.length == 1) {
+			this._ended = true;
+			this._winner = undefeated[0];
+		}
+
+		if (this._ended) {
+			var action = (callback:()=>void) => {
+				if (this.display) {
+					this.display.showEndGame(callback);
+				} else {
+					callback();
+				}
+			}
+			var anim = new Animation(action);
+			this.queueAnimation(anim);
+		}
 	}
 
 	////////////////////////////////////////////////////////////

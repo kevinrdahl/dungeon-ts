@@ -238,6 +238,24 @@ var BattleDisplay = (function (_super) {
         };
         tween1.start();
     };
+    BattleDisplay.prototype.showEndGame = function (callback) {
+        var winner = this.battle.winner;
+        var str = "Player " + winner.id + " wins!";
+        var text = new PIXI.Text(str, TextUtil.styles.unitID);
+        this.addChild(text);
+        var width = Game_1.default.instance.stage.width / this.scale.x;
+        var height = Game_1.default.instance.stage.height / this.scale.y;
+        var targetX = width / 2 - text.width / 2;
+        var targetY = height / 2 - text.height / 2;
+        text.y = targetY;
+        var tween1 = new Tween_1.default().init(text, "x", -text.height, targetX, 0.5, Tween_1.default.easingFunctions.quartEaseOut);
+        tween1.onFinish = function () {
+            if (text.parent)
+                text.parent.removeChild(text);
+            callback();
+        };
+        tween1.start();
+    };
     return BattleDisplay;
 }(PIXI.Container));
 exports.default = BattleDisplay;

@@ -32,4 +32,11 @@ export default class Player {
 			unit.player = null;
 		}
 	}
+
+	public checkDefeated():boolean {
+		for (var unit of this.units.list) {
+			if (unit.alive) return false;
+		}
+		return true;
+	}
 }

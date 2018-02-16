@@ -245,6 +245,27 @@ export default class BattleDisplay extends PIXI.Container {
 		tween1.start();
 	}
 
+	public showEndGame(callback:()=>void) {
+		var winner = this.battle.winner;
+		var str = "Player " + winner.id + " wins!";
+		var text = new PIXI.Text(str, TextUtil.styles.unitID);
+
+		this.addChild(text);
+		var width = Game.instance.stage.width / this.scale.x;
+		var height = Game.instance.stage.height / this.scale.y;
+		var targetX = width / 2 - text.width / 2;
+		var targetY = height / 2 - text.height / 2;
+
+		text.y = targetY;
+
+		var tween1 = new Tween().init(text, "x", -text.height, targetX, 0.5, Tween.easingFunctions.quartEaseOut);
+		tween1.onFinish = () => {
+			if (text.parent) text.parent.removeChild(text);
+			callback();
+		}
+		tween1.start();
+	}
+
 	private onAnimation = (e:GameEvent) => {
 		this.updatePathingDisplay();
 		this.updatePathingHover();

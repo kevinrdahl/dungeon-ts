@@ -27,6 +27,14 @@ var Player = (function () {
             unit.player = null;
         }
     };
+    Player.prototype.checkDefeated = function () {
+        for (var _i = 0, _a = this.units.list; _i < _a.length; _i++) {
+            var unit = _a[_i];
+            if (unit.alive)
+                return false;
+        }
+        return true;
+    };
     Player._nextID = 1;
     return Player;
 }());
