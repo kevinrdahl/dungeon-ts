@@ -50,7 +50,7 @@ export default class Tween {
 		this._property = property;
 		this._startValue = startValue;
 		this._endValue = endValue;
-		this._duration = Math.max(0.0001, duration); //no divide by 0 pls
+		this._duration = duration;
 		this._easingFunction = easingFunction;
 		this._active = false;
 		this._currentTime = 0;
@@ -66,9 +66,17 @@ export default class Tween {
 			return;
 		}
 
-		this._active = true;
-		this._target[this._property] = this._startValue;
-		this.setUpdating(true);
+		if (this._duration > 0) {
+			this._active = true;
+			this._target[this._property] = this._startValue;
+			this.setUpdating(true);
+		}
+		else {
+			this._active = false;
+			this._target[this._property] = this._endValue;
+			this.setUpdating(false);
+			if (this.onFinish) this.onFinish();
+		}
 	}
 
 	public stop() {
