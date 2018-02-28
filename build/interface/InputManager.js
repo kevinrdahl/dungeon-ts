@@ -10,7 +10,7 @@ var GameEvent_1 = require("../events/GameEvent");
  *
  * Singleton!
  */
-var InputManager = (function () {
+var InputManager = /** @class */ (function () {
     function InputManager() {
         var _this = this;
         this.dragThreshold = 8;
@@ -141,6 +141,7 @@ var InputManager = (function () {
             if (_this._focusElement) {
                 _this._focusElement.sendNewEvent(GameEvent_1.default.types.ui.KEY, e.key);
             }
+            Game_1.default.instance.sendNewEvent(GameEvent_1.default.types.ui.KEY, e.key);
             if (preventedKeys.indexOf(e.which) != -1) {
                 e.preventDefault();
             }

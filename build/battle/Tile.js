@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Tile = (function () {
+var Tile = /** @class */ (function () {
     function Tile() {
         this.pathingType = 0;
         this.walkCost = 1;

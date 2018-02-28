@@ -7,7 +7,7 @@ var Globals_1 = require("../../../Globals");
  * Wraps a function with a callback, to perform long actions in a logical sequence (or multiple sequences).
  * Meant to be chained together.
  */
-var Animation = (function () {
+var Animation = /** @class */ (function () {
     /**
      *
      * @param action A function which accepts a callback to be performed when it has finished. A unit of animation.

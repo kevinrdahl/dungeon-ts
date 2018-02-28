@@ -80,7 +80,7 @@ export default class InterfaceRoot extends InterfaceElement {
         if (title) dialog.addMediumTitle(title, 0);
         dialog.addMessage(message, 5);
         dialog.addButtons([
-            {text: "Close", colorScheme: TextButton.colorSchemes.red, onClick:(e:GameEvent) => {
+            {text: "Close", colorScheme: TextButton.colorSchemes.blue, onClick:(e:GameEvent) => {
                 dialog.removeSelf();
                 if (onClose) {
                     onClose();

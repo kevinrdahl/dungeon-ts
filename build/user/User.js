@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var BattleManager_1 = require("./BattleManager");
 var UserUnitManager_1 = require("./UserUnitManager");
 var Utils = require("../util/Util");
-var User = (function () {
+var User = /** @class */ (function () {
     function User() {
         this.loaded = false;
         this.loadedData = null;

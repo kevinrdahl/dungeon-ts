@@ -1,4 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(){function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s}return e})()({1:[function(require,module,exports){
 "use strict";
 /// <reference path="./declarations/pixi.js.d.ts"/>
 /// <reference path="./declarations/createjs/soundjs.d.ts"/>
@@ -34,7 +34,7 @@ var Battle_1 = require("./battle/Battle");
 var Log = require("./util/Log");
 var Updater_1 = require("./Updater");
 var RequestManager_1 = require("./RequestManager");
-var Game = (function (_super) {
+var Game = /** @class */ (function (_super) {
     __extends(Game, _super);
     function Game(viewDiv) {
         var _this = _super.call(this) || this;
@@ -66,7 +66,7 @@ var Game = (function (_super) {
         return _this;
     }
     Object.defineProperty(Game.prototype, "volatileGraphics", {
-        get: function () { this._volatileGraphics.clear(); return this._volatileGraphics; },
+        get: function () { return this._volatileGraphics.clear(); },
         enumerable: true,
         configurable: true
     });
@@ -203,8 +203,20 @@ var Game = (function (_super) {
         this._currentBattle = battle;
         battle.init();
     };
+    Game.prototype.initMainMenu = function () {
+        this.interfaceRoot.showStatusPopup("This is the main menu!");
+    };
     Game.prototype.setCurrentBattle = function (battle) {
         this._currentBattle = battle;
+    };
+    Game.prototype.gotoMainMenu = function () {
+        var battle = this._currentBattle;
+        if (battle) {
+            if (battle.display)
+                battle.display.cleanup();
+            this._currentBattle = null;
+        }
+        this.initMainMenu();
     };
     Game.prototype.loadUser = function (name, password) {
         var _this = this;
@@ -228,7 +240,7 @@ exports.default = Game;
 },{"./RequestManager":4,"./Updater":5,"./battle/Battle":6,"./events/GameEventHandler":18,"./interface/AttachInfo":19,"./interface/InputManager":22,"./interface/InterfaceElement":23,"./interface/TextElement":28,"./interface/prefabs/InterfaceRoot":31,"./sound/SoundAssets":33,"./sound/SoundManager":34,"./textures/TextureGenerator":35,"./textures/TextureLoader":36,"./user/User":38,"./util/Log":43}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Globals = (function () {
+var Globals = /** @class */ (function () {
     function Globals() {
     }
     Globals.gridSize = 24;
@@ -257,7 +269,7 @@ $(document).ready(startFunc);
 Object.defineProperty(exports, "__esModule", { value: true });
 var Log = require("./util/Log");
 var Game_1 = require("./Game");
-var RequestManager = (function () {
+var RequestManager = /** @class */ (function () {
     function RequestManager(baseUrl) {
         if (baseUrl === void 0) { baseUrl = null; }
         this.baseUrl = "http://localhost:8000/dungeon";
@@ -343,7 +355,7 @@ exports.default = RequestManager;
 },{"./Game":1,"./util/Log":43}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Updater = (function () {
+var Updater = /** @class */ (function () {
     function Updater() {
         this.objects = [];
         this.objectsToAdd = [];
@@ -423,7 +435,7 @@ var SparseGrid_1 = require("../ds/SparseGrid");
 var Animation_1 = require("./display/animation/Animation");
 var GameEvent_1 = require("../events/GameEvent");
 var GameEventHandler_1 = require("../events/GameEventHandler");
-var Battle = (function (_super) {
+var Battle = /** @class */ (function (_super) {
     __extends(Battle, _super);
     /**
      * It's a battle!
@@ -490,6 +502,7 @@ var Battle = (function (_super) {
         configurable: true
     });
     Battle.prototype.init = function () {
+        var _this = this;
         if (this.initialized)
             return;
         this.initialized = true;
@@ -516,6 +529,30 @@ var Battle = (function (_super) {
         this.updateAllUnitPathing();
         this.display.updatePathingDisplay();
         this.display.updatePathingHover();
+        Game_1.default.instance.addEventListener(GameEvent_1.default.types.ui.KEY, function (e) {
+            if (e.data == '`') {
+                var playerUnit = _this.currentPlayer.units.list[0];
+                var anim = Animation_1.default.noop();
+                _this.selectUnit(null);
+                for (var _i = 0, _a = _this.players.list; _i < _a.length; _i++) {
+                    var player = _a[_i];
+                    if (player == _this.currentPlayer)
+                        continue;
+                    for (var _b = 0, _c = player.units.list.slice(); _b < _c.length; _b++) {
+                        var unit = _c[_b];
+                        if (!unit.alive)
+                            continue;
+                        unit.kill();
+                        anim.then(Animation_1.default.unitDie(unit));
+                    }
+                }
+                console.log("Oof!");
+                _this.initAnimation();
+                _this.queueAnimation(anim);
+                _this.onUnitAction(playerUnit);
+                _this.beginAnimation();
+            }
+        });
     };
     ////////////////////////////////////////////////////////////
     // Player actions
@@ -650,13 +687,19 @@ var Battle = (function (_super) {
             return;
         this._animating = true;
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONSTART);
+        console.log("Start animation");
         this.animationSequence.start(function () {
+            console.log("Animation complete");
             _this.onAnimationComplete();
         });
     };
     Battle.prototype.onAnimationComplete = function () {
         this._animating = false;
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE);
+        if (this.ended) {
+            console.log("To the menu!");
+            Game_1.default.instance.gotoMainMenu();
+        }
     };
     Battle.prototype.queueAnimation = function (animation) {
         if (this.animationSequence == null) {
@@ -715,7 +758,7 @@ var Battle = (function (_super) {
                     callback();
                 }
             };
-            var anim = new Animation_1.default(action);
+            var anim = new Animation_1.default(action, null, -1);
             this.queueAnimation(anim);
         }
     };
@@ -820,7 +863,7 @@ var Battle = (function (_super) {
         }
     };
     ////////////////////////////////////////////////////////////
-    // Init
+    // Init and Cleanup
     ////////////////////////////////////////////////////////////
     Battle.prototype.initLevel = function () {
         this.level = new Level_1.default();
@@ -842,7 +885,7 @@ exports.default = Battle;
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
 var LevelDisplay_1 = require("./display/LevelDisplay");
-var Level = (function () {
+var Level = /** @class */ (function () {
     function Level() {
         this.tiles = [];
         this.width = 0;
@@ -888,7 +931,7 @@ exports.default = Level;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var IDObjectGroup_1 = require("../util/IDObjectGroup");
-var Player = (function () {
+var Player = /** @class */ (function () {
     function Player() {
         this.battle = null;
         this.units = new IDObjectGroup_1.default();
@@ -930,7 +973,7 @@ exports.default = Player;
 },{"../util/IDObjectGroup":42}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Tile = (function () {
+var Tile = /** @class */ (function () {
     function Tile() {
         this.pathingType = 0;
         this.walkCost = 1;
@@ -984,7 +1027,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var UnitDisplay_1 = require("./display/UnitDisplay");
 var BinaryHeap_1 = require("../ds/BinaryHeap");
 var SparseGrid_1 = require("../ds/SparseGrid");
-var PathingNode = (function () {
+var PathingNode = /** @class */ (function () {
     function PathingNode() {
         this.cost = Number.POSITIVE_INFINITY;
         this.hCost = 0;
@@ -1008,7 +1051,7 @@ var PathingNode = (function () {
     };
     return PathingNode;
 }());
-var Unit = (function () {
+var Unit = /** @class */ (function () {
     function Unit() {
         this.player = null;
         this.battle = null;
@@ -1367,7 +1410,7 @@ var Unit = (function () {
     };
     Unit.prototype.initDisplay = function () {
         if (this.display) {
-            this.display.cleanUp();
+            this.display.cleanup();
         }
         this.display = new UnitDisplay_1.default();
         this.display.initUnit(this);
@@ -1408,7 +1451,7 @@ var Tween_1 = require("../../util/Tween");
 var ElementList_1 = require("../../interface/ElementList");
 var AttachInfo_1 = require("../../interface/AttachInfo");
 var TextElement_1 = require("../../interface/TextElement");
-var BattleDisplay = (function (_super) {
+var BattleDisplay = /** @class */ (function (_super) {
     __extends(BattleDisplay, _super);
     function BattleDisplay() {
         var _this = _super.call(this) || this;
@@ -1450,6 +1493,23 @@ var BattleDisplay = (function (_super) {
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+    };
+    BattleDisplay.prototype.cleanup = function () {
+        for (var _i = 0, _a = this._unitDisplays; _i < _a.length; _i++) {
+            var unitDisplay = _a[_i];
+            unitDisplay.cleanup();
+        }
+        this._levelDisplay.cleanup();
+        this._unitContainer.destroy({ children: true });
+        if (this.parent)
+            this.parent.removeChild(this);
+        if (this.debugPanel) {
+            this.debugPanel.removeSelf();
+        }
+        Game_1.default.instance.updater.remove(this);
+        this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+        this._battle.removeEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
     };
     BattleDisplay.prototype.setLevelDisplay = function (display) {
         if (this._levelDisplay) {
@@ -1628,20 +1688,23 @@ var BattleDisplay = (function (_super) {
     BattleDisplay.prototype.showEndGame = function (callback) {
         var winner = this.battle.winner;
         var str = "Player " + winner.id + " wins!";
-        var text = new PIXI.Text(str, TextUtil.styles.unitID);
+        Game_1.default.instance.interfaceRoot.showWarningPopup(str, "Battle Over", callback);
+        /*var text = new PIXI.Text(str, TextUtil.styles.unitID);
+
         this.addChild(text);
-        var width = Game_1.default.instance.stage.width / this.scale.x;
-        var height = Game_1.default.instance.stage.height / this.scale.y;
+        var width = Game.instance.stage.width / this.scale.x;
+        var height = Game.instance.stage.height / this.scale.y;
         var targetX = width / 2 - text.width / 2;
         var targetY = height / 2 - text.height / 2;
+
         text.y = targetY;
-        var tween1 = new Tween_1.default().init(text, "x", -text.height, targetX, 0.5, Tween_1.default.easingFunctions.quartEaseOut);
-        tween1.onFinish = function () {
-            if (text.parent)
-                text.parent.removeChild(text);
+
+        var tween1 = new Tween().init(text, "x", -text.height, targetX, 0.5, Tween.easingFunctions.quartEaseOut);
+        tween1.onFinish = () => {
+            if (text.parent) text.parent.removeChild(text);
             callback();
-        };
-        tween1.start();
+        }
+        tween1.start();*/
     };
     return BattleDisplay;
 }(PIXI.Container));
@@ -1663,7 +1726,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals_1 = require("../../Globals");
 var Game_1 = require("../../Game");
-var LevelDisplay = (function (_super) {
+var LevelDisplay = /** @class */ (function (_super) {
     __extends(LevelDisplay, _super);
     function LevelDisplay() {
         var _this = _super.call(this) || this;
@@ -1680,6 +1743,9 @@ var LevelDisplay = (function (_super) {
             this.addChild(this.pathingGraphics);
         if (!this.routeGraphics.parent)
             this.addChild(this.routeGraphics);
+    };
+    LevelDisplay.prototype.cleanup = function () {
+        this.destroy({ children: true });
     };
     LevelDisplay.prototype.showPathing = function (tiles, color, alpha) {
         if (color === void 0) { color = 0x0000ff; }
@@ -1755,7 +1821,7 @@ var TextUtil = require("../../util/TextUtil");
 var Globals_1 = require("../../Globals");
 var Tween_1 = require("../../util/Tween");
 var GameEvent_1 = require("../../events/GameEvent");
-var TracePathInfo = (function () {
+var TracePathInfo = /** @class */ (function () {
     function TracePathInfo() {
         this.timeElapsed = 0;
         this.duration = 0;
@@ -1763,7 +1829,7 @@ var TracePathInfo = (function () {
     }
     return TracePathInfo;
 }());
-var UnitDisplay = (function (_super) {
+var UnitDisplay = /** @class */ (function (_super) {
     __extends(UnitDisplay, _super);
     function UnitDisplay() {
         var _this = _super.call(this) || this;
@@ -1876,11 +1942,12 @@ var UnitDisplay = (function (_super) {
     UnitDisplay.prototype.updateActions = function () {
         this.updateState();
     };
-    UnitDisplay.prototype.cleanUp = function () {
+    UnitDisplay.prototype.cleanup = function () {
         if (this.parent) {
             this.parent.removeChild(this);
         }
         this.removeListeners();
+        this.destroy({ children: true });
     };
     UnitDisplay.prototype.onClick = function () {
         this.unit.select();
@@ -1972,7 +2039,7 @@ var Globals_1 = require("../../../Globals");
  * Wraps a function with a callback, to perform long actions in a logical sequence (or multiple sequences).
  * Meant to be chained together.
  */
-var Animation = (function () {
+var Animation = /** @class */ (function () {
     /**
      *
      * @param action A function which accepts a callback to be performed when it has finished. A unit of animation.
@@ -2233,7 +2300,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
  * Shamelessly copied from:
  * https://github.com/yckart/BinaryHeap/blob/master/index.js
  */
-var BinaryHeap = (function () {
+var BinaryHeap = /** @class */ (function () {
     function BinaryHeap(scoreFunc, content) {
         if (scoreFunc === void 0) { scoreFunc = null; }
         if (content === void 0) { content = null; }
@@ -2444,7 +2511,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
  * but on the off chance some platform is different, use this class instead. Speed will
  * be more or less identical.
  */
-var SparseGrid = (function () {
+var SparseGrid = /** @class */ (function () {
     function SparseGrid(defaultValue) {
         if (defaultValue === void 0) { defaultValue = null; }
         this.rows = {};
@@ -2554,7 +2621,7 @@ exports.default = SparseGrid;
 },{}],17:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var GameEvent = (function () {
+var GameEvent = /** @class */ (function () {
     /**
      * Get instances via the static getInstance.
      */
@@ -2616,7 +2683,7 @@ exports.default = GameEvent;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("./GameEvent");
-var GameEventHandler = (function () {
+var GameEventHandler = /** @class */ (function () {
     function GameEventHandler() {
         this._listenersByType = {};
     }
@@ -2678,7 +2745,7 @@ exports.default = GameEventHandler;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
-var AttachInfo = (function () {
+var AttachInfo = /** @class */ (function () {
     function AttachInfo(from, to, offset) {
         this.from = from;
         this.to = to;
@@ -2716,7 +2783,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("./InterfaceElement");
 var GameEvent_1 = require("../events/GameEvent");
-var BaseButton = (function (_super) {
+var BaseButton = /** @class */ (function (_super) {
     __extends(BaseButton, _super);
     /**
      * It's a button! Click it!
@@ -2810,7 +2877,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var InterfaceElement_1 = require("./InterfaceElement");
-var ElementList = (function (_super) {
+var ElementList = /** @class */ (function (_super) {
     __extends(ElementList, _super);
     function ElementList(width, orientation, padding, align) {
         if (orientation === void 0) { orientation = ElementList.VERTICAL; }
@@ -2966,7 +3033,7 @@ var GameEvent_1 = require("../events/GameEvent");
  *
  * Singleton!
  */
-var InputManager = (function () {
+var InputManager = /** @class */ (function () {
     function InputManager() {
         var _this = this;
         this.dragThreshold = 8;
@@ -3097,6 +3164,7 @@ var InputManager = (function () {
             if (_this._focusElement) {
                 _this._focusElement.sendNewEvent(GameEvent_1.default.types.ui.KEY, e.key);
             }
+            Game_1.default.instance.sendNewEvent(GameEvent_1.default.types.ui.KEY, e.key);
             if (preventedKeys.indexOf(e.which) != -1) {
                 e.preventDefault();
             }
@@ -3222,7 +3290,7 @@ var ResizeInfo_1 = require("./ResizeInfo");
 var InputManager_1 = require("./InputManager");
 var Game_1 = require("../Game");
 var GameEventHandler_1 = require("../events/GameEventHandler");
-var InterfaceElement = (function (_super) {
+var InterfaceElement = /** @class */ (function (_super) {
     __extends(InterfaceElement, _super);
     /**
      * Base class for anything in the UI. Has a parent and can have children, like DOM elements.
@@ -3641,7 +3709,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("./InterfaceElement");
-var MaskElement = (function (_super) {
+var MaskElement = /** @class */ (function (_super) {
     __extends(MaskElement, _super);
     function MaskElement(width, height) {
         var _this = _super.call(this) || this;
@@ -3682,7 +3750,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("./InterfaceElement");
 //import TextureGenerator = require('../textures/TextureGenerator');
 var TextureGenerator = require("../textures/TextureGenerator");
-var Panel = (function (_super) {
+var Panel = /** @class */ (function (_super) {
     __extends(Panel, _super);
     function Panel(width, height, style) {
         var _this = _super.call(this) || this;
@@ -3742,7 +3810,7 @@ exports.default = Panel;
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
 var AssetCache_1 = require("../util/AssetCache");
-var ResizeInfo = (function () {
+var ResizeInfo = /** @class */ (function () {
     function ResizeInfo(fill, padding) {
         this.fill = fill;
         this.padding = padding;
@@ -3785,7 +3853,7 @@ var AssetCache_1 = require("../util/AssetCache");
 var TextElement_1 = require("./TextElement");
 var AttachInfo_1 = require("./AttachInfo");
 var TextureGenerator = require("../textures/TextureGenerator");
-var TextButton = (function (_super) {
+var TextButton = /** @class */ (function (_super) {
     __extends(TextButton, _super);
     function TextButton(text, colorScheme, width, height, textStyle) {
         if (colorScheme === void 0) { colorScheme = null; }
@@ -3876,7 +3944,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var InterfaceElement_1 = require("./InterfaceElement");
 var mainFont = "Arial";
-var TextElement = (function (_super) {
+var TextElement = /** @class */ (function (_super) {
     __extends(TextElement, _super);
     function TextElement(text, style) {
         if (text === void 0) { text = ""; }
@@ -3961,7 +4029,7 @@ var TextElement_1 = require("./TextElement");
 var MaskElement_1 = require("./MaskElement");
 var AttachInfo_1 = require("./AttachInfo");
 var GameEvent_1 = require("../events/GameEvent");
-var TextField = (function (_super) {
+var TextField = /** @class */ (function (_super) {
     __extends(TextField, _super);
     /**
      * Allows the user to input text.
@@ -4135,7 +4203,7 @@ var TextField_1 = require("../TextField");
 var GameEvent_1 = require("../../events/GameEvent");
 var TextFieldListManager_1 = require("./TextFieldListManager");
 var TextButton_1 = require("../TextButton");
-var GenericListDialog = (function (_super) {
+var GenericListDialog = /** @class */ (function (_super) {
     __extends(GenericListDialog, _super);
     function GenericListDialog(width, borderPadding) {
         if (width === void 0) { width = 300; }
@@ -4258,9 +4326,12 @@ var GenericListDialog = (function (_super) {
         this.addMessage(label);
         this.addTextField(name, alphabet, hidden, defaultStr, validator, padding);
     };
-    GenericListDialog.prototype.addButtons = function (infos, padding) {
+    GenericListDialog.prototype.addButtons = function (infos, padding, vertical) {
         if (padding === void 0) { padding = 0; }
-        var buttonContainer = new ElementList_1.default(30, ElementList_1.default.HORIZONTAL, 10, ElementList_1.default.CENTRE);
+        if (vertical === void 0) { vertical = false; }
+        var orientation = vertical ? ElementList_1.default.VERTICAL : ElementList_1.default.HORIZONTAL;
+        var width = vertical ? 100 : 30;
+        var buttonContainer = new ElementList_1.default(width, ElementList_1.default.HORIZONTAL, 10, ElementList_1.default.CENTRE);
         for (var _i = 0, infos_1 = infos; _i < infos_1.length; _i++) {
             var info = infos_1[_i];
             var colorScheme = info.colorScheme;
@@ -4309,7 +4380,7 @@ var GenericListDialog_1 = require("./GenericListDialog");
 var TextButton_1 = require("../TextButton");
 var InputManager_1 = require("../InputManager");
 var AttachInfo_1 = require("../AttachInfo");
-var InterfaceRoot = (function (_super) {
+var InterfaceRoot = /** @class */ (function (_super) {
     __extends(InterfaceRoot, _super);
     function InterfaceRoot(container) {
         var _this = _super.call(this) || this;
@@ -4371,7 +4442,7 @@ var InterfaceRoot = (function (_super) {
             dialog.addMediumTitle(title, 0);
         dialog.addMessage(message, 5);
         dialog.addButtons([
-            { text: "Close", colorScheme: TextButton_1.default.colorSchemes.red, onClick: function (e) {
+            { text: "Close", colorScheme: TextButton_1.default.colorSchemes.blue, onClick: function (e) {
                     dialog.removeSelf();
                     if (onClose) {
                         onClose();
@@ -4421,7 +4492,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("../../events/GameEvent");
 var GameEventHandler_1 = require("../../events/GameEventHandler");
 var InputManager_1 = require("../InputManager");
-var TextFieldListManager = (function (_super) {
+var TextFieldListManager = /** @class */ (function (_super) {
     __extends(TextFieldListManager, _super);
     /**
      * Not an InterfaceElement! Just sets up events (TAB/SUBMIT) for a list of text elements
@@ -4485,7 +4556,7 @@ exports.interfaceSounds = [
 },{}],34:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var SoundLoadRequest = (function () {
+var SoundLoadRequest = /** @class */ (function () {
     function SoundLoadRequest(name, list, onComplete, onProgress) {
         if (onProgress === void 0) { onProgress = null; }
         this.name = name;
@@ -4495,7 +4566,7 @@ var SoundLoadRequest = (function () {
     }
     return SoundLoadRequest;
 }());
-var SoundManager = (function () {
+var SoundManager = /** @class */ (function () {
     function SoundManager() {
         var _this = this;
         this._requests = [];
@@ -4586,7 +4657,7 @@ function simpleRectangle(target, width, height, color, borderWidth, borderColor)
     //if (!target) target = new PIXI.RenderTexture(Game.instance.renderer, width, height);
     if (!target)
         target = PIXI.RenderTexture.create(width, height);
-    var g = Game_1.default.instance.volatileGraphics;
+    var g = new PIXI.Graphics(); //Game.instance.volatileGraphics;
     g.lineStyle(borderWidth, borderColor, 1);
     g.beginFill(color, 1);
     g.drawRect(borderWidth / 2, borderWidth / 2, width - borderWidth, height - borderWidth);
@@ -4596,17 +4667,12 @@ function simpleRectangle(target, width, height, color, borderWidth, borderColor)
     return target;
 }
 exports.simpleRectangle = simpleRectangle;
-function buttonBackground(width, height, type) {
-    var bgColor = 0x3e3bff;
-    var borderColor = 0x616161;
-}
-exports.buttonBackground = buttonBackground;
 
 },{"../Game":1}],36:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
-var TextureLoader = (function () {
+var TextureLoader = /** @class */ (function () {
     function TextureLoader(sheetName, mapName, callback) {
         this._sheet = null;
         this._map = null;
@@ -4675,7 +4741,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var Battle_1 = require("../battle/Battle");
 var Game_1 = require("../Game");
 var RequestManager_1 = require("../RequestManager");
-var BattleManager = (function () {
+var BattleManager = /** @class */ (function () {
     function BattleManager(user) {
         this.battleData = [];
         this.user = user;
@@ -4751,7 +4817,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var BattleManager_1 = require("./BattleManager");
 var UserUnitManager_1 = require("./UserUnitManager");
 var Utils = require("../util/Util");
-var User = (function () {
+var User = /** @class */ (function () {
     function User() {
         this.loaded = false;
         this.loadedData = null;
@@ -4793,7 +4859,7 @@ exports.default = User;
 },{"../util/Util":47,"./BattleManager":37,"./UserUnitManager":40}],39:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var UserUnit = (function () {
+var UserUnit = /** @class */ (function () {
     function UserUnit() {
         this.id = -1;
         this.name = "?";
@@ -4814,7 +4880,7 @@ exports.default = UserUnit;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var UserUnit_1 = require("./UserUnit");
-var UserUnitManager = (function () {
+var UserUnitManager = /** @class */ (function () {
     function UserUnitManager(user) {
         this.units = [];
         this.unitsById = {};
@@ -4847,7 +4913,7 @@ exports.default = UserUnitManager;
 },{"./UserUnit":39}],41:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var AssetCache = (function () {
+var AssetCache = /** @class */ (function () {
     /**
      * Stores objects by key, and discards the oldest once capacity is reached.
      * TODO: Option to keep the most recently used (move to top when accessed, requires LinkedList)
@@ -4898,7 +4964,7 @@ exports.default = AssetCache;
 },{}],42:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var IDObjectGroup = (function () {
+var IDObjectGroup = /** @class */ (function () {
     /**
      * Provides safe convenience methods for efficiently tracking a group of objects.
      * Uses an Object and an Array. The Array is public for iteration but should NOT be modified.
@@ -4967,7 +5033,7 @@ var isEdge = (function () {
         return true;
     return false;
 })();
-var LogType = (function () {
+var LogType = /** @class */ (function () {
     function LogType(prefix, textColor, bgColor, enabled) {
         if (prefix === void 0) { prefix = ""; }
         if (textColor === void 0) { textColor = "#000"; }
@@ -5024,7 +5090,7 @@ exports.styles = {
     unitID: new PIXI.TextStyle({ fontSize: 14, fontFamily: mainFont, fill: 0xffffff, align: 'left' })
 };
 /** For scaling without interpolation */
-var TextSprite = (function (_super) {
+var TextSprite = /** @class */ (function (_super) {
     __extends(TextSprite, _super);
     function TextSprite(text, style) {
         var _this = _super.call(this) || this;
@@ -5061,7 +5127,7 @@ exports.TextSprite = TextSprite;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
-var Timer = (function () {
+var Timer = /** @class */ (function () {
     function Timer() {
         this._id = -1;
         this._active = true;
@@ -5144,7 +5210,7 @@ exports.default = Timer;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
-var Tween = (function () {
+var Tween = /** @class */ (function () {
     function Tween() {
         this._id = -1;
         this._active = false;
@@ -5192,7 +5258,7 @@ var Tween = (function () {
         this._property = property;
         this._startValue = startValue;
         this._endValue = endValue;
-        this._duration = Math.max(0.0001, duration); //no divide by 0 pls
+        this._duration = duration;
         this._easingFunction = easingFunction;
         this._active = false;
         this._currentTime = 0;
@@ -5204,9 +5270,18 @@ var Tween = (function () {
             console.error("Tween: can't start (not initialized)");
             return;
         }
-        this._active = true;
-        this._target[this._property] = this._startValue;
-        this.setUpdating(true);
+        if (this._duration > 0) {
+            this._active = true;
+            this._target[this._property] = this._startValue;
+            this.setUpdating(true);
+        }
+        else {
+            this._active = false;
+            this._target[this._property] = this._endValue;
+            this.setUpdating(false);
+            if (this.onFinish)
+                this.onFinish();
+        }
     };
     Tween.prototype.stop = function () {
         this._active = true;
@@ -5423,7 +5498,7 @@ exports.isCoordinate = isCoordinate;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Util = require("./Util");
-var Vector2D = (function () {
+var Vector2D = /** @class */ (function () {
     function Vector2D(x, y) {
         if (x === void 0) { x = 0; }
         if (y === void 0) { y = 0; }

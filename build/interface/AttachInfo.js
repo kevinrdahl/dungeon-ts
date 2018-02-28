@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
-var AttachInfo = (function () {
+var AttachInfo = /** @class */ (function () {
     function AttachInfo(from, to, offset) {
         this.from = from;
         this.to = to;

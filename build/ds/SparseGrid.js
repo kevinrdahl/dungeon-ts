@@ -7,7 +7,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
  * but on the off chance some platform is different, use this class instead. Speed will
  * be more or less identical.
  */
-var SparseGrid = (function () {
+var SparseGrid = /** @class */ (function () {
     function SparseGrid(defaultValue) {
         if (defaultValue === void 0) { defaultValue = null; }
         this.rows = {};

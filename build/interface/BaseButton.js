@@ -13,7 +13,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("./InterfaceElement");
 var GameEvent_1 = require("../events/GameEvent");
-var BaseButton = (function (_super) {
+var BaseButton = /** @class */ (function (_super) {
     __extends(BaseButton, _super);
     /**
      * It's a button! Click it!

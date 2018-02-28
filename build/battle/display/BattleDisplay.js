@@ -21,7 +21,7 @@ var Tween_1 = require("../../util/Tween");
 var ElementList_1 = require("../../interface/ElementList");
 var AttachInfo_1 = require("../../interface/AttachInfo");
 var TextElement_1 = require("../../interface/TextElement");
-var BattleDisplay = (function (_super) {
+var BattleDisplay = /** @class */ (function (_super) {
     __extends(BattleDisplay, _super);
     function BattleDisplay() {
         var _this = _super.call(this) || this;
@@ -63,6 +63,23 @@ var BattleDisplay = (function (_super) {
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+    };
+    BattleDisplay.prototype.cleanup = function () {
+        for (var _i = 0, _a = this._unitDisplays; _i < _a.length; _i++) {
+            var unitDisplay = _a[_i];
+            unitDisplay.cleanup();
+        }
+        this._levelDisplay.cleanup();
+        this._unitContainer.destroy({ children: true });
+        if (this.parent)
+            this.parent.removeChild(this);
+        if (this.debugPanel) {
+            this.debugPanel.removeSelf();
+        }
+        Game_1.default.instance.updater.remove(this);
+        this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+        this._battle.removeEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
     };
     BattleDisplay.prototype.setLevelDisplay = function (display) {
         if (this._levelDisplay) {
@@ -241,20 +258,23 @@ var BattleDisplay = (function (_super) {
     BattleDisplay.prototype.showEndGame = function (callback) {
         var winner = this.battle.winner;
         var str = "Player " + winner.id + " wins!";
-        var text = new PIXI.Text(str, TextUtil.styles.unitID);
+        Game_1.default.instance.interfaceRoot.showWarningPopup(str, "Battle Over", callback);
+        /*var text = new PIXI.Text(str, TextUtil.styles.unitID);
+
         this.addChild(text);
-        var width = Game_1.default.instance.stage.width / this.scale.x;
-        var height = Game_1.default.instance.stage.height / this.scale.y;
+        var width = Game.instance.stage.width / this.scale.x;
+        var height = Game.instance.stage.height / this.scale.y;
         var targetX = width / 2 - text.width / 2;
         var targetY = height / 2 - text.height / 2;
+
         text.y = targetY;
-        var tween1 = new Tween_1.default().init(text, "x", -text.height, targetX, 0.5, Tween_1.default.easingFunctions.quartEaseOut);
-        tween1.onFinish = function () {
-            if (text.parent)
-                text.parent.removeChild(text);
+
+        var tween1 = new Tween().init(text, "x", -text.height, targetX, 0.5, Tween.easingFunctions.quartEaseOut);
+        tween1.onFinish = () => {
+            if (text.parent) text.parent.removeChild(text);
             callback();
-        };
-        tween1.start();
+        }
+        tween1.start();*/
     };
     return BattleDisplay;
 }(PIXI.Container));

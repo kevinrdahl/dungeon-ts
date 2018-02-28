@@ -20,7 +20,7 @@ var SparseGrid_1 = require("../ds/SparseGrid");
 var Animation_1 = require("./display/animation/Animation");
 var GameEvent_1 = require("../events/GameEvent");
 var GameEventHandler_1 = require("../events/GameEventHandler");
-var Battle = (function (_super) {
+var Battle = /** @class */ (function (_super) {
     __extends(Battle, _super);
     /**
      * It's a battle!
@@ -87,6 +87,7 @@ var Battle = (function (_super) {
         configurable: true
     });
     Battle.prototype.init = function () {
+        var _this = this;
         if (this.initialized)
             return;
         this.initialized = true;
@@ -113,6 +114,30 @@ var Battle = (function (_super) {
         this.updateAllUnitPathing();
         this.display.updatePathingDisplay();
         this.display.updatePathingHover();
+        Game_1.default.instance.addEventListener(GameEvent_1.default.types.ui.KEY, function (e) {
+            if (e.data == '`') {
+                var playerUnit = _this.currentPlayer.units.list[0];
+                var anim = Animation_1.default.noop();
+                _this.selectUnit(null);
+                for (var _i = 0, _a = _this.players.list; _i < _a.length; _i++) {
+                    var player = _a[_i];
+                    if (player == _this.currentPlayer)
+                        continue;
+                    for (var _b = 0, _c = player.units.list.slice(); _b < _c.length; _b++) {
+                        var unit = _c[_b];
+                        if (!unit.alive)
+                            continue;
+                        unit.kill();
+                        anim.then(Animation_1.default.unitDie(unit));
+                    }
+                }
+                console.log("Oof!");
+                _this.initAnimation();
+                _this.queueAnimation(anim);
+                _this.onUnitAction(playerUnit);
+                _this.beginAnimation();
+            }
+        });
     };
     ////////////////////////////////////////////////////////////
     // Player actions
@@ -247,13 +272,19 @@ var Battle = (function (_super) {
             return;
         this._animating = true;
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONSTART);
+        console.log("Start animation");
         this.animationSequence.start(function () {
+            console.log("Animation complete");
             _this.onAnimationComplete();
         });
     };
     Battle.prototype.onAnimationComplete = function () {
         this._animating = false;
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE);
+        if (this.ended) {
+            console.log("To the menu!");
+            Game_1.default.instance.gotoMainMenu();
+        }
     };
     Battle.prototype.queueAnimation = function (animation) {
         if (this.animationSequence == null) {
@@ -312,7 +343,7 @@ var Battle = (function (_super) {
                     callback();
                 }
             };
-            var anim = new Animation_1.default(action);
+            var anim = new Animation_1.default(action, null, -1);
             this.queueAnimation(anim);
         }
     };
@@ -417,7 +448,7 @@ var Battle = (function (_super) {
         }
     };
     ////////////////////////////////////////////////////////////
-    // Init
+    // Init and Cleanup
     ////////////////////////////////////////////////////////////
     Battle.prototype.initLevel = function () {
         this.level = new Level_1.default();

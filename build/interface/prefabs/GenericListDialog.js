@@ -19,7 +19,7 @@ var TextField_1 = require("../TextField");
 var GameEvent_1 = require("../../events/GameEvent");
 var TextFieldListManager_1 = require("./TextFieldListManager");
 var TextButton_1 = require("../TextButton");
-var GenericListDialog = (function (_super) {
+var GenericListDialog = /** @class */ (function (_super) {
     __extends(GenericListDialog, _super);
     function GenericListDialog(width, borderPadding) {
         if (width === void 0) { width = 300; }
@@ -142,9 +142,12 @@ var GenericListDialog = (function (_super) {
         this.addMessage(label);
         this.addTextField(name, alphabet, hidden, defaultStr, validator, padding);
     };
-    GenericListDialog.prototype.addButtons = function (infos, padding) {
+    GenericListDialog.prototype.addButtons = function (infos, padding, vertical) {
         if (padding === void 0) { padding = 0; }
-        var buttonContainer = new ElementList_1.default(30, ElementList_1.default.HORIZONTAL, 10, ElementList_1.default.CENTRE);
+        if (vertical === void 0) { vertical = false; }
+        var orientation = vertical ? ElementList_1.default.VERTICAL : ElementList_1.default.HORIZONTAL;
+        var width = vertical ? 100 : 30;
+        var buttonContainer = new ElementList_1.default(width, ElementList_1.default.HORIZONTAL, 10, ElementList_1.default.CENTRE);
         for (var _i = 0, infos_1 = infos; _i < infos_1.length; _i++) {
             var info = infos_1[_i];
             var colorScheme = info.colorScheme;

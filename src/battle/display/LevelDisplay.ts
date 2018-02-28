@@ -23,6 +23,10 @@ export default class LevelDisplay extends PIXI.Container {
 		if (!this.routeGraphics.parent) this.addChild(this.routeGraphics);
 	}
 
+	public cleanup() {
+		this.destroy({children:true});
+	}
+
 	public showPathing(tiles:SparseGrid<any>, color:number = 0x0000ff, alpha:number = 0.3) {
 		this.pathingGraphics.beginFill(color, alpha);
 

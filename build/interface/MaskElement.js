@@ -11,7 +11,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("./InterfaceElement");
-var MaskElement = (function (_super) {
+var MaskElement = /** @class */ (function (_super) {
     __extends(MaskElement, _super);
     function MaskElement(width, height) {
         var _this = _super.call(this) || this;

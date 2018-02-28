@@ -1,7 +1,7 @@
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
-var TextureLoader = (function () {
+var TextureLoader = /** @class */ (function () {
     function TextureLoader(sheetName, mapName, callback) {
         this._sheet = null;
         this._map = null;

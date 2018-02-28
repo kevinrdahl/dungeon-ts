@@ -128,12 +128,13 @@ export default class UnitDisplay extends PIXI.Container {
 		this.updateState();
 	}
 
-	public cleanUp() {
+	public cleanup() {
 		if (this.parent) {
 			this.parent.removeChild(this);
 		}
 
 		this.removeListeners();
+		this.destroy({children:true});
 	}
 
 	public onClick() {

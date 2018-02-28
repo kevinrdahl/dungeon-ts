@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var UnitDisplay_1 = require("./display/UnitDisplay");
 var BinaryHeap_1 = require("../ds/BinaryHeap");
 var SparseGrid_1 = require("../ds/SparseGrid");
-var PathingNode = (function () {
+var PathingNode = /** @class */ (function () {
     function PathingNode() {
         this.cost = Number.POSITIVE_INFINITY;
         this.hCost = 0;
@@ -27,7 +27,7 @@ var PathingNode = (function () {
     };
     return PathingNode;
 }());
-var Unit = (function () {
+var Unit = /** @class */ (function () {
     function Unit() {
         this.player = null;
         this.battle = null;
@@ -386,7 +386,7 @@ var Unit = (function () {
     };
     Unit.prototype.initDisplay = function () {
         if (this.display) {
-            this.display.cleanUp();
+            this.display.cleanup();
         }
         this.display = new UnitDisplay_1.default();
         this.display.initUnit(this);
