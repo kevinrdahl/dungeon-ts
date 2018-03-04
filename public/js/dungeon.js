@@ -205,10 +205,14 @@ var Game = /** @class */ (function (_super) {
         battle.init();
     };
     Game.prototype.initMainMenu = function () {
+<<<<<<< HEAD
         //this.interfaceRoot.showStatusPopup("This is the main menu!");
         var mainMenu = new MainMenu_1.default();
         this.interfaceRoot.addDialog(mainMenu);
         mainMenu.init();
+=======
+        this.interfaceRoot.showStatusPopup("This is the main menu!");
+>>>>>>> 7177c463b9c77758e690990ca984ecd6fe4625a3
     };
     Game.prototype.setCurrentBattle = function (battle) {
         this._currentBattle = battle;
