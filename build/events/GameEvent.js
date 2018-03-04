@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var GameEvent = (function () {
+var GameEvent = /** @class */ (function () {
     /**
      * Get instances via the static getInstance.
      */

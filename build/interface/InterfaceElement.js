@@ -16,7 +16,7 @@ var ResizeInfo_1 = require("./ResizeInfo");
 var InputManager_1 = require("./InputManager");
 var Game_1 = require("../Game");
 var GameEventHandler_1 = require("../events/GameEventHandler");
-var InterfaceElement = (function (_super) {
+var InterfaceElement = /** @class */ (function (_super) {
     __extends(InterfaceElement, _super);
     /**
      * Base class for anything in the UI. Has a parent and can have children, like DOM elements.
@@ -137,6 +137,9 @@ var InterfaceElement = (function (_super) {
         enumerable: true,
         configurable: true
     });
+    InterfaceElement.prototype.getBounds = function () {
+        return new PIXI.Rectangle(this.x, this.y, this.width, this.height);
+    };
     InterfaceElement.prototype.getElementAtPoint = function (point) {
         var element = null;
         var checkChildren = this.isRoot;
@@ -293,6 +296,7 @@ var InterfaceElement = (function (_super) {
             this.removeSelf(false); //no need to recurse from there, since this already does so
         }
         //base class has no PIXI stuff to destroy (right?)
+        this.displayObject.destroy();
     };
     InterfaceElement.prototype.removeChild = function (child, recurse) {
         if (recurse === void 0) { recurse = false; }

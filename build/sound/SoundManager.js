@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var SoundLoadRequest = (function () {
+var SoundLoadRequest = /** @class */ (function () {
     function SoundLoadRequest(name, list, onComplete, onProgress) {
         if (onProgress === void 0) { onProgress = null; }
         this.name = name;
@@ -10,7 +10,7 @@ var SoundLoadRequest = (function () {
     }
     return SoundLoadRequest;
 }());
-var SoundManager = (function () {
+var SoundManager = /** @class */ (function () {
     function SoundManager() {
         var _this = this;
         this._requests = [];

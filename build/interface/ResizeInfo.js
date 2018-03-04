@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
 var AssetCache_1 = require("../util/AssetCache");
-var ResizeInfo = (function () {
+var ResizeInfo = /** @class */ (function () {
     function ResizeInfo(fill, padding) {
         this.fill = fill;
         this.padding = padding;

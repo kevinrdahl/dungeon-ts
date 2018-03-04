@@ -37,10 +37,12 @@ export default class ElementList extends InterfaceElement {
 		}
 	}
 
+	/** When adding multiple elements at once, call this first to prevent wasteful rearranging */
 	public beginBatchChange() {
 		this._inBatchChange = true;
 	}
 
+	/** Call after adding elements following beginBatchChange() */
 	public endBatchChange() {
 		if (!this._inBatchChange) {
 			return;

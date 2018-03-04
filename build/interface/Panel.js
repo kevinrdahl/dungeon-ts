@@ -14,7 +14,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("./InterfaceElement");
 //import TextureGenerator = require('../textures/TextureGenerator');
 var TextureGenerator = require("../textures/TextureGenerator");
-var Panel = (function (_super) {
+var Panel = /** @class */ (function (_super) {
     __extends(Panel, _super);
     function Panel(width, height, style) {
         var _this = _super.call(this) || this;

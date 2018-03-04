@@ -222,6 +222,8 @@ export default class InputManager {
 			this._focusElement.sendNewEvent(GameEvent.types.ui.KEY, e.key);
 		}
 
+		Game.instance.sendNewEvent(GameEvent.types.ui.KEY, e.key);
+
 		if (preventedKeys.indexOf(e.which) != -1) {
 			e.preventDefault();
 		}

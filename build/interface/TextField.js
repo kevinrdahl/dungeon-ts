@@ -18,7 +18,7 @@ var TextElement_1 = require("./TextElement");
 var MaskElement_1 = require("./MaskElement");
 var AttachInfo_1 = require("./AttachInfo");
 var GameEvent_1 = require("../events/GameEvent");
-var TextField = (function (_super) {
+var TextField = /** @class */ (function (_super) {
     __extends(TextField, _super);
     /**
      * Allows the user to input text.

@@ -16,7 +16,7 @@ var TextUtil = require("../../util/TextUtil");
 var Globals_1 = require("../../Globals");
 var Tween_1 = require("../../util/Tween");
 var GameEvent_1 = require("../../events/GameEvent");
-var TracePathInfo = (function () {
+var TracePathInfo = /** @class */ (function () {
     function TracePathInfo() {
         this.timeElapsed = 0;
         this.duration = 0;
@@ -24,7 +24,7 @@ var TracePathInfo = (function () {
     }
     return TracePathInfo;
 }());
-var UnitDisplay = (function (_super) {
+var UnitDisplay = /** @class */ (function (_super) {
     __extends(UnitDisplay, _super);
     function UnitDisplay() {
         var _this = _super.call(this) || this;
@@ -137,11 +137,12 @@ var UnitDisplay = (function (_super) {
     UnitDisplay.prototype.updateActions = function () {
         this.updateState();
     };
-    UnitDisplay.prototype.cleanUp = function () {
+    UnitDisplay.prototype.cleanup = function () {
         if (this.parent) {
             this.parent.removeChild(this);
         }
         this.removeListeners();
+        this.destroy({ children: true });
     };
     UnitDisplay.prototype.onClick = function () {
         this.unit.select();
