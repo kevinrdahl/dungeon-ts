@@ -4,7 +4,7 @@ import Game from '../Game';
 export function simpleRectangle(target:PIXI.RenderTexture, width:number, height:number, color:number, borderWidth:number=0, borderColor:number=0):PIXI.RenderTexture {
 	//if (!target) target = new PIXI.RenderTexture(Game.instance.renderer, width, height);
 	if (!target) target = PIXI.RenderTexture.create(width, height);
-	var g:PIXI.Graphics = Game.instance.volatileGraphics;
+	var g:PIXI.Graphics = new PIXI.Graphics();//Game.instance.volatileGraphics;
 
 	g.lineStyle(borderWidth, borderColor, 1);
 	g.beginFill(color, 1);
@@ -15,9 +15,4 @@ export function simpleRectangle(target:PIXI.RenderTexture, width:number, height:
 	Game.instance.renderer.render(g, target);
 
 	return target;
-}
-
-export function buttonBackground(width:number, height:number, type:number) {
-	var bgColor:number = 0x3e3bff;
-	var borderColor:number = 0x616161
 }

@@ -2,6 +2,7 @@
 
 import InterfaceElement from './InterfaceElement';
 import GameEvent from '../events/GameEvent';
+import Game from '../Game';
 
 export default class BaseButton extends InterfaceElement {
 

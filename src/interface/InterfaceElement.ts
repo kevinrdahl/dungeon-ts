@@ -84,6 +84,10 @@ export default class InterfaceElement extends GameEventHandler {
 	set visible(v:boolean) { this._displayObject.visible = v; }
 	set maskSprite(m:PIXI.Sprite|PIXI.Graphics) { this._displayObject.mask = m; }
 
+	public getBounds():PIXI.Rectangle {
+		return new PIXI.Rectangle(this.x, this.y, this.width, this.height);
+	}
+	
 	public getElementAtPoint(point:Vector2D):InterfaceElement {
 		var element:InterfaceElement = null;
 		var checkChildren:boolean = this.isRoot;
@@ -261,6 +265,7 @@ export default class InterfaceElement extends GameEventHandler {
 		}
 
 		//base class has no PIXI stuff to destroy (right?)
+		this.displayObject.destroy();
 	}
 
 	public removeChild(child:InterfaceElement, recurse:boolean = false) {

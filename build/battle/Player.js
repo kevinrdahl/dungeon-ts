@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var IDObjectGroup_1 = require("../util/IDObjectGroup");
-var Player = (function () {
+var Player = /** @class */ (function () {
     function Player() {
         this.battle = null;
         this.units = new IDObjectGroup_1.default();

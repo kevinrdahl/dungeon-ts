@@ -11,7 +11,7 @@ import TextFieldListManager from './TextFieldListManager';
 import TextButton from '../TextButton';
 
 /**
- * Defines a TextButton to be added
+ * Defines a TextButton to be added.
  * If colorScheme is falsey, the button will be blue
  */
 export interface ButtonInfo {
@@ -150,8 +150,10 @@ export default class GenericListDialog extends InterfaceElement {
 		this.addTextField(name, alphabet, hidden, defaultStr, validator, padding);
 	}
 
-	public addButtons(infos: Array<ButtonInfo>, padding: number = 0) {
-		var buttonContainer: ElementList = new ElementList(30, ElementList.HORIZONTAL, 10, ElementList.CENTRE);
+	public addButtons(infos: Array<ButtonInfo>, padding: number = 0, vertical:boolean = false) {
+		var orientation = vertical ? ElementList.VERTICAL : ElementList.HORIZONTAL;
+		var width = vertical ? 100 : 30;
+		var buttonContainer: ElementList = new ElementList(width, ElementList.HORIZONTAL, 10, ElementList.CENTRE);
 
 		for (var info of infos) {
 			var colorScheme = info.colorScheme;

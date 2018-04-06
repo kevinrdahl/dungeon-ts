@@ -419,7 +419,7 @@ export default class Unit {
 
 	private initDisplay() {
 		if (this.display) {
-			this.display.cleanUp();
+			this.display.cleanup();
 		}
 
 		this.display = new UnitDisplay();

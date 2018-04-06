@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
-var Timer = (function () {
+var Timer = /** @class */ (function () {
     function Timer() {
         this._id = -1;
         this._active = true;

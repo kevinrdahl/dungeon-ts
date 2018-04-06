@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Log = require("./util/Log");
 var Game_1 = require("./Game");
-var RequestManager = (function () {
+var RequestManager = /** @class */ (function () {
     function RequestManager(baseUrl) {
         if (baseUrl === void 0) { baseUrl = null; }
         this.baseUrl = "http://mightnot.work/dungeon/request";

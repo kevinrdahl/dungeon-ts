@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var Battle_1 = require("../battle/Battle");
 var Game_1 = require("../Game");
 var RequestManager_1 = require("../RequestManager");
-var BattleManager = (function () {
+var BattleManager = /** @class */ (function () {
     function BattleManager(user) {
         this.battleData = [];
         this.user = user;

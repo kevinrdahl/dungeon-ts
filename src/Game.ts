@@ -34,10 +34,11 @@ import * as Log from './util/Log';
 import Updater from './Updater';
 import Vector2D from './util/Vector2D';
 import RequestManager from './RequestManager';
+import MainMenu from './interface/prefabs/mainmenu/MainMenu';
 
 export default class Game extends GameEventHandler {
 	public static instance: Game = null;
-	public static useDebugGraphics: boolean = false;
+	public static useDebugGraphics: boolean = true;
 
 	/*=== PUBLIC ===*/
 	public stage: PIXI.Container = null;
@@ -53,7 +54,7 @@ export default class Game extends GameEventHandler {
 	public user:User = new User();
 	public staticUrl = "";
 
-	get volatileGraphics(): PIXI.Graphics { this._volatileGraphics.clear(); return this._volatileGraphics }
+	get volatileGraphics(): PIXI.Graphics { return this._volatileGraphics.clear(); }
 	get currentBattle():Battle { return this._currentBattle; }
 
 	/*=== PRIVATE ===*/
@@ -232,8 +233,25 @@ export default class Game extends GameEventHandler {
 		battle.init();
 	}
 
+	private initMainMenu() {
+		//this.interfaceRoot.showStatusPopup("This is the main menu!");
+		var mainMenu = new MainMenu();
+		this.interfaceRoot.addDialog(mainMenu);
+		mainMenu.init();
+	}
+
 	public setCurrentBattle(battle:Battle) {
 		this._currentBattle = battle;
+	}
+
+	public gotoMainMenu() {
+		var battle = this._currentBattle;
+		if (battle) {
+			if (battle.display) battle.display.cleanup();
+			this._currentBattle = null;
+		}
+
+		this.initMainMenu();
 	}
 
 	private loadUser(name:string, password:string) {

@@ -9,7 +9,7 @@ var ColorUtil = require("../util/ColorUtil");
  * NOTE: Most of the actual work is done in public/js/mmoo-worker.js, and due to
  * some funky TypeScript nonsense it must be written there.
  */
-var TextureWorker = (function () {
+var TextureWorker = /** @class */ (function () {
     function TextureWorker(scriptURL) {
         var _this = this;
         this._requestNumber = 0;

@@ -12,7 +12,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var InterfaceElement_1 = require("./InterfaceElement");
-var ElementList = (function (_super) {
+var ElementList = /** @class */ (function (_super) {
     __extends(ElementList, _super);
     function ElementList(width, orientation, padding, align) {
         if (orientation === void 0) { orientation = ElementList.VERTICAL; }
@@ -35,9 +35,11 @@ var ElementList = (function (_super) {
         }
         return _this;
     }
+    /** When adding multiple elements at once, call this first to prevent wasteful rearranging */
     ElementList.prototype.beginBatchChange = function () {
         this._inBatchChange = true;
     };
+    /** Call after adding elements following beginBatchChange() */
     ElementList.prototype.endBatchChange = function () {
         if (!this._inBatchChange) {
             return;

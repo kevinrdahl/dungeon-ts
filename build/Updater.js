@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Updater = (function () {
+var Updater = /** @class */ (function () {
     function Updater() {
         this.objects = [];
         this.objectsToAdd = [];

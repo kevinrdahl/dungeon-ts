@@ -13,7 +13,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals_1 = require("../../Globals");
 var Game_1 = require("../../Game");
-var LevelDisplay = (function (_super) {
+var LevelDisplay = /** @class */ (function (_super) {
     __extends(LevelDisplay, _super);
     function LevelDisplay() {
         var _this = _super.call(this) || this;
@@ -30,6 +30,9 @@ var LevelDisplay = (function (_super) {
             this.addChild(this.pathingGraphics);
         if (!this.routeGraphics.parent)
             this.addChild(this.routeGraphics);
+    };
+    LevelDisplay.prototype.cleanup = function () {
+        this.destroy({ children: true });
     };
     LevelDisplay.prototype.showPathing = function (tiles, color, alpha) {
         if (color === void 0) { color = 0x0000ff; }

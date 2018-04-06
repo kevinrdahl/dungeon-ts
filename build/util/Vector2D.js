@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Util = require("./Util");
-var Vector2D = (function () {
+var Vector2D = /** @class */ (function () {
     function Vector2D(x, y) {
         if (x === void 0) { x = 0; }
         if (y === void 0) { y = 0; }

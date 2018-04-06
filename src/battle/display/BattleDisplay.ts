@@ -44,6 +44,25 @@ export default class BattleDisplay extends PIXI.Container {
 		battle.addEventListener(GameEvent.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
 	}
 
+	public cleanup() {
+		for (var unitDisplay of this._unitDisplays) {
+			unitDisplay.cleanup();
+		}
+		this._levelDisplay.cleanup();
+		this._unitContainer.destroy({children:true});
+
+		if (this.parent) this.parent.removeChild(this);
+
+		if (this.debugPanel) {
+			this.debugPanel.removeSelf();
+		}
+
+		Game.instance.updater.remove(this);
+		this._battle.removeEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
+		this._battle.removeEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+		this._battle.removeEventListener(GameEvent.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+	}
+
 	public setLevelDisplay(display:LevelDisplay) {
 		if (this._levelDisplay) {
 			//dispose of it somehow
@@ -248,7 +267,10 @@ export default class BattleDisplay extends PIXI.Container {
 	public showEndGame(callback:()=>void) {
 		var winner = this.battle.winner;
 		var str = "Player " + winner.id + " wins!";
-		var text = new PIXI.Text(str, TextUtil.styles.unitID);
+
+		Game.instance.interfaceRoot.showWarningPopup(str, "Battle Over", callback);
+
+		/*var text = new PIXI.Text(str, TextUtil.styles.unitID);
 
 		this.addChild(text);
 		var width = Game.instance.stage.width / this.scale.x;
@@ -263,7 +285,7 @@ export default class BattleDisplay extends PIXI.Container {
 			if (text.parent) text.parent.removeChild(text);
 			callback();
 		}
-		tween1.start();
+		tween1.start();*/
 	}
 
 	private onAnimation = (e:GameEvent) => {

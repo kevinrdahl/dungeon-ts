@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var UserUnit_1 = require("./UserUnit");
-var UserUnitManager = (function () {
+var UserUnitManager = /** @class */ (function () {
     function UserUnitManager(user) {
         this.units = [];
         this.unitsById = {};

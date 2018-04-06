@@ -15,7 +15,7 @@ var GenericListDialog_1 = require("./GenericListDialog");
 var TextButton_1 = require("../TextButton");
 var InputManager_1 = require("../InputManager");
 var AttachInfo_1 = require("../AttachInfo");
-var InterfaceRoot = (function (_super) {
+var InterfaceRoot = /** @class */ (function (_super) {
     __extends(InterfaceRoot, _super);
     function InterfaceRoot(container) {
         var _this = _super.call(this) || this;
@@ -77,7 +77,7 @@ var InterfaceRoot = (function (_super) {
             dialog.addMediumTitle(title, 0);
         dialog.addMessage(message, 5);
         dialog.addButtons([
-            { text: "Close", colorScheme: TextButton_1.default.colorSchemes.red, onClick: function (e) {
+            { text: "Close", colorScheme: TextButton_1.default.colorSchemes.blue, onClick: function (e) {
                     dialog.removeSelf();
                     if (onClose) {
                         onClose();

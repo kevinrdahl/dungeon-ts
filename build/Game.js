@@ -33,7 +33,11 @@ var Battle_1 = require("./battle/Battle");
 var Log = require("./util/Log");
 var Updater_1 = require("./Updater");
 var RequestManager_1 = require("./RequestManager");
-var Game = (function (_super) {
+<<<<<<< HEAD
+var MainMenu_1 = require("./interface/prefabs/mainmenu/MainMenu");
+=======
+>>>>>>> 7177c463b9c77758e690990ca984ecd6fe4625a3
+var Game = /** @class */ (function (_super) {
     __extends(Game, _super);
     function Game(viewDiv) {
         var _this = _super.call(this) || this;
@@ -65,7 +69,7 @@ var Game = (function (_super) {
         return _this;
     }
     Object.defineProperty(Game.prototype, "volatileGraphics", {
-        get: function () { this._volatileGraphics.clear(); return this._volatileGraphics; },
+        get: function () { return this._volatileGraphics.clear(); },
         enumerable: true,
         configurable: true
     });
@@ -203,8 +207,27 @@ var Game = (function (_super) {
         this._currentBattle = battle;
         battle.init();
     };
+    Game.prototype.initMainMenu = function () {
+<<<<<<< HEAD
+        //this.interfaceRoot.showStatusPopup("This is the main menu!");
+        var mainMenu = new MainMenu_1.default();
+        this.interfaceRoot.addDialog(mainMenu);
+        mainMenu.init();
+=======
+        this.interfaceRoot.showStatusPopup("This is the main menu!");
+>>>>>>> 7177c463b9c77758e690990ca984ecd6fe4625a3
+    };
     Game.prototype.setCurrentBattle = function (battle) {
         this._currentBattle = battle;
+    };
+    Game.prototype.gotoMainMenu = function () {
+        var battle = this._currentBattle;
+        if (battle) {
+            if (battle.display)
+                battle.display.cleanup();
+            this._currentBattle = null;
+        }
+        this.initMainMenu();
     };
     Game.prototype.loadUser = function (name, password) {
         var _this = this;
@@ -220,7 +243,7 @@ var Game = (function (_super) {
         });
     };
     Game.instance = null;
-    Game.useDebugGraphics = false;
+    Game.useDebugGraphics = true;
     return Game;
 }(GameEventHandler_1.default));
 exports.default = Game;

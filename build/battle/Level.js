@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
 var LevelDisplay_1 = require("./display/LevelDisplay");
-var Level = (function () {
+var Level = /** @class */ (function () {
     function Level() {
         this.tiles = [];
         this.width = 0;

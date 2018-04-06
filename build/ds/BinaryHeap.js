@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
  * Shamelessly copied from:
  * https://github.com/yckart/BinaryHeap/blob/master/index.js
  */
-var BinaryHeap = (function () {
+var BinaryHeap = /** @class */ (function () {
     function BinaryHeap(scoreFunc, content) {
         if (scoreFunc === void 0) { scoreFunc = null; }
         if (content === void 0) { content = null; }

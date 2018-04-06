@@ -81,6 +81,30 @@ export default class Battle extends GameEventHandler {
 		this.updateAllUnitPathing();
 		this.display.updatePathingDisplay();
 		this.display.updatePathingHover();
+
+		Game.instance.addEventListener(GameEvent.types.ui.KEY, (e:GameEvent) => {
+			if (e.data == '`') {
+				var playerUnit = this.currentPlayer.units.list[0];
+				var anim = Animation.noop();
+
+				this.selectUnit(null);
+
+				for (var player of this.players.list) {
+					if (player == this.currentPlayer) continue;
+					for (var unit of player.units.list.slice()) {
+						if (!unit.alive) continue;
+						unit.kill();
+						anim.then(Animation.unitDie(unit));
+					}
+				}
+
+				console.log("Oof!");
+				this.initAnimation();
+				this.queueAnimation(anim);
+				this.onUnitAction(playerUnit);
+				this.beginAnimation();
+			}
+		});
 	}
 
 	////////////////////////////////////////////////////////////
@@ -235,7 +259,9 @@ export default class Battle extends GameEventHandler {
 
 		this._animating = true;
 		this.sendNewEvent(GameEvent.types.battle.ANIMATIONSTART)
+		console.log("Start animation");
 		this.animationSequence.start(() => {
+			console.log("Animation complete");
 			this.onAnimationComplete();
 		});
 	}
@@ -243,6 +269,11 @@ export default class Battle extends GameEventHandler {
 	private onAnimationComplete() {
 		this._animating = false;
 		this.sendNewEvent(GameEvent.types.battle.ANIMATIONCOMPLETE);
+
+		if (this.ended) {
+			console.log("To the menu!");
+			Game.instance.gotoMainMenu();
+		}
 	}
 
 	private queueAnimation(animation:Animation) {
@@ -308,7 +339,7 @@ export default class Battle extends GameEventHandler {
 					callback();
 				}
 			}
-			var anim = new Animation(action);
+			var anim = new Animation(action, null, -1);
 			this.queueAnimation(anim);
 		}
 	}
@@ -433,7 +464,7 @@ export default class Battle extends GameEventHandler {
 	}
 
 	////////////////////////////////////////////////////////////
-	// Init
+	// Init and Cleanup
 	////////////////////////////////////////////////////////////
 
 	private initLevel() {

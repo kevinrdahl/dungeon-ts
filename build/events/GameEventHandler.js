@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("./GameEvent");
-var GameEventHandler = (function () {
+var GameEventHandler = /** @class */ (function () {
     function GameEventHandler() {
         this._listenersByType = {};
     }
