@@ -5,7 +5,7 @@ import User from './user/User';
 import Game from './Game';
 
 export default class RequestManager {
-    public baseUrl = "http://localhost:8000/dungeon";
+    public baseUrl = "http://mightnot.work/dungeon/request";
     public static instance:RequestManager = new RequestManager();
     private requestQueue:Array<any> = [];
     private requestActive = false;

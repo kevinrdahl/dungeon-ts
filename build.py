@@ -5,9 +5,9 @@ import subprocess
 
 shellCommands = [
 	'tsc --alwaysStrict --noImplicitThis',
-	'browserify build/Main.js -o public/js/dungeon.js',
-	'rm -rf ../py3env/dungeon-django/dungeon/static/dungeon/play',
-	'cp -rf public ../py3env/dungeon-django/dungeon/static/dungeon/play'
+	'browserify build/Main.js -o public/js/dungeon.js'#,
+	#'rm -rf ../py3env/dungeon-django/dungeon/static/dungeon/play',
+	#'cp -rf public ../py3env/dungeon-django/dungeon/static/dungeon/play'
 ]
 
 startTime = time.time()

@@ -1,4 +1,4 @@
-export default class UserUnit {
+export default class Hero {
     public id:number = -1;
     public name:string = "?";
     public level:number = 1;

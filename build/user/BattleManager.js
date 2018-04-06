@@ -47,15 +47,15 @@ var BattleManager = (function () {
      *
      * @param dungeonId
      * @param floor
-     * @param units The units to be sent
+     * @param heroes The heroes to be sent
      */
-    BattleManager.prototype.startBattle = function (dungeonId, floor, units) {
+    BattleManager.prototype.startBattle = function (dungeonId, floor, heroes) {
         var _this = this;
-        var unitIds = units.map(function (u) { return u.id; });
+        var heroIds = heroes.map(function (u) { return u.id; });
         RequestManager_1.default.instance.makeUserRequest("start_battle", {
             "dungeon_id": dungeonId,
             "floor": floor,
-            "unit_ids": unitIds
+            "hero_ids": heroIds
         }, function (data) { _this.onStartBattle(data); });
     };
     BattleManager.prototype.onStartBattle = function (data) {

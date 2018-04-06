@@ -46,7 +46,7 @@ var Game = (function (_super) {
         //public textureWorker: TextureWorker;
         _this.updater = new Updater_1.default();
         _this.user = new User_1.default();
-        _this.staticUrl = "http://localhost:8000/static/dungeon/play";
+        _this.staticUrl = "";
         /*=== PRIVATE ===*/
         _this._volatileGraphics = new PIXI.Graphics(); //to be used when drawing to a RenderTexture
         _this._documentResized = true;
@@ -157,6 +157,7 @@ var Game = (function (_super) {
         loadingText.attachToParent(AttachInfo_1.default.Center);
         var texUrl = this.staticUrl + "/textureMap2.png";
         var mapUrl = this.staticUrl + "/textureMap2.json";
+        console.log("Load textures: " + texUrl + ", " + mapUrl);
         this.textureLoader = new TextureLoader_1.default(texUrl, mapUrl, function () { return _this.onTexturesLoaded(); });
     };
     Game.prototype.onTexturesLoaded = function () {
@@ -184,7 +185,7 @@ var Game = (function (_super) {
             console.log("Sounds loaded!");
             //SoundManager.instance.playMusic("music/fortress");
             this.removeLoadingText();
-            this.loadUser("abc", "abcdefgh");
+            this.loadUser("aaa", "aaa");
         }
     };
     Game.prototype.onSoundsLoadedProgress = function (which, progress) {
@@ -207,7 +208,7 @@ var Game = (function (_super) {
     };
     Game.prototype.loadUser = function (name, password) {
         var _this = this;
-        RequestManager_1.default.instance.makeRequest("login", { name: name, password: password }, function (data) {
+        RequestManager_1.default.instance.makeRequest("login", { username: name, password: password }, function (data) {
             if (data) {
                 _this.user.load(data.data);
                 _this.user.startGame();

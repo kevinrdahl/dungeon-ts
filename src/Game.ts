@@ -51,7 +51,7 @@ export default class Game extends GameEventHandler {
 	//public textureWorker: TextureWorker;
 	public updater: Updater = new Updater();
 	public user:User = new User();
-	public staticUrl = "http://localhost:8000/static/dungeon/play";
+	public staticUrl = "";
 
 	get volatileGraphics(): PIXI.Graphics { this._volatileGraphics.clear(); return this._volatileGraphics }
 	get currentBattle():Battle { return this._currentBattle; }
@@ -176,6 +176,8 @@ export default class Game extends GameEventHandler {
 
 		var texUrl = this.staticUrl + "/textureMap2.png";
 		var mapUrl = this.staticUrl + "/textureMap2.json";
+
+		console.log("Load textures: " + texUrl + ", " + mapUrl);
 		this.textureLoader = new TextureLoader(texUrl, mapUrl, () => this.onTexturesLoaded());
 	}
 
@@ -207,7 +209,7 @@ export default class Game extends GameEventHandler {
 			console.log("Sounds loaded!");
 			//SoundManager.instance.playMusic("music/fortress");
 			this.removeLoadingText();
-			this.loadUser("abc", "abcdefgh");
+			this.loadUser("aaa", "aaa");
 		}
 	}
 
@@ -235,7 +237,7 @@ export default class Game extends GameEventHandler {
 	}
 
 	private loadUser(name:string, password:string) {
-		RequestManager.instance.makeRequest("login", {name:name, password:password},(data) => {
+		RequestManager.instance.makeRequest("login", {username:name, password:password},(data) => {
 			if (data) {
 				this.user.load(data.data);
 				this.user.startGame();

@@ -6,7 +6,7 @@ var Game_1 = require("./Game");
 var RequestManager = (function () {
     function RequestManager(baseUrl) {
         if (baseUrl === void 0) { baseUrl = null; }
-        this.baseUrl = "http://localhost:8000/dungeon";
+        this.baseUrl = "http://mightnot.work/dungeon/request";
         this.requestQueue = [];
         this.requestActive = false;
         if (RequestManager.instance === null) {

@@ -1,5 +1,5 @@
 import BattleManager from './BattleManager';
-import UserUnitManager from './UserUnitManager';
+import HeroManager from './HeroManager';
 import * as Utils from '../util/Util';
 
 export default class User {
@@ -12,7 +12,7 @@ export default class User {
     public stats;
 
     //managers
-    public unitManager:UserUnitManager = new UserUnitManager(this);
+    public heroManager:HeroManager = new HeroManager(this);
     public battleManager:BattleManager = new BattleManager(this);
 
     constructor() {
@@ -22,14 +22,14 @@ export default class User {
     public load(data) {
         //probably take this out eventually
         this.loadedData = data;
-        
+
         console.log("User: load");
-        this.userId = data.user.id;
-        this.name = data.user.name;
-        this.stats = data.user.stats;
+        this.userId = data.id;
+        this.name = data.name;
+        this.stats = data.stats;
         this.token = data.token;
 
-        this.unitManager.load(data);
+        this.heroManager.load(data);
         this.battleManager.load(data);
 
         //...
@@ -44,9 +44,9 @@ export default class User {
             this.battleManager.startActiveBattle();
         } else {
             console.log("Start a new battle")
-            //choose up to 4 random units
-            var units = Utils.pickRandomSet(this.unitManager.units, 4);
-            this.battleManager.startBattle(1, 1, units);
+            //choose up to 4 random heroes
+            var heroes = Utils.pickRandomSet(this.heroManager.heroes, 4);
+            this.battleManager.startBattle(1, 1, heroes);
         }
     }
 }

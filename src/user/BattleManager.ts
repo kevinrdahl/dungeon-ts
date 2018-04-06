@@ -1,13 +1,13 @@
 import User from "./User";
 import Battle from "../battle/Battle";
 import Game from "../Game";
-import UserUnit from "./UserUnit";
+import Hero from "./Hero";
 import RequestManager from "../RequestManager";
 
 export default class BattleManager {
     public user:User;
     public battleData = [];
-    
+
     get currentBattle():Battle { return Game.instance.currentBattle; }
 
     //I'm not actually sure yet what all of these are supposed to mean
@@ -52,23 +52,23 @@ export default class BattleManager {
     }
 
     /**
-     * 
-     * @param dungeonId 
-     * @param floor 
-     * @param units The units to be sent
+     *
+     * @param dungeonId
+     * @param floor
+     * @param heroes The heroes to be sent
      */
-    public startBattle(dungeonId:number, floor:number, units:UserUnit[]) {
-        var unitIds:number[] = units.map((u:UserUnit) => u.id);
+    public startBattle(dungeonId:number, floor:number, heroes:Hero[]) {
+        var heroIds:number[] = heroes.map((u:Hero) => u.id);
         RequestManager.instance.makeUserRequest("start_battle", {
             "dungeon_id": dungeonId,
             "floor": floor,
-            "unit_ids": unitIds
+            "hero_ids": heroIds
         }, (data) => { this.onStartBattle(data) });
     }
 
     private onStartBattle(data) {
         var battle = new Battle(true);
         Game.instance.setCurrentBattle(battle);
-        battle.init();        
+        battle.init();
     }
 }

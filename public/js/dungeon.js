@@ -47,7 +47,7 @@ var Game = (function (_super) {
         //public textureWorker: TextureWorker;
         _this.updater = new Updater_1.default();
         _this.user = new User_1.default();
-        _this.staticUrl = "http://localhost:8000/static/dungeon/play";
+        _this.staticUrl = "";
         /*=== PRIVATE ===*/
         _this._volatileGraphics = new PIXI.Graphics(); //to be used when drawing to a RenderTexture
         _this._documentResized = true;
@@ -158,6 +158,7 @@ var Game = (function (_super) {
         loadingText.attachToParent(AttachInfo_1.default.Center);
         var texUrl = this.staticUrl + "/textureMap2.png";
         var mapUrl = this.staticUrl + "/textureMap2.json";
+        console.log("Load textures: " + texUrl + ", " + mapUrl);
         this.textureLoader = new TextureLoader_1.default(texUrl, mapUrl, function () { return _this.onTexturesLoaded(); });
     };
     Game.prototype.onTexturesLoaded = function () {
@@ -185,7 +186,7 @@ var Game = (function (_super) {
             console.log("Sounds loaded!");
             //SoundManager.instance.playMusic("music/fortress");
             this.removeLoadingText();
-            this.loadUser("abc", "abcdefgh");
+            this.loadUser("aaa", "aaa");
         }
     };
     Game.prototype.onSoundsLoadedProgress = function (which, progress) {
@@ -208,7 +209,7 @@ var Game = (function (_super) {
     };
     Game.prototype.loadUser = function (name, password) {
         var _this = this;
-        RequestManager_1.default.instance.makeRequest("login", { name: name, password: password }, function (data) {
+        RequestManager_1.default.instance.makeRequest("login", { username: name, password: password }, function (data) {
             if (data) {
                 _this.user.load(data.data);
                 _this.user.startGame();
@@ -225,7 +226,7 @@ var Game = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Game;
 
-},{"./RequestManager":4,"./Updater":5,"./battle/Battle":6,"./events/GameEventHandler":18,"./interface/AttachInfo":19,"./interface/InputManager":22,"./interface/InterfaceElement":23,"./interface/TextElement":28,"./interface/prefabs/InterfaceRoot":31,"./sound/SoundAssets":33,"./sound/SoundManager":34,"./textures/TextureGenerator":35,"./textures/TextureLoader":36,"./user/User":38,"./util/Log":43}],2:[function(require,module,exports){
+},{"./RequestManager":4,"./Updater":5,"./battle/Battle":6,"./events/GameEventHandler":18,"./interface/AttachInfo":19,"./interface/InputManager":22,"./interface/InterfaceElement":23,"./interface/TextElement":28,"./interface/prefabs/InterfaceRoot":31,"./sound/SoundAssets":33,"./sound/SoundManager":34,"./textures/TextureGenerator":35,"./textures/TextureLoader":36,"./user/User":40,"./util/Log":43}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals = (function () {
@@ -260,7 +261,7 @@ var Game_1 = require("./Game");
 var RequestManager = (function () {
     function RequestManager(baseUrl) {
         if (baseUrl === void 0) { baseUrl = null; }
-        this.baseUrl = "http://localhost:8000/dungeon";
+        this.baseUrl = "http://mightnot.work/dungeon/request";
         this.requestQueue = [];
         this.requestActive = false;
         if (RequestManager.instance === null) {
@@ -4719,15 +4720,15 @@ var BattleManager = (function () {
      *
      * @param dungeonId
      * @param floor
-     * @param units The units to be sent
+     * @param heroes The heroes to be sent
      */
-    BattleManager.prototype.startBattle = function (dungeonId, floor, units) {
+    BattleManager.prototype.startBattle = function (dungeonId, floor, heroes) {
         var _this = this;
-        var unitIds = units.map(function (u) { return u.id; });
+        var heroIds = heroes.map(function (u) { return u.id; });
         RequestManager_1.default.instance.makeUserRequest("start_battle", {
             "dungeon_id": dungeonId,
             "floor": floor,
-            "unit_ids": unitIds
+            "hero_ids": heroIds
         }, function (data) { _this.onStartBattle(data); });
     };
     BattleManager.prototype.onStartBattle = function (data) {
@@ -4748,26 +4749,80 @@ exports.default = BattleManager;
 },{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],38:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var Hero = (function () {
+    function Hero() {
+        this.id = -1;
+        this.name = "?";
+        this.level = 1;
+        this.stats = {};
+    }
+    Hero.prototype.load = function (data) {
+        this.id = data.id;
+        this.name = data.name;
+        this.level = data.level;
+        this.stats = data.stats;
+    };
+    return Hero;
+}());
+exports.default = Hero;
+
+},{}],39:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var Hero_1 = require("./Hero");
+var HeroManager = (function () {
+    function HeroManager(user) {
+        this.heroes = [];
+        this.heroesById = {};
+        this.user = user;
+    }
+    HeroManager.prototype.load = function (data) {
+        console.log("heroManager: load");
+        for (var _i = 0, _a = data.heroes; _i < _a.length; _i++) {
+            var heroData = _a[_i];
+            var hero = new Hero_1.default();
+            hero.load(heroData);
+            this.addhero(hero);
+        }
+    };
+    HeroManager.prototype.addhero = function (hero) {
+        this.heroes.push(hero);
+        this.heroesById[hero.id] = hero;
+    };
+    HeroManager.prototype.removehero = function (hero) {
+        var index = this.heroes.indexOf(hero);
+        if (index == -1)
+            return;
+        this.heroes.splice(index, 1);
+        delete this.heroesById[hero.id];
+    };
+    return HeroManager;
+}());
+exports.default = HeroManager;
+
+},{"./Hero":38}],40:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var BattleManager_1 = require("./BattleManager");
-var UserUnitManager_1 = require("./UserUnitManager");
+var HeroManager_1 = require("./HeroManager");
 var Utils = require("../util/Util");
 var User = (function () {
     function User() {
         this.loaded = false;
         this.loadedData = null;
         //managers
-        this.unitManager = new UserUnitManager_1.default(this);
+        this.heroManager = new HeroManager_1.default(this);
         this.battleManager = new BattleManager_1.default(this);
     }
     User.prototype.load = function (data) {
         //probably take this out eventually
         this.loadedData = data;
         console.log("User: load");
-        this.userId = data.user.id;
-        this.name = data.user.name;
-        this.stats = data.user.stats;
+        this.userId = data.id;
+        this.name = data.name;
+        this.stats = data.stats;
         this.token = data.token;
-        this.unitManager.load(data);
+        this.heroManager.load(data);
         this.battleManager.load(data);
         //...
         this.loaded = true;
@@ -4781,70 +4836,16 @@ var User = (function () {
         }
         else {
             console.log("Start a new battle");
-            //choose up to 4 random units
-            var units = Utils.pickRandomSet(this.unitManager.units, 4);
-            this.battleManager.startBattle(1, 1, units);
+            //choose up to 4 random heroes
+            var heroes = Utils.pickRandomSet(this.heroManager.heroes, 4);
+            this.battleManager.startBattle(1, 1, heroes);
         }
     };
     return User;
 }());
 exports.default = User;
 
-},{"../util/Util":47,"./BattleManager":37,"./UserUnitManager":40}],39:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var UserUnit = (function () {
-    function UserUnit() {
-        this.id = -1;
-        this.name = "?";
-        this.level = 1;
-        this.stats = {};
-    }
-    UserUnit.prototype.load = function (data) {
-        this.id = data.id;
-        this.name = data.name;
-        this.level = data.level;
-        this.stats = data.stats;
-    };
-    return UserUnit;
-}());
-exports.default = UserUnit;
-
-},{}],40:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var UserUnit_1 = require("./UserUnit");
-var UserUnitManager = (function () {
-    function UserUnitManager(user) {
-        this.units = [];
-        this.unitsById = {};
-        this.user = user;
-    }
-    UserUnitManager.prototype.load = function (data) {
-        console.log("UnitManager: load");
-        for (var _i = 0, _a = data.units; _i < _a.length; _i++) {
-            var unitData = _a[_i];
-            var unit = new UserUnit_1.default();
-            unit.load(unitData);
-            this.addUnit(unit);
-        }
-    };
-    UserUnitManager.prototype.addUnit = function (unit) {
-        this.units.push(unit);
-        this.unitsById[unit.id] = unit;
-    };
-    UserUnitManager.prototype.removeUnit = function (unit) {
-        var index = this.units.indexOf(unit);
-        if (index == -1)
-            return;
-        this.units.splice(index, 1);
-        delete this.unitsById[unit.id];
-    };
-    return UserUnitManager;
-}());
-exports.default = UserUnitManager;
-
-},{"./UserUnit":39}],41:[function(require,module,exports){
+},{"../util/Util":47,"./BattleManager":37,"./HeroManager":39}],41:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var AssetCache = (function () {
