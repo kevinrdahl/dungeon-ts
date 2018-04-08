@@ -12,7 +12,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("../../InterfaceElement");
 var TextElement_1 = require("../../TextElement");
-var DungeonScreen = /** @class */ (function (_super) {
+var DungeonScreen = (function (_super) {
     __extends(DungeonScreen, _super);
     function DungeonScreen() {
         return _super.call(this) || this;

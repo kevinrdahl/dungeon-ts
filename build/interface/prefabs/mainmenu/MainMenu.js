@@ -15,7 +15,7 @@ var ScreenSelector_1 = require("./ScreenSelector");
 var AttachInfo_1 = require("../../AttachInfo");
 var UnitScreen_1 = require("./UnitScreen");
 var DungeonScreen_1 = require("./DungeonScreen");
-var MainMenu = /** @class */ (function (_super) {
+var MainMenu = (function (_super) {
     __extends(MainMenu, _super);
     function MainMenu() {
         var _this = _super.call(this) || this;
@@ -35,10 +35,8 @@ var MainMenu = /** @class */ (function (_super) {
     MainMenu.prototype.openScreen = function (name, forceReopen) {
         if (forceReopen === void 0) { forceReopen = false; }
         console.log("MainMenu: openScreen \"" + name + "\"");
-        if (!forceReopen && name == this.currentScreenName) {
-            console.log(this);
+        if (!forceReopen && name == this.currentScreenName)
             return;
-        }
         this.closeScreen();
         switch (name) {
             case "units":
@@ -54,11 +52,9 @@ var MainMenu = /** @class */ (function (_super) {
             this.addChild(this.currentScreen);
             this.currentScreen.attachToParent(AttachInfo_1.default.Center);
             this.currentScreenName = name;
-            console.log("MainMenu currentScreen: " + JSON.stringify(this.currentScreen.getBounds()));
         }
         else {
             this.currentScreenName = "";
-            console.log("But it's not real?" + this.currentScreen);
         }
     };
     MainMenu.prototype.closeScreen = function () {

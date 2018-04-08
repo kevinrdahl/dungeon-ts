@@ -13,7 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("../../events/GameEvent");
 var GameEventHandler_1 = require("../../events/GameEventHandler");
 var InputManager_1 = require("../InputManager");
-var TextFieldListManager = /** @class */ (function (_super) {
+var TextFieldListManager = (function (_super) {
     __extends(TextFieldListManager, _super);
     /**
      * Not an InterfaceElement! Just sets up events (TAB/SUBMIT) for a list of text elements

@@ -17,7 +17,7 @@ var AssetCache_1 = require("../util/AssetCache");
 var TextElement_1 = require("./TextElement");
 var AttachInfo_1 = require("./AttachInfo");
 var TextureGenerator = require("../textures/TextureGenerator");
-var TextButton = /** @class */ (function (_super) {
+var TextButton = (function (_super) {
     __extends(TextButton, _super);
     function TextButton(text, colorScheme, width, height, textStyle) {
         if (colorScheme === void 0) { colorScheme = null; }

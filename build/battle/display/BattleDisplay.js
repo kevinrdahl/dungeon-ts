@@ -21,7 +21,7 @@ var Tween_1 = require("../../util/Tween");
 var ElementList_1 = require("../../interface/ElementList");
 var AttachInfo_1 = require("../../interface/AttachInfo");
 var TextElement_1 = require("../../interface/TextElement");
-var BattleDisplay = /** @class */ (function (_super) {
+var BattleDisplay = (function (_super) {
     __extends(BattleDisplay, _super);
     function BattleDisplay() {
         var _this = _super.call(this) || this;

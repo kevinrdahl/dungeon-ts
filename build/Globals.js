@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Globals = /** @class */ (function () {
+var Globals = (function () {
     function Globals() {
     }
     Globals.gridSize = 24;

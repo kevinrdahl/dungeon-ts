@@ -12,7 +12,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var InterfaceElement_1 = require("./InterfaceElement");
-var ElementList = /** @class */ (function (_super) {
+var ElementList = (function (_super) {
     __extends(ElementList, _super);
     function ElementList(width, orientation, padding, align) {
         if (orientation === void 0) { orientation = ElementList.VERTICAL; }

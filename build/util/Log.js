@@ -13,7 +13,7 @@ var isEdge = (function () {
         return true;
     return false;
 })();
-var LogType = /** @class */ (function () {
+var LogType = (function () {
     function LogType(prefix, textColor, bgColor, enabled) {
         if (prefix === void 0) { prefix = ""; }
         if (textColor === void 0) { textColor = "#000"; }

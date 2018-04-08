@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var IDObjectGroup = /** @class */ (function () {
+var IDObjectGroup = (function () {
     /**
      * Provides safe convenience methods for efficiently tracking a group of objects.
      * Uses an Object and an Array. The Array is public for iteration but should NOT be modified.

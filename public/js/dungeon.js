@@ -28,12 +28,12 @@ var InterfaceElement_1 = require("./interface/InterfaceElement");
 var TextElement_1 = require("./interface/TextElement");
 var AttachInfo_1 = require("./interface/AttachInfo");
 var GameEventHandler_1 = require("./events/GameEventHandler");
-//Battle
-var Battle_1 = require("./battle/Battle");
 //Misc
 var Log = require("./util/Log");
 var Updater_1 = require("./Updater");
 var RequestManager_1 = require("./RequestManager");
+var MainMenu_1 = require("./interface/prefabs/mainmenu/MainMenu");
+var DefinitionManager_1 = require("./definitions/DefinitionManager");
 var Game = (function (_super) {
     __extends(Game, _super);
     function Game(viewDiv) {
@@ -48,6 +48,7 @@ var Game = (function (_super) {
         _this.updater = new Updater_1.default();
         _this.user = new User_1.default();
         _this.staticUrl = "";
+        _this.definitions = new DefinitionManager_1.default();
         /*=== PRIVATE ===*/
         _this._volatileGraphics = new PIXI.Graphics(); //to be used when drawing to a RenderTexture
         _this._documentResized = true;
@@ -66,7 +67,7 @@ var Game = (function (_super) {
         return _this;
     }
     Object.defineProperty(Game.prototype, "volatileGraphics", {
-        get: function () { this._volatileGraphics.clear(); return this._volatileGraphics; },
+        get: function () { return this._volatileGraphics.clear(); },
         enumerable: true,
         configurable: true
     });
@@ -199,13 +200,23 @@ var Game = (function (_super) {
         var loadingText = this.interfaceRoot.getElementById("loadingText");
         this.interfaceRoot.removeChild(loadingText);
     };
-    Game.prototype.initTestBattle = function () {
-        var battle = new Battle_1.default(true);
-        this._currentBattle = battle;
-        battle.init();
+    Game.prototype.initMainMenu = function () {
+        //this.interfaceRoot.showStatusPopup("This is the main menu!");
+        var mainMenu = new MainMenu_1.default();
+        this.interfaceRoot.addDialog(mainMenu);
+        mainMenu.init();
     };
     Game.prototype.setCurrentBattle = function (battle) {
         this._currentBattle = battle;
+    };
+    Game.prototype.gotoMainMenu = function () {
+        var battle = this._currentBattle;
+        if (battle) {
+            if (battle.display)
+                battle.display.cleanup();
+            this._currentBattle = null;
+        }
+        this.initMainMenu();
     };
     Game.prototype.loadUser = function (name, password) {
         var _this = this;
@@ -213,7 +224,6 @@ var Game = (function (_super) {
             if (data) {
                 _this.user.load(data.data);
                 _this.user.startGame();
-                //this.initTestBattle();
             }
             else {
                 console.error("Unable to load user");
@@ -221,12 +231,12 @@ var Game = (function (_super) {
         });
     };
     Game.instance = null;
-    Game.useDebugGraphics = false;
+    Game.useDebugGraphics = true;
     return Game;
 }(GameEventHandler_1.default));
 exports.default = Game;
 
-},{"./RequestManager":4,"./Updater":5,"./battle/Battle":6,"./events/GameEventHandler":18,"./interface/AttachInfo":19,"./interface/InputManager":22,"./interface/InterfaceElement":23,"./interface/TextElement":28,"./interface/prefabs/InterfaceRoot":31,"./sound/SoundAssets":33,"./sound/SoundManager":34,"./textures/TextureGenerator":35,"./textures/TextureLoader":36,"./user/User":40,"./util/Log":43}],2:[function(require,module,exports){
+},{"./RequestManager":4,"./Updater":5,"./definitions/DefinitionManager":15,"./events/GameEventHandler":21,"./interface/AttachInfo":22,"./interface/InputManager":25,"./interface/InterfaceElement":26,"./interface/TextElement":31,"./interface/prefabs/InterfaceRoot":34,"./interface/prefabs/mainmenu/MainMenu":37,"./sound/SoundAssets":40,"./sound/SoundManager":41,"./textures/TextureGenerator":42,"./textures/TextureLoader":43,"./user/User":47,"./util/Log":50}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals = (function () {
@@ -317,6 +327,7 @@ var RequestManager = (function () {
             .done(function (data) {
             console.log("RESPONSE '" + type + "'");
             console.log(data);
+            _this.readDefinitions(data);
             callback(data);
         })
             .fail(function (e) {
@@ -336,12 +347,25 @@ var RequestManager = (function () {
             }
         });
     };
+    /**
+     * If a request response contains definitions, this will add them to Game.instance.definitions.
+     */
+    RequestManager.prototype.readDefinitions = function (data) {
+        if (data.definitions) {
+            for (var type in data.definitions) {
+                for (var _i = 0, _a = data.definitions[type]; _i < _a.length; _i++) {
+                    var defData = _a[_i];
+                    Game_1.default.instance.definitions.setDefinition(type, defData);
+                }
+            }
+        }
+    };
     RequestManager.instance = new RequestManager();
     return RequestManager;
 }());
 exports.default = RequestManager;
 
-},{"./Game":1,"./util/Log":43}],5:[function(require,module,exports){
+},{"./Game":1,"./util/Log":50}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Updater = (function () {
@@ -444,6 +468,8 @@ var Battle = (function (_super) {
         _this._turnNumber = 0;
         _this._ended = false;
         _this._winner = null;
+        //data and accessors
+        _this.data = null;
         //animation
         _this.animationSequence = null;
         _this._animating = false;
@@ -490,11 +516,19 @@ var Battle = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Battle.prototype.init = function () {
+    Object.defineProperty(Battle.prototype, "layout", {
+        get: function () { return Game_1.default.instance.definitions.getDefinition("layout", this.data.layout_id); },
+        enumerable: true,
+        configurable: true
+    });
+    Battle.prototype.init = function (data) {
+        var _this = this;
         if (this.initialized)
             return;
         this.initialized = true;
         console.log("Battle: init");
+        console.log(data);
+        this.data = data;
         this.initLevel();
         if (this._visible) {
             this.initDisplay();
@@ -517,6 +551,30 @@ var Battle = (function (_super) {
         this.updateAllUnitPathing();
         this.display.updatePathingDisplay();
         this.display.updatePathingHover();
+        Game_1.default.instance.addEventListener(GameEvent_1.default.types.ui.KEY, function (e) {
+            if (e.data == '`') {
+                var playerUnit = _this.currentPlayer.units.list[0];
+                var anim = Animation_1.default.noop();
+                _this.selectUnit(null);
+                for (var _i = 0, _a = _this.players.list; _i < _a.length; _i++) {
+                    var player = _a[_i];
+                    if (player == _this.currentPlayer)
+                        continue;
+                    for (var _b = 0, _c = player.units.list.slice(); _b < _c.length; _b++) {
+                        var unit = _c[_b];
+                        if (!unit.alive)
+                            continue;
+                        unit.kill();
+                        anim.then(Animation_1.default.unitDie(unit));
+                    }
+                }
+                console.log("Oof!");
+                _this.initAnimation();
+                _this.queueAnimation(anim);
+                _this.onUnitAction(playerUnit);
+                _this.beginAnimation();
+            }
+        });
     };
     ////////////////////////////////////////////////////////////
     // Player actions
@@ -651,13 +709,19 @@ var Battle = (function (_super) {
             return;
         this._animating = true;
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONSTART);
+        console.log("Start animation");
         this.animationSequence.start(function () {
+            console.log("Animation complete");
             _this.onAnimationComplete();
         });
     };
     Battle.prototype.onAnimationComplete = function () {
         this._animating = false;
         this.sendNewEvent(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE);
+        if (this.ended) {
+            console.log("To the menu!");
+            Game_1.default.instance.gotoMainMenu();
+        }
     };
     Battle.prototype.queueAnimation = function (animation) {
         if (this.animationSequence == null) {
@@ -716,7 +780,7 @@ var Battle = (function (_super) {
                     callback();
                 }
             };
-            var anim = new Animation_1.default(action);
+            var anim = new Animation_1.default(action, null, -1);
             this.queueAnimation(anim);
         }
     };
@@ -821,11 +885,11 @@ var Battle = (function (_super) {
         }
     };
     ////////////////////////////////////////////////////////////
-    // Init
+    // Init and Cleanup
     ////////////////////////////////////////////////////////////
     Battle.prototype.initLevel = function () {
         this.level = new Level_1.default();
-        this.level.init();
+        this.level.init(this.layout);
     };
     Battle.prototype.initDisplay = function () {
         console.log("Battle: init display");
@@ -838,7 +902,7 @@ var Battle = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Battle;
 
-},{"../Game":1,"../ds/SparseGrid":16,"../events/GameEvent":17,"../events/GameEventHandler":18,"../util/IDObjectGroup":42,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
+},{"../Game":1,"../ds/SparseGrid":19,"../events/GameEvent":20,"../events/GameEventHandler":21,"../util/IDObjectGroup":49,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
@@ -850,24 +914,21 @@ var Level = (function () {
         this.height = 0;
         this.display = null;
     }
-    Level.prototype.init = function () {
-        this.width = 10;
-        this.height = 8;
-        for (var y = 0; y < this.height; y++) {
-            for (var x = 0; x < this.width; x++) {
-                var tile = new Tile_1.default();
-                tile.x = x;
-                tile.y = y;
-                if (x == 0 || y == 0 || x == this.width - 1 || y == this.height - 1) {
-                    tile.initWall();
-                }
-                else if (this.width - x < 5 && this.height - y < 5) {
-                    tile.initPit();
-                }
-                else {
-                    tile.initFloor();
-                }
-                this.tiles.push(tile);
+    Level.prototype.init = function (layout) {
+        this.width = layout.width;
+        this.height = layout.height;
+        var x = 0, y = 0;
+        for (var _i = 0, _a = layout.tiles; _i < _a.length; _i++) {
+            var tileType = _a[_i];
+            var tile = new Tile_1.default();
+            tile.x = x;
+            tile.y = y;
+            tile.initType(tileType);
+            this.tiles.push(tile);
+            x += 1;
+            if (x == this.width) {
+                x = 0;
+                y += 1;
             }
         }
     };
@@ -928,7 +989,7 @@ var Player = (function () {
 }());
 exports.default = Player;
 
-},{"../util/IDObjectGroup":42}],9:[function(require,module,exports){
+},{"../util/IDObjectGroup":49}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile = (function () {
@@ -957,6 +1018,20 @@ var Tile = (function () {
         configurable: true
     });
     //these are all temp!
+    //figure out how tiles should actually work!!!
+    Tile.prototype.initType = function (type) {
+        switch (type) {
+            case 1:
+                this.initWall();
+                break;
+            case 2:
+                this.initFloor();
+                break;
+            case 3:
+                this.initPit();
+                break;
+        }
+    };
     Tile.prototype.initWall = function () {
         this.pathingType = Tile.PATHING_NONE;
         this.name = "Wall";
@@ -1368,7 +1443,7 @@ var Unit = (function () {
     };
     Unit.prototype.initDisplay = function () {
         if (this.display) {
-            this.display.cleanUp();
+            this.display.cleanup();
         }
         this.display = new UnitDisplay_1.default();
         this.display.initUnit(this);
@@ -1385,7 +1460,7 @@ var Unit = (function () {
 }());
 exports.default = Unit;
 
-},{"../ds/BinaryHeap":15,"../ds/SparseGrid":16,"./display/UnitDisplay":13}],11:[function(require,module,exports){
+},{"../ds/BinaryHeap":18,"../ds/SparseGrid":19,"./display/UnitDisplay":13}],11:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1451,6 +1526,23 @@ var BattleDisplay = (function (_super) {
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+    };
+    BattleDisplay.prototype.cleanup = function () {
+        for (var _i = 0, _a = this._unitDisplays; _i < _a.length; _i++) {
+            var unitDisplay = _a[_i];
+            unitDisplay.cleanup();
+        }
+        this._levelDisplay.cleanup();
+        this._unitContainer.destroy({ children: true });
+        if (this.parent)
+            this.parent.removeChild(this);
+        if (this.debugPanel) {
+            this.debugPanel.removeSelf();
+        }
+        Game_1.default.instance.updater.remove(this);
+        this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
+        this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
+        this._battle.removeEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
     };
     BattleDisplay.prototype.setLevelDisplay = function (display) {
         if (this._levelDisplay) {
@@ -1629,26 +1721,29 @@ var BattleDisplay = (function (_super) {
     BattleDisplay.prototype.showEndGame = function (callback) {
         var winner = this.battle.winner;
         var str = "Player " + winner.id + " wins!";
-        var text = new PIXI.Text(str, TextUtil.styles.unitID);
+        Game_1.default.instance.interfaceRoot.showWarningPopup(str, "Battle Over", callback);
+        /*var text = new PIXI.Text(str, TextUtil.styles.unitID);
+
         this.addChild(text);
-        var width = Game_1.default.instance.stage.width / this.scale.x;
-        var height = Game_1.default.instance.stage.height / this.scale.y;
+        var width = Game.instance.stage.width / this.scale.x;
+        var height = Game.instance.stage.height / this.scale.y;
         var targetX = width / 2 - text.width / 2;
         var targetY = height / 2 - text.height / 2;
+
         text.y = targetY;
-        var tween1 = new Tween_1.default().init(text, "x", -text.height, targetX, 0.5, Tween_1.default.easingFunctions.quartEaseOut);
-        tween1.onFinish = function () {
-            if (text.parent)
-                text.parent.removeChild(text);
+
+        var tween1 = new Tween().init(text, "x", -text.height, targetX, 0.5, Tween.easingFunctions.quartEaseOut);
+        tween1.onFinish = () => {
+            if (text.parent) text.parent.removeChild(text);
             callback();
-        };
-        tween1.start();
+        }
+        tween1.start();*/
     };
     return BattleDisplay;
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":17,"../../interface/AttachInfo":19,"../../interface/ElementList":21,"../../interface/InputManager":22,"../../interface/TextElement":28,"../../util/TextUtil":44,"../../util/Tween":46,"../../util/Vector2D":48}],12:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":20,"../../interface/AttachInfo":22,"../../interface/ElementList":24,"../../interface/InputManager":25,"../../interface/TextElement":31,"../../util/TextUtil":51,"../../util/Tween":53,"../../util/Vector2D":55}],12:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1681,6 +1776,9 @@ var LevelDisplay = (function (_super) {
             this.addChild(this.pathingGraphics);
         if (!this.routeGraphics.parent)
             this.addChild(this.routeGraphics);
+    };
+    LevelDisplay.prototype.cleanup = function () {
+        this.destroy({ children: true });
     };
     LevelDisplay.prototype.showPathing = function (tiles, color, alpha) {
         if (color === void 0) { color = 0x0000ff; }
@@ -1877,11 +1975,12 @@ var UnitDisplay = (function (_super) {
     UnitDisplay.prototype.updateActions = function () {
         this.updateState();
     };
-    UnitDisplay.prototype.cleanUp = function () {
+    UnitDisplay.prototype.cleanup = function () {
         if (this.parent) {
             this.parent.removeChild(this);
         }
         this.removeListeners();
+        this.destroy({ children: true });
     };
     UnitDisplay.prototype.onClick = function () {
         this.unit.select();
@@ -1963,7 +2062,7 @@ var UnitDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = UnitDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":17,"../../util/TextUtil":44,"../../util/Tween":46}],14:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":20,"../../util/TextUtil":51,"../../util/Tween":53}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Timer_1 = require("../../../util/Timer");
@@ -2225,7 +2324,137 @@ var Animation = (function () {
 }());
 exports.default = Animation;
 
-},{"../../../Globals":2,"../../../util/Timer":45,"../../../util/Tween":46}],15:[function(require,module,exports){
+},{"../../../Globals":2,"../../../util/Timer":52,"../../../util/Tween":53}],15:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var Layout_1 = require("./Layout");
+var Dungeon_1 = require("./Dungeon");
+var DefinitionManager = (function () {
+    function DefinitionManager() {
+        this.allDefinitions = {}; //by type, then by ID
+    }
+    /**
+     * I expect that any def data has an ID, but if not, you can set it here and see how that goes.
+     * If no id is set or readable, this will do nothing.
+     */
+    DefinitionManager.prototype.setDefinition = function (type, data, overwriteExisting, id) {
+        if (overwriteExisting === void 0) { overwriteExisting = false; }
+        if (id === void 0) { id = -1; }
+        if (id == -1 && data.id)
+            id = data.id;
+        if (id < 1)
+            return;
+        var defs = this.allDefinitions[type];
+        if (!defs) {
+            defs = {};
+            this.allDefinitions[type] = defs;
+        }
+        var existing = defs[id];
+        if (existing) {
+            if (overwriteExisting)
+                existing.readData(data);
+        }
+        else {
+            var defClass = DefinitionManager.classesByType[type];
+            if (defClass) {
+                defs[id] = new defClass();
+                defs[id].readData(data);
+            }
+            else {
+                console.log("DefinitionManager: type " + type + " has no associated class");
+            }
+        }
+    };
+    DefinitionManager.prototype.getDefinition = function (type, id) {
+        var defs = this.allDefinitions[type];
+        if (!defs)
+            return null;
+        var def = defs[id];
+        if (def)
+            return def;
+        return null;
+    };
+    DefinitionManager.prototype.getMultipleDefs = function (type, ids, includeNull) {
+        if (includeNull === void 0) { includeNull = false; }
+        var defs = [];
+        var typeDefs = this.allDefinitions[type];
+        if (!typeDefs)
+            typeDefs = {};
+        for (var _i = 0, ids_1 = ids; _i < ids_1.length; _i++) {
+            var id = ids_1[_i];
+            var def = typeDefs[id];
+            if (!def) {
+                console.warn("DefinitionManager: missing definition " + type + " " + id);
+                if (includeNull)
+                    defs.push(null);
+            }
+            else {
+                defs.push(def);
+            }
+        }
+        return defs;
+    };
+    DefinitionManager.classesByType = {
+        "layout": Layout_1.default,
+        "dungeon": Dungeon_1.default
+    };
+    return DefinitionManager;
+}());
+exports.default = DefinitionManager;
+
+},{"./Dungeon":16,"./Layout":17}],16:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var Dungeon = (function () {
+    function Dungeon() {
+        this.id = -1;
+        this.name = "Some Dungeon";
+    }
+    Dungeon.prototype.readData = function (data) {
+        this.id = data.id;
+        this.name = data.name;
+    };
+    return Dungeon;
+}());
+exports.default = Dungeon;
+
+},{}],17:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var Layout = (function () {
+    function Layout() {
+        this.id = -1;
+        this.width = 0;
+        this.height = 0;
+        this.tiles = [];
+    }
+    Layout.prototype.readData = function (data) {
+        this.id = data.id;
+        this.width = data.width;
+        this.height = data.height;
+        this.parseTiles(data.tiles);
+    };
+    Layout.prototype.getTileType = function (x, y) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height)
+            return 0;
+        var index = this.width * y + x;
+        return this.tiles[index];
+    };
+    Layout.prototype.parseTiles = function (runLength) {
+        this.tiles = [];
+        for (var i = 0; i < runLength.length; i += 2) {
+            var type = runLength[i];
+            var num = runLength[i + 1];
+            for (var j = 0; j < num; j++) {
+                this.tiles.push(type);
+            }
+        }
+    };
+    return Layout;
+}());
+exports.default = Layout;
+
+},{}],18:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2435,7 +2664,7 @@ var BinaryHeap = (function () {
 }());
 exports.default = BinaryHeap;
 
-},{}],16:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2552,7 +2781,7 @@ var SparseGrid = (function () {
 }());
 exports.default = SparseGrid;
 
-},{}],17:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent = (function () {
@@ -2613,7 +2842,7 @@ var GameEvent = (function () {
 }());
 exports.default = GameEvent;
 
-},{}],18:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("./GameEvent");
@@ -2675,7 +2904,7 @@ var GameEventHandler = (function () {
 }());
 exports.default = GameEventHandler;
 
-},{"./GameEvent":17}],19:[function(require,module,exports){
+},{"./GameEvent":20}],22:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -2701,7 +2930,7 @@ var AttachInfo = (function () {
 }());
 exports.default = AttachInfo;
 
-},{"../util/Vector2D":48}],20:[function(require,module,exports){
+},{"../util/Vector2D":55}],23:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -2796,7 +3025,7 @@ var BaseButton = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = BaseButton;
 
-},{"../events/GameEvent":17,"./InterfaceElement":23}],21:[function(require,module,exports){
+},{"../events/GameEvent":20,"./InterfaceElement":26}],24:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -2834,9 +3063,11 @@ var ElementList = (function (_super) {
         }
         return _this;
     }
+    /** When adding multiple elements at once, call this first to prevent wasteful rearranging */
     ElementList.prototype.beginBatchChange = function () {
         this._inBatchChange = true;
     };
+    /** Call after adding elements following beginBatchChange() */
     ElementList.prototype.endBatchChange = function () {
         if (!this._inBatchChange) {
             return;
@@ -2954,7 +3185,7 @@ var ElementList = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = ElementList;
 
-},{"./InterfaceElement":23}],22:[function(require,module,exports){
+},{"./InterfaceElement":26}],25:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/jquery.d.ts"/>
@@ -3098,6 +3329,7 @@ var InputManager = (function () {
             if (_this._focusElement) {
                 _this._focusElement.sendNewEvent(GameEvent_1.default.types.ui.KEY, e.key);
             }
+            Game_1.default.instance.sendNewEvent(GameEvent_1.default.types.ui.KEY, e.key);
             if (preventedKeys.indexOf(e.which) != -1) {
                 e.preventDefault();
             }
@@ -3204,7 +3436,7 @@ var keyNames = {
     "39": "RIGHT"
 };
 
-},{"../Game":1,"../events/GameEvent":17,"../util/Vector2D":48}],23:[function(require,module,exports){
+},{"../Game":1,"../events/GameEvent":20,"../util/Vector2D":55}],26:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3344,6 +3576,9 @@ var InterfaceElement = (function (_super) {
         enumerable: true,
         configurable: true
     });
+    InterfaceElement.prototype.getBounds = function () {
+        return new PIXI.Rectangle(this.x, this.y, this.width, this.height);
+    };
     InterfaceElement.prototype.getElementAtPoint = function (point) {
         var element = null;
         var checkChildren = this.isRoot;
@@ -3500,6 +3735,7 @@ var InterfaceElement = (function (_super) {
             this.removeSelf(false); //no need to recurse from there, since this already does so
         }
         //base class has no PIXI stuff to destroy (right?)
+        this.displayObject.destroy();
     };
     InterfaceElement.prototype.removeChild = function (child, recurse) {
         if (recurse === void 0) { recurse = false; }
@@ -3628,7 +3864,7 @@ var InterfaceElement = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = InterfaceElement;
 
-},{"../Game":1,"../events/GameEventHandler":18,"../util/Vector2D":48,"./InputManager":22,"./ResizeInfo":26}],24:[function(require,module,exports){
+},{"../Game":1,"../events/GameEventHandler":21,"../util/Vector2D":55,"./InputManager":25,"./ResizeInfo":29}],27:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3666,7 +3902,7 @@ var MaskElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = MaskElement;
 
-},{"./InterfaceElement":23}],25:[function(require,module,exports){
+},{"./InterfaceElement":26}],28:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3738,7 +3974,7 @@ var Panel = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = Panel;
 
-},{"../textures/TextureGenerator":35,"./InterfaceElement":23}],26:[function(require,module,exports){
+},{"../textures/TextureGenerator":42,"./InterfaceElement":26}],29:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -3766,7 +4002,7 @@ var ResizeInfo = (function () {
 }());
 exports.default = ResizeInfo;
 
-},{"../util/AssetCache":41,"../util/Vector2D":48}],27:[function(require,module,exports){
+},{"../util/AssetCache":48,"../util/Vector2D":55}],30:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3861,7 +4097,7 @@ var TextButton = (function (_super) {
 }(BaseButton_1.default));
 exports.default = TextButton;
 
-},{"../events/GameEvent":17,"../textures/TextureGenerator":35,"../util/AssetCache":41,"./AttachInfo":19,"./BaseButton":20,"./TextElement":28}],28:[function(require,module,exports){
+},{"../events/GameEvent":20,"../textures/TextureGenerator":42,"../util/AssetCache":48,"./AttachInfo":22,"./BaseButton":23,"./TextElement":31}],31:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3941,7 +4177,7 @@ var TextElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextElement;
 
-},{"./InterfaceElement":23}],29:[function(require,module,exports){
+},{"./InterfaceElement":26}],32:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -4114,7 +4350,7 @@ var TextField = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextField;
 
-},{"../events/GameEvent":17,"../util/Vector2D":48,"./AttachInfo":19,"./InterfaceElement":23,"./MaskElement":24,"./Panel":25,"./TextElement":28}],30:[function(require,module,exports){
+},{"../events/GameEvent":20,"../util/Vector2D":55,"./AttachInfo":22,"./InterfaceElement":26,"./MaskElement":27,"./Panel":28,"./TextElement":31}],33:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4259,9 +4495,12 @@ var GenericListDialog = (function (_super) {
         this.addMessage(label);
         this.addTextField(name, alphabet, hidden, defaultStr, validator, padding);
     };
-    GenericListDialog.prototype.addButtons = function (infos, padding) {
+    GenericListDialog.prototype.addButtons = function (infos, padding, vertical) {
         if (padding === void 0) { padding = 0; }
-        var buttonContainer = new ElementList_1.default(30, ElementList_1.default.HORIZONTAL, 10, ElementList_1.default.CENTRE);
+        if (vertical === void 0) { vertical = false; }
+        var orientation = vertical ? ElementList_1.default.VERTICAL : ElementList_1.default.HORIZONTAL;
+        var width = vertical ? 100 : 30;
+        var buttonContainer = new ElementList_1.default(width, ElementList_1.default.HORIZONTAL, 10, ElementList_1.default.CENTRE);
         for (var _i = 0, infos_1 = infos; _i < infos_1.length; _i++) {
             var info = infos_1[_i];
             var colorScheme = info.colorScheme;
@@ -4292,7 +4531,7 @@ var GenericListDialog = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = GenericListDialog;
 
-},{"../../events/GameEvent":17,"../AttachInfo":19,"../ElementList":21,"../InterfaceElement":23,"../Panel":25,"../TextButton":27,"../TextElement":28,"../TextField":29,"./TextFieldListManager":32}],31:[function(require,module,exports){
+},{"../../events/GameEvent":20,"../AttachInfo":22,"../ElementList":24,"../InterfaceElement":26,"../Panel":28,"../TextButton":30,"../TextElement":31,"../TextField":32,"./TextFieldListManager":35}],34:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4372,7 +4611,7 @@ var InterfaceRoot = (function (_super) {
             dialog.addMediumTitle(title, 0);
         dialog.addMessage(message, 5);
         dialog.addButtons([
-            { text: "Close", colorScheme: TextButton_1.default.colorSchemes.red, onClick: function (e) {
+            { text: "Close", colorScheme: TextButton_1.default.colorSchemes.blue, onClick: function (e) {
                     dialog.removeSelf();
                     if (onClose) {
                         onClose();
@@ -4406,7 +4645,7 @@ var InterfaceRoot = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = InterfaceRoot;
 
-},{"../AttachInfo":19,"../InputManager":22,"../InterfaceElement":23,"../TextButton":27,"./GenericListDialog":30}],32:[function(require,module,exports){
+},{"../AttachInfo":22,"../InputManager":25,"../InterfaceElement":26,"../TextButton":30,"./GenericListDialog":33}],35:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4471,7 +4710,183 @@ var TextFieldListManager = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = TextFieldListManager;
 
-},{"../../events/GameEvent":17,"../../events/GameEventHandler":18,"../InputManager":22}],33:[function(require,module,exports){
+},{"../../events/GameEvent":20,"../../events/GameEventHandler":21,"../InputManager":25}],36:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var InterfaceElement_1 = require("../../InterfaceElement");
+var TextElement_1 = require("../../TextElement");
+var DungeonScreen = (function (_super) {
+    __extends(DungeonScreen, _super);
+    function DungeonScreen() {
+        return _super.call(this) || this;
+    }
+    DungeonScreen.prototype.init = function () {
+        this.addChild(new TextElement_1.default("Dungeons"));
+        this.resizeToFitChildren();
+    };
+    return DungeonScreen;
+}(InterfaceElement_1.default));
+exports.default = DungeonScreen;
+
+},{"../../InterfaceElement":26,"../../TextElement":31}],37:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var InterfaceElement_1 = require("../../InterfaceElement");
+var ScreenSelector_1 = require("./ScreenSelector");
+var AttachInfo_1 = require("../../AttachInfo");
+var UnitScreen_1 = require("./UnitScreen");
+var DungeonScreen_1 = require("./DungeonScreen");
+var MainMenu = (function (_super) {
+    __extends(MainMenu, _super);
+    function MainMenu() {
+        var _this = _super.call(this) || this;
+        _this.currentScreen = null;
+        _this.currentScreenName = "";
+        return _this;
+    }
+    MainMenu.prototype.init = function () {
+        this.resizeToParent();
+        this.screenSelector = new ScreenSelector_1.default(this);
+        this.screenSelector.init();
+        this.addChild(this.screenSelector);
+        this.screenSelector.attachToParent(AttachInfo_1.default.BottomCenter);
+        console.log("MainMenu: " + JSON.stringify(this.getBounds()));
+        console.log("selector " + JSON.stringify(this.screenSelector.getBounds()));
+    };
+    MainMenu.prototype.openScreen = function (name, forceReopen) {
+        if (forceReopen === void 0) { forceReopen = false; }
+        console.log("MainMenu: openScreen \"" + name + "\"");
+        if (!forceReopen && name == this.currentScreenName)
+            return;
+        this.closeScreen();
+        switch (name) {
+            case "units":
+                this.currentScreen = new UnitScreen_1.default();
+                this.currentScreen.init();
+                break;
+            case "dungeons":
+                this.currentScreen = new DungeonScreen_1.default();
+                this.currentScreen.init();
+                break;
+        }
+        if (this.currentScreen) {
+            this.addChild(this.currentScreen);
+            this.currentScreen.attachToParent(AttachInfo_1.default.Center);
+            this.currentScreenName = name;
+        }
+        else {
+            this.currentScreenName = "";
+        }
+    };
+    MainMenu.prototype.closeScreen = function () {
+        if (this.currentScreen) {
+            this.currentScreen.destroy();
+            this.currentScreen = null;
+        }
+    };
+    return MainMenu;
+}(InterfaceElement_1.default));
+exports.default = MainMenu;
+
+},{"../../AttachInfo":22,"../../InterfaceElement":26,"./DungeonScreen":36,"./ScreenSelector":38,"./UnitScreen":39}],38:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var InterfaceElement_1 = require("../../InterfaceElement");
+var ElementList_1 = require("../../ElementList");
+var TextButton_1 = require("../../TextButton");
+var ScreenSelector = (function (_super) {
+    __extends(ScreenSelector, _super);
+    function ScreenSelector(mainMenu) {
+        var _this = _super.call(this) || this;
+        _this.mainMenu = mainMenu;
+        return _this;
+    }
+    ScreenSelector.prototype.init = function () {
+        this.buttonList = new ElementList_1.default(30, ElementList_1.default.HORIZONTAL, 10);
+        var buttonInfo = [
+            { name: "Units", screen: "units", color: TextButton_1.default.colorSchemes.blue },
+            { name: "Dungeons", screen: "dungeons", color: TextButton_1.default.colorSchemes.red }
+        ];
+        this.buttonList.beginBatchChange();
+        for (var _i = 0, buttonInfo_1 = buttonInfo; _i < buttonInfo_1.length; _i++) {
+            var info = buttonInfo_1[_i];
+            var button = new TextButton_1.default(info.name, info.color);
+            button.onClick = this.getButtonCallback(info.screen);
+            this.buttonList.addChild(button);
+        }
+        this.buttonList.endBatchChange();
+        this.addChild(this.buttonList);
+        this.resizeToFitChildren();
+    };
+    ScreenSelector.prototype.getButtonCallback = function (screenName) {
+        var _this = this;
+        return function () {
+            _this.mainMenu.openScreen(screenName);
+        };
+    };
+    return ScreenSelector;
+}(InterfaceElement_1.default));
+exports.default = ScreenSelector;
+
+},{"../../ElementList":24,"../../InterfaceElement":26,"../../TextButton":30}],39:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var InterfaceElement_1 = require("../../InterfaceElement");
+var TextElement_1 = require("../../TextElement");
+var UnitScreen = (function (_super) {
+    __extends(UnitScreen, _super);
+    function UnitScreen() {
+        return _super.call(this) || this;
+    }
+    UnitScreen.prototype.init = function () {
+        this.addChild(new TextElement_1.default("Units"));
+        this.resizeToFitChildren();
+    };
+    return UnitScreen;
+}(InterfaceElement_1.default));
+exports.default = UnitScreen;
+
+},{"../../InterfaceElement":26,"../../TextElement":31}],40:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mainMenuMusic = [
@@ -4483,7 +4898,7 @@ exports.interfaceSounds = [
     ["ui/nope", "sound/ui/nope.ogg"]
 ];
 
-},{}],34:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var SoundLoadRequest = (function () {
@@ -4576,7 +4991,7 @@ var SoundManager = (function () {
 }());
 exports.default = SoundManager;
 
-},{}],35:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
@@ -4587,7 +5002,7 @@ function simpleRectangle(target, width, height, color, borderWidth, borderColor)
     //if (!target) target = new PIXI.RenderTexture(Game.instance.renderer, width, height);
     if (!target)
         target = PIXI.RenderTexture.create(width, height);
-    var g = Game_1.default.instance.volatileGraphics;
+    var g = new PIXI.Graphics(); //Game.instance.volatileGraphics;
     g.lineStyle(borderWidth, borderColor, 1);
     g.beginFill(color, 1);
     g.drawRect(borderWidth / 2, borderWidth / 2, width - borderWidth, height - borderWidth);
@@ -4597,13 +5012,8 @@ function simpleRectangle(target, width, height, color, borderWidth, borderColor)
     return target;
 }
 exports.simpleRectangle = simpleRectangle;
-function buttonBackground(width, height, type) {
-    var bgColor = 0x3e3bff;
-    var borderColor = 0x616161;
-}
-exports.buttonBackground = buttonBackground;
 
-},{"../Game":1}],36:[function(require,module,exports){
+},{"../Game":1}],43:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -4670,7 +5080,7 @@ var TextureLoader = (function () {
 }());
 exports.default = TextureLoader;
 
-},{}],37:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Battle_1 = require("../battle/Battle");
@@ -4690,13 +5100,14 @@ var BattleManager = (function () {
         console.log("BattleManager: load");
         for (var _i = 0, _a = data.battles; _i < _a.length; _i++) {
             var data = _a[_i];
+            console.log(data);
             this.battleData.push(data);
         }
     };
     BattleManager.prototype.checkAnyBattleActive = function () {
         for (var _i = 0, _a = this.battleData; _i < _a.length; _i++) {
             var data = _a[_i];
-            if (data.state == BattleManager.STATE_ACTIVE)
+            if (data.end_time == 0)
                 return true;
         }
         return false;
@@ -4707,10 +5118,10 @@ var BattleManager = (function () {
     BattleManager.prototype.startActiveBattle = function () {
         for (var _i = 0, _a = this.battleData; _i < _a.length; _i++) {
             var data = _a[_i];
-            if (data.state == BattleManager.STATE_ACTIVE) {
+            if (data.end_time == 0) {
                 var battle = new Battle_1.default(true);
                 Game_1.default.instance.setCurrentBattle(battle);
-                battle.init();
+                battle.init(data);
                 return;
             }
         }
@@ -4734,7 +5145,7 @@ var BattleManager = (function () {
     BattleManager.prototype.onStartBattle = function (data) {
         var battle = new Battle_1.default(true);
         Game_1.default.instance.setCurrentBattle(battle);
-        battle.init();
+        battle.init(data);
     };
     //I'm not actually sure yet what all of these are supposed to mean
     BattleManager.STATE_AVAILABLE = 0;
@@ -4746,7 +5157,7 @@ var BattleManager = (function () {
 }());
 exports.default = BattleManager;
 
-},{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],38:[function(require,module,exports){
+},{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],45:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Hero = (function () {
@@ -4766,7 +5177,7 @@ var Hero = (function () {
 }());
 exports.default = Hero;
 
-},{}],39:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Hero_1 = require("./Hero");
@@ -4800,7 +5211,7 @@ var HeroManager = (function () {
 }());
 exports.default = HeroManager;
 
-},{"./Hero":38}],40:[function(require,module,exports){
+},{"./Hero":45}],47:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var BattleManager_1 = require("./BattleManager");
@@ -4845,7 +5256,7 @@ var User = (function () {
 }());
 exports.default = User;
 
-},{"../util/Util":47,"./BattleManager":37,"./HeroManager":39}],41:[function(require,module,exports){
+},{"../util/Util":54,"./BattleManager":44,"./HeroManager":46}],48:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var AssetCache = (function () {
@@ -4896,7 +5307,7 @@ var AssetCache = (function () {
 }());
 exports.default = AssetCache;
 
-},{}],42:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var IDObjectGroup = (function () {
@@ -4952,7 +5363,7 @@ var IDObjectGroup = (function () {
 }());
 exports.default = IDObjectGroup;
 
-},{}],43:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /*
@@ -5004,7 +5415,7 @@ function log(typeName, msg) {
 }
 exports.log = log;
 
-},{}],44:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -5058,7 +5469,7 @@ var TextSprite = (function (_super) {
 }(PIXI.Sprite));
 exports.TextSprite = TextSprite;
 
-},{"../Game":1}],45:[function(require,module,exports){
+},{"../Game":1}],52:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -5141,7 +5552,7 @@ var Timer = (function () {
 }());
 exports.default = Timer;
 
-},{"../Game":1}],46:[function(require,module,exports){
+},{"../Game":1}],53:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -5193,7 +5604,7 @@ var Tween = (function () {
         this._property = property;
         this._startValue = startValue;
         this._endValue = endValue;
-        this._duration = Math.max(0.0001, duration); //no divide by 0 pls
+        this._duration = duration;
         this._easingFunction = easingFunction;
         this._active = false;
         this._currentTime = 0;
@@ -5205,9 +5616,18 @@ var Tween = (function () {
             console.error("Tween: can't start (not initialized)");
             return;
         }
-        this._active = true;
-        this._target[this._property] = this._startValue;
-        this.setUpdating(true);
+        if (this._duration > 0) {
+            this._active = true;
+            this._target[this._property] = this._startValue;
+            this.setUpdating(true);
+        }
+        else {
+            this._active = false;
+            this._target[this._property] = this._endValue;
+            this.setUpdating(false);
+            if (this.onFinish)
+                this.onFinish();
+        }
     };
     Tween.prototype.stop = function () {
         this._active = true;
@@ -5303,7 +5723,7 @@ var Tween = (function () {
 }());
 exports.default = Tween;
 
-},{"../Game":1}],47:[function(require,module,exports){
+},{"../Game":1}],54:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function noop() { }
@@ -5420,7 +5840,7 @@ function isCoordinate(x) {
 }
 exports.isCoordinate = isCoordinate;
 
-},{}],48:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Util = require("./Util");
@@ -5540,4 +5960,4 @@ var Vector2D = (function () {
 }());
 exports.default = Vector2D;
 
-},{"./Util":47}]},{},[3]);
+},{"./Util":54}]},{},[3]);

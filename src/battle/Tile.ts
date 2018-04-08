@@ -21,6 +21,15 @@ export default class Tile {
 	}
 
 	//these are all temp!
+	//figure out how tiles should actually work!!!
+	public initType(type:number) {
+		switch (type) {
+			case 1: this.initWall(); break;
+			case 2: this.initFloor(); break;
+			case 3: this.initPit(); break;
+		}
+	}
+
 	public initWall() {
 		this.pathingType = Tile.PATHING_NONE;
 		this.name = "Wall";

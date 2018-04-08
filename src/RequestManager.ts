@@ -60,12 +60,13 @@ export default class RequestManager {
         console.log(params);
 
         $.post(this.baseUrl + '/' + type, {"params": JSON.stringify(params)})
-            .done(function(data) {
+            .done((data) => {
                 console.log("RESPONSE '" + type + "'");
                 console.log(data);
+                this.readDefinitions(data);
                 callback(data);
             })
-            .fail(function(e) {
+            .fail((e) => {
                 console.log("Request '" + type + "' failed");
                 console.log(e);
                 callback(null);
@@ -81,5 +82,18 @@ export default class RequestManager {
                     }
                 }
             });
+    }
+
+    /**
+     * If a request response contains definitions, this will add them to Game.instance.definitions.
+     */
+    private readDefinitions(data) {
+        if (data.definitions) {
+            for (var type in data.definitions) {
+                for (var defData of data.definitions[type]) {
+                    Game.instance.definitions.setDefinition(type, defData);
+                }
+            }
+        }
     }
 }

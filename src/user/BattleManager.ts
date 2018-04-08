@@ -25,13 +25,14 @@ export default class BattleManager {
         console.log("BattleManager: load");
 
         for (var data of data.battles) {
+            console.log(data);
             this.battleData.push(data);
         }
     }
 
     public checkAnyBattleActive():boolean {
         for (var data of this.battleData) {
-            if (data.state == BattleManager.STATE_ACTIVE) return true;
+            if (data.end_time == 0) return true;
         }
         return false;
     }
@@ -41,10 +42,10 @@ export default class BattleManager {
      */
     public startActiveBattle() {
         for (var data of this.battleData) {
-            if (data.state == BattleManager.STATE_ACTIVE) {
+            if (data.end_time == 0) {
                 var battle = new Battle(true);
                 Game.instance.setCurrentBattle(battle);
-                battle.init();
+                battle.init(data);
                 return;
             }
         }
@@ -69,6 +70,6 @@ export default class BattleManager {
     private onStartBattle(data) {
         var battle = new Battle(true);
         Game.instance.setCurrentBattle(battle);
-        battle.init();
+        battle.init(data);
     }
 }

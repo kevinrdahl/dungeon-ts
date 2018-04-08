@@ -15,7 +15,7 @@ var GenericListDialog_1 = require("./GenericListDialog");
 var TextButton_1 = require("../TextButton");
 var InputManager_1 = require("../InputManager");
 var AttachInfo_1 = require("../AttachInfo");
-var InterfaceRoot = /** @class */ (function (_super) {
+var InterfaceRoot = (function (_super) {
     __extends(InterfaceRoot, _super);
     function InterfaceRoot(container) {
         var _this = _super.call(this) || this;

@@ -20,7 +20,7 @@ var SparseGrid_1 = require("../ds/SparseGrid");
 var Animation_1 = require("./display/animation/Animation");
 var GameEvent_1 = require("../events/GameEvent");
 var GameEventHandler_1 = require("../events/GameEventHandler");
-var Battle = /** @class */ (function (_super) {
+var Battle = (function (_super) {
     __extends(Battle, _super);
     /**
      * It's a battle!
@@ -40,6 +40,8 @@ var Battle = /** @class */ (function (_super) {
         _this._turnNumber = 0;
         _this._ended = false;
         _this._winner = null;
+        //data and accessors
+        _this.data = null;
         //animation
         _this.animationSequence = null;
         _this._animating = false;
@@ -86,12 +88,19 @@ var Battle = /** @class */ (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Battle.prototype.init = function () {
+    Object.defineProperty(Battle.prototype, "layout", {
+        get: function () { return Game_1.default.instance.definitions.getDefinition("layout", this.data.layout_id); },
+        enumerable: true,
+        configurable: true
+    });
+    Battle.prototype.init = function (data) {
         var _this = this;
         if (this.initialized)
             return;
         this.initialized = true;
         console.log("Battle: init");
+        console.log(data);
+        this.data = data;
         this.initLevel();
         if (this._visible) {
             this.initDisplay();
@@ -452,7 +461,7 @@ var Battle = /** @class */ (function (_super) {
     ////////////////////////////////////////////////////////////
     Battle.prototype.initLevel = function () {
         this.level = new Level_1.default();
-        this.level.init();
+        this.level.init(this.layout);
     };
     Battle.prototype.initDisplay = function () {
         console.log("Battle: init display");

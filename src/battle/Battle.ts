@@ -10,6 +10,7 @@ import Timer from '../util/Timer';
 import Animation from './display/animation/Animation';
 import GameEvent from '../events/GameEvent';
 import GameEventHandler from '../events/GameEventHandler';
+import Layout from '../definitions/Layout';
 
 export default class Battle extends GameEventHandler {
 	public players:IDObjectGroup<Player> = new IDObjectGroup<Player>();
@@ -36,6 +37,10 @@ export default class Battle extends GameEventHandler {
 	private _ended = false;
 	private _winner:Player = null;
 
+	//data and accessors
+	private data = null;
+	public get layout():Layout { return Game.instance.definitions.getDefinition("layout", this.data.layout_id); }
+
 	//animation
 	private animationSequence:Animation = null;
 	private _animating:boolean = false;
@@ -49,11 +54,13 @@ export default class Battle extends GameEventHandler {
 		this._visible = visible;
 	}
 
-	public init() {
+	public init(data) {
 		if (this.initialized) return;
 		this.initialized = true;
 
 		console.log("Battle: init");
+		console.log(data);
+		this.data = data;
 
 		this.initLevel();
 
@@ -469,7 +476,7 @@ export default class Battle extends GameEventHandler {
 
 	private initLevel() {
 		this.level = new Level();
-		this.level.init();
+		this.level.init(this.layout);
 	}
 
 	private initDisplay() {

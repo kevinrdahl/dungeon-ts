@@ -13,7 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("../../InterfaceElement");
 var ElementList_1 = require("../../ElementList");
 var TextButton_1 = require("../../TextButton");
-var ScreenSelector = /** @class */ (function (_super) {
+var ScreenSelector = (function (_super) {
     __extends(ScreenSelector, _super);
     function ScreenSelector(mainMenu) {
         var _this = _super.call(this) || this;
@@ -40,7 +40,6 @@ var ScreenSelector = /** @class */ (function (_super) {
     ScreenSelector.prototype.getButtonCallback = function (screenName) {
         var _this = this;
         return function () {
-            console.log("ScreenSelector button: open \"" + screenName + "\"");
             _this.mainMenu.openScreen(screenName);
         };
     };

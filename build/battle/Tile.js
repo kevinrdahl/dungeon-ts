@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Tile = /** @class */ (function () {
+var Tile = (function () {
     function Tile() {
         this.pathingType = 0;
         this.walkCost = 1;
@@ -26,6 +26,20 @@ var Tile = /** @class */ (function () {
         configurable: true
     });
     //these are all temp!
+    //figure out how tiles should actually work!!!
+    Tile.prototype.initType = function (type) {
+        switch (type) {
+            case 1:
+                this.initWall();
+                break;
+            case 2:
+                this.initFloor();
+                break;
+            case 3:
+                this.initPit();
+                break;
+        }
+    };
     Tile.prototype.initWall = function () {
         this.pathingType = Tile.PATHING_NONE;
         this.name = "Wall";

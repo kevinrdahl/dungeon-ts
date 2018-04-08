@@ -16,7 +16,7 @@ var TextUtil = require("../../util/TextUtil");
 var Globals_1 = require("../../Globals");
 var Tween_1 = require("../../util/Tween");
 var GameEvent_1 = require("../../events/GameEvent");
-var TracePathInfo = /** @class */ (function () {
+var TracePathInfo = (function () {
     function TracePathInfo() {
         this.timeElapsed = 0;
         this.duration = 0;
@@ -24,7 +24,7 @@ var TracePathInfo = /** @class */ (function () {
     }
     return TracePathInfo;
 }());
-var UnitDisplay = /** @class */ (function (_super) {
+var UnitDisplay = (function (_super) {
     __extends(UnitDisplay, _super);
     function UnitDisplay() {
         var _this = _super.call(this) || this;

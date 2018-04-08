@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Log = require("./util/Log");
 var Game_1 = require("./Game");
-var RequestManager = /** @class */ (function () {
+var RequestManager = (function () {
     function RequestManager(baseUrl) {
         if (baseUrl === void 0) { baseUrl = null; }
         this.baseUrl = "http://mightnot.work/dungeon/request";
@@ -62,6 +62,7 @@ var RequestManager = /** @class */ (function () {
             .done(function (data) {
             console.log("RESPONSE '" + type + "'");
             console.log(data);
+            _this.readDefinitions(data);
             callback(data);
         })
             .fail(function (e) {
@@ -80,6 +81,19 @@ var RequestManager = /** @class */ (function () {
                 }
             }
         });
+    };
+    /**
+     * If a request response contains definitions, this will add them to Game.instance.definitions.
+     */
+    RequestManager.prototype.readDefinitions = function (data) {
+        if (data.definitions) {
+            for (var type in data.definitions) {
+                for (var _i = 0, _a = data.definitions[type]; _i < _a.length; _i++) {
+                    var defData = _a[_i];
+                    Game_1.default.instance.definitions.setDefinition(type, defData);
+                }
+            }
+        }
     };
     RequestManager.instance = new RequestManager();
     return RequestManager;

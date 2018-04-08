@@ -2,31 +2,28 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
 var LevelDisplay_1 = require("./display/LevelDisplay");
-var Level = /** @class */ (function () {
+var Level = (function () {
     function Level() {
         this.tiles = [];
         this.width = 0;
         this.height = 0;
         this.display = null;
     }
-    Level.prototype.init = function () {
-        this.width = 10;
-        this.height = 8;
-        for (var y = 0; y < this.height; y++) {
-            for (var x = 0; x < this.width; x++) {
-                var tile = new Tile_1.default();
-                tile.x = x;
-                tile.y = y;
-                if (x == 0 || y == 0 || x == this.width - 1 || y == this.height - 1) {
-                    tile.initWall();
-                }
-                else if (this.width - x < 5 && this.height - y < 5) {
-                    tile.initPit();
-                }
-                else {
-                    tile.initFloor();
-                }
-                this.tiles.push(tile);
+    Level.prototype.init = function (layout) {
+        this.width = layout.width;
+        this.height = layout.height;
+        var x = 0, y = 0;
+        for (var _i = 0, _a = layout.tiles; _i < _a.length; _i++) {
+            var tileType = _a[_i];
+            var tile = new Tile_1.default();
+            tile.x = x;
+            tile.y = y;
+            tile.initType(tileType);
+            this.tiles.push(tile);
+            x += 1;
+            if (x == this.width) {
+                x = 0;
+                y += 1;
             }
         }
     };

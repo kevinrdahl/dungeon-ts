@@ -18,7 +18,7 @@ exports.styles = {
     unitID: new PIXI.TextStyle({ fontSize: 14, fontFamily: mainFont, fill: 0xffffff, align: 'left' })
 };
 /** For scaling without interpolation */
-var TextSprite = /** @class */ (function (_super) {
+var TextSprite = (function (_super) {
     __extends(TextSprite, _super);
     function TextSprite(text, style) {
         var _this = _super.call(this) || this;

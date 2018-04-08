@@ -35,6 +35,7 @@ import Updater from './Updater';
 import Vector2D from './util/Vector2D';
 import RequestManager from './RequestManager';
 import MainMenu from './interface/prefabs/mainmenu/MainMenu';
+import DefinitionManager from './definitions/DefinitionManager';
 
 export default class Game extends GameEventHandler {
 	public static instance: Game = null;
@@ -53,6 +54,7 @@ export default class Game extends GameEventHandler {
 	public updater: Updater = new Updater();
 	public user:User = new User();
 	public staticUrl = "";
+	public definitions = new DefinitionManager();
 
 	get volatileGraphics(): PIXI.Graphics { return this._volatileGraphics.clear(); }
 	get currentBattle():Battle { return this._currentBattle; }
@@ -226,13 +228,6 @@ export default class Game extends GameEventHandler {
 		this.interfaceRoot.removeChild(loadingText);
 	}
 
-	private initTestBattle() {
-		var battle = new Battle(true);
-		this._currentBattle = battle;
-
-		battle.init();
-	}
-
 	private initMainMenu() {
 		//this.interfaceRoot.showStatusPopup("This is the main menu!");
 		var mainMenu = new MainMenu();
@@ -259,7 +254,6 @@ export default class Game extends GameEventHandler {
 			if (data) {
 				this.user.load(data.data);
 				this.user.startGame();
-				//this.initTestBattle();
 			} else {
 				console.error("Unable to load user");
 			}

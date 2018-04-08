@@ -19,7 +19,7 @@ var TextField_1 = require("../TextField");
 var GameEvent_1 = require("../../events/GameEvent");
 var TextFieldListManager_1 = require("./TextFieldListManager");
 var TextButton_1 = require("../TextButton");
-var GenericListDialog = /** @class */ (function (_super) {
+var GenericListDialog = (function (_super) {
     __extends(GenericListDialog, _super);
     function GenericListDialog(width, borderPadding) {
         if (width === void 0) { width = 300; }

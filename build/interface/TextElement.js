@@ -13,7 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var InterfaceElement_1 = require("./InterfaceElement");
 var mainFont = "Arial";
-var TextElement = /** @class */ (function (_super) {
+var TextElement = (function (_super) {
     __extends(TextElement, _super);
     function TextElement(text, style) {
         if (text === void 0) { text = ""; }

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var Battle_1 = require("../battle/Battle");
 var Game_1 = require("../Game");
 var RequestManager_1 = require("../RequestManager");
-var BattleManager = /** @class */ (function () {
+var BattleManager = (function () {
     function BattleManager(user) {
         this.battleData = [];
         this.user = user;
@@ -17,13 +17,14 @@ var BattleManager = /** @class */ (function () {
         console.log("BattleManager: load");
         for (var _i = 0, _a = data.battles; _i < _a.length; _i++) {
             var data = _a[_i];
+            console.log(data);
             this.battleData.push(data);
         }
     };
     BattleManager.prototype.checkAnyBattleActive = function () {
         for (var _i = 0, _a = this.battleData; _i < _a.length; _i++) {
             var data = _a[_i];
-            if (data.state == BattleManager.STATE_ACTIVE)
+            if (data.end_time == 0)
                 return true;
         }
         return false;
@@ -34,10 +35,10 @@ var BattleManager = /** @class */ (function () {
     BattleManager.prototype.startActiveBattle = function () {
         for (var _i = 0, _a = this.battleData; _i < _a.length; _i++) {
             var data = _a[_i];
-            if (data.state == BattleManager.STATE_ACTIVE) {
+            if (data.end_time == 0) {
                 var battle = new Battle_1.default(true);
                 Game_1.default.instance.setCurrentBattle(battle);
-                battle.init();
+                battle.init(data);
                 return;
             }
         }
@@ -61,7 +62,7 @@ var BattleManager = /** @class */ (function () {
     BattleManager.prototype.onStartBattle = function (data) {
         var battle = new Battle_1.default(true);
         Game_1.default.instance.setCurrentBattle(battle);
-        battle.init();
+        battle.init(data);
     };
     //I'm not actually sure yet what all of these are supposed to mean
     BattleManager.STATE_AVAILABLE = 0;

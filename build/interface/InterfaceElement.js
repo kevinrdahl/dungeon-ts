@@ -16,7 +16,7 @@ var ResizeInfo_1 = require("./ResizeInfo");
 var InputManager_1 = require("./InputManager");
 var Game_1 = require("../Game");
 var GameEventHandler_1 = require("../events/GameEventHandler");
-var InterfaceElement = /** @class */ (function (_super) {
+var InterfaceElement = (function (_super) {
     __extends(InterfaceElement, _super);
     /**
      * Base class for anything in the UI. Has a parent and can have children, like DOM elements.

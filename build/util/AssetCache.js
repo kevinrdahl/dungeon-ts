@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var AssetCache = /** @class */ (function () {
+var AssetCache = (function () {
     /**
      * Stores objects by key, and discards the oldest once capacity is reached.
      * TODO: Option to keep the most recently used (move to top when accessed, requires LinkedList)

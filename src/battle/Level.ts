@@ -11,23 +11,22 @@ export default class Level {
 
 	}
 
-	public init() {
-		this.width = 10;
-		this.height = 8;
+	public init(layout) {
+		this.width = layout.width;
+		this.height = layout.height;
 
-		for (var y = 0; y < this.height; y++) {
-			for (var x = 0; x < this.width; x++) {
-				var tile:Tile = new Tile();
-				tile.x = x;
-				tile.y = y;
-				if (x == 0 || y == 0 || x == this.width - 1 || y == this.height - 1) {
-					tile.initWall();
-				} else if (this.width - x < 5 && this.height - y < 5) {
-					tile.initPit();
-				} else {
-					tile.initFloor();
-				}
-				this.tiles.push(tile);
+		var x = 0, y = 0;
+		for (var tileType of layout.tiles) {
+			var tile: Tile = new Tile();
+			tile.x = x;
+			tile.y = y;
+			tile.initType(tileType);
+			this.tiles.push(tile);
+
+			x += 1;
+			if (x == this.width) {
+				x = 0;
+				y += 1;
 			}
 		}
 	}

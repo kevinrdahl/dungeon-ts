@@ -13,7 +13,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals_1 = require("../../Globals");
 var Game_1 = require("../../Game");
-var LevelDisplay = /** @class */ (function (_super) {
+var LevelDisplay = (function (_super) {
     __extends(LevelDisplay, _super);
     function LevelDisplay() {
         var _this = _super.call(this) || this;

@@ -10,7 +10,7 @@ var GameEvent_1 = require("../events/GameEvent");
  *
  * Singleton!
  */
-var InputManager = /** @class */ (function () {
+var InputManager = (function () {
     function InputManager() {
         var _this = this;
         this.dragThreshold = 8;

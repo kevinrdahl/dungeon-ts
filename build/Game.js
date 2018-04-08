@@ -27,17 +27,13 @@ var InterfaceElement_1 = require("./interface/InterfaceElement");
 var TextElement_1 = require("./interface/TextElement");
 var AttachInfo_1 = require("./interface/AttachInfo");
 var GameEventHandler_1 = require("./events/GameEventHandler");
-//Battle
-var Battle_1 = require("./battle/Battle");
 //Misc
 var Log = require("./util/Log");
 var Updater_1 = require("./Updater");
 var RequestManager_1 = require("./RequestManager");
-<<<<<<< HEAD
 var MainMenu_1 = require("./interface/prefabs/mainmenu/MainMenu");
-=======
->>>>>>> 7177c463b9c77758e690990ca984ecd6fe4625a3
-var Game = /** @class */ (function (_super) {
+var DefinitionManager_1 = require("./definitions/DefinitionManager");
+var Game = (function (_super) {
     __extends(Game, _super);
     function Game(viewDiv) {
         var _this = _super.call(this) || this;
@@ -51,6 +47,7 @@ var Game = /** @class */ (function (_super) {
         _this.updater = new Updater_1.default();
         _this.user = new User_1.default();
         _this.staticUrl = "";
+        _this.definitions = new DefinitionManager_1.default();
         /*=== PRIVATE ===*/
         _this._volatileGraphics = new PIXI.Graphics(); //to be used when drawing to a RenderTexture
         _this._documentResized = true;
@@ -202,20 +199,11 @@ var Game = /** @class */ (function (_super) {
         var loadingText = this.interfaceRoot.getElementById("loadingText");
         this.interfaceRoot.removeChild(loadingText);
     };
-    Game.prototype.initTestBattle = function () {
-        var battle = new Battle_1.default(true);
-        this._currentBattle = battle;
-        battle.init();
-    };
     Game.prototype.initMainMenu = function () {
-<<<<<<< HEAD
         //this.interfaceRoot.showStatusPopup("This is the main menu!");
         var mainMenu = new MainMenu_1.default();
         this.interfaceRoot.addDialog(mainMenu);
         mainMenu.init();
-=======
-        this.interfaceRoot.showStatusPopup("This is the main menu!");
->>>>>>> 7177c463b9c77758e690990ca984ecd6fe4625a3
     };
     Game.prototype.setCurrentBattle = function (battle) {
         this._currentBattle = battle;
@@ -235,7 +223,6 @@ var Game = /** @class */ (function (_super) {
             if (data) {
                 _this.user.load(data.data);
                 _this.user.startGame();
-                //this.initTestBattle();
             }
             else {
                 console.error("Unable to load user");
