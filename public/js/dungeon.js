@@ -236,7 +236,7 @@ var Game = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Game;
 
-},{"./RequestManager":4,"./Updater":5,"./definitions/DefinitionManager":15,"./events/GameEventHandler":21,"./interface/AttachInfo":22,"./interface/InputManager":25,"./interface/InterfaceElement":26,"./interface/TextElement":31,"./interface/prefabs/InterfaceRoot":34,"./interface/prefabs/mainmenu/MainMenu":37,"./sound/SoundAssets":40,"./sound/SoundManager":41,"./textures/TextureGenerator":42,"./textures/TextureLoader":43,"./user/User":47,"./util/Log":50}],2:[function(require,module,exports){
+},{"./RequestManager":4,"./Updater":5,"./definitions/DefinitionManager":15,"./events/GameEventHandler":22,"./interface/AttachInfo":23,"./interface/InputManager":26,"./interface/InterfaceElement":27,"./interface/TextElement":32,"./interface/prefabs/InterfaceRoot":35,"./interface/prefabs/mainmenu/MainMenu":38,"./sound/SoundAssets":41,"./sound/SoundManager":42,"./textures/TextureGenerator":43,"./textures/TextureLoader":44,"./user/User":48,"./util/Log":51}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals = (function () {
@@ -365,7 +365,7 @@ var RequestManager = (function () {
 }());
 exports.default = RequestManager;
 
-},{"./Game":1,"./util/Log":50}],5:[function(require,module,exports){
+},{"./Game":1,"./util/Log":51}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Updater = (function () {
@@ -535,15 +535,34 @@ var Battle = (function (_super) {
             this.level.initDisplay();
             this.display.setLevelDisplay(this.level.display);
         }
-        //temp! add a couple players with a few units
+        //temp! add a couple players (for now, only the user and monsters)
         for (var i = 0; i < 2; i++) {
             var player = new Player_1.default();
             this.addPlayer(player);
-            for (var j = 0; j < 3; j++) {
+        }
+        //heroes
+        for (var _i = 0, _a = data.data.heroes; _i < _a.length; _i++) {
+            var heroData = _a[_i];
+            var hero = Game_1.default.instance.user.heroManager.getHero(heroData.id);
+            if (hero) {
                 var unit = new Unit_1.default();
-                unit.x = 1 + j;
-                unit.y = 1 + i * 2;
-                player.addUnit(unit);
+                unit.initAsHero(hero);
+                unit.x = heroData.position[0];
+                unit.y = heroData.position[1];
+                this.players.list[0].addUnit(unit);
+                this.addUnit(unit, false);
+            }
+        }
+        //monsters
+        for (var _b = 0, _c = data.data.monsters; _b < _c.length; _b++) {
+            var monsterData = _c[_b];
+            var monster = Game_1.default.instance.definitions.getDefinition("monster", monsterData.monster_id);
+            if (monster) {
+                var unit = new Unit_1.default();
+                unit.initAsMonster(monster);
+                unit.x = monsterData.position[0];
+                unit.y = monsterData.position[1];
+                this.players.list[1].addUnit(unit);
                 this.addUnit(unit, false);
             }
         }
@@ -902,7 +921,7 @@ var Battle = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Battle;
 
-},{"../Game":1,"../ds/SparseGrid":19,"../events/GameEvent":20,"../events/GameEventHandler":21,"../util/IDObjectGroup":49,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
+},{"../Game":1,"../ds/SparseGrid":20,"../events/GameEvent":21,"../events/GameEventHandler":22,"../util/IDObjectGroup":50,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
@@ -989,7 +1008,7 @@ var Player = (function () {
 }());
 exports.default = Player;
 
-},{"../util/IDObjectGroup":49}],9:[function(require,module,exports){
+},{"../util/IDObjectGroup":50}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile = (function () {
@@ -1100,6 +1119,9 @@ var Unit = (function () {
         this.attackDamage = 2;
         this.health = 5;
         this.maxHealth = 5;
+        this.name = "?";
+        this.hero = null;
+        this.monster = null;
         this.pathableTiles = null;
         this.attackableTiles = null;
         this._id = Unit._nextID++;
@@ -1130,6 +1152,16 @@ var Unit = (function () {
         enumerable: true,
         configurable: true
     });
+    Unit.prototype.initAsHero = function (hero) {
+        this.monster = null;
+        this.hero = hero;
+        this.name = hero.name;
+    };
+    Unit.prototype.initAsMonster = function (monster) {
+        this.hero = null;
+        this.monster = monster;
+        this.name = monster.name;
+    };
     Unit.prototype.onAddToBattle = function () {
         if (this.battle.visible) {
             this.initDisplay();
@@ -1452,7 +1484,7 @@ var Unit = (function () {
         }
     };
     Unit.prototype.toString = function () {
-        return "Unit " + this.id;
+        return "Unit " + this.id + ' "' + this.name + '"';
     };
     Unit._nextID = 1;
     Unit.adjacentOffsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
@@ -1460,7 +1492,7 @@ var Unit = (function () {
 }());
 exports.default = Unit;
 
-},{"../ds/BinaryHeap":18,"../ds/SparseGrid":19,"./display/UnitDisplay":13}],11:[function(require,module,exports){
+},{"../ds/BinaryHeap":19,"../ds/SparseGrid":20,"./display/UnitDisplay":13}],11:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1743,7 +1775,7 @@ var BattleDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":20,"../../interface/AttachInfo":22,"../../interface/ElementList":24,"../../interface/InputManager":25,"../../interface/TextElement":31,"../../util/TextUtil":51,"../../util/Tween":53,"../../util/Vector2D":55}],12:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":21,"../../interface/AttachInfo":23,"../../interface/ElementList":25,"../../interface/InputManager":26,"../../interface/TextElement":32,"../../util/TextUtil":52,"../../util/Tween":54,"../../util/Vector2D":56}],12:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -2062,7 +2094,7 @@ var UnitDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = UnitDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":20,"../../util/TextUtil":51,"../../util/Tween":53}],14:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":21,"../../util/TextUtil":52,"../../util/Tween":54}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Timer_1 = require("../../../util/Timer");
@@ -2324,11 +2356,12 @@ var Animation = (function () {
 }());
 exports.default = Animation;
 
-},{"../../../Globals":2,"../../../util/Timer":52,"../../../util/Tween":53}],15:[function(require,module,exports){
+},{"../../../Globals":2,"../../../util/Timer":53,"../../../util/Tween":54}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Layout_1 = require("./Layout");
 var Dungeon_1 = require("./Dungeon");
+var Monster_1 = require("./Monster");
 var DefinitionManager = (function () {
     function DefinitionManager() {
         this.allDefinitions = {}; //by type, then by ID
@@ -2396,13 +2429,14 @@ var DefinitionManager = (function () {
     };
     DefinitionManager.classesByType = {
         "layout": Layout_1.default,
-        "dungeon": Dungeon_1.default
+        "dungeon": Dungeon_1.default,
+        "monster": Monster_1.default
     };
     return DefinitionManager;
 }());
 exports.default = DefinitionManager;
 
-},{"./Dungeon":16,"./Layout":17}],16:[function(require,module,exports){
+},{"./Dungeon":16,"./Layout":17,"./Monster":18}],16:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Dungeon = (function () {
@@ -2455,6 +2489,22 @@ var Layout = (function () {
 exports.default = Layout;
 
 },{}],18:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var Monster = (function () {
+    function Monster() {
+        this.id = -1;
+        this.name = "Monster";
+    }
+    Monster.prototype.readData = function (data) {
+        this.id - data.id;
+        this.name = data.name;
+    };
+    return Monster;
+}());
+exports.default = Monster;
+
+},{}],19:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2664,7 +2714,7 @@ var BinaryHeap = (function () {
 }());
 exports.default = BinaryHeap;
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2781,7 +2831,7 @@ var SparseGrid = (function () {
 }());
 exports.default = SparseGrid;
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent = (function () {
@@ -2842,7 +2892,7 @@ var GameEvent = (function () {
 }());
 exports.default = GameEvent;
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("./GameEvent");
@@ -2904,7 +2954,7 @@ var GameEventHandler = (function () {
 }());
 exports.default = GameEventHandler;
 
-},{"./GameEvent":20}],22:[function(require,module,exports){
+},{"./GameEvent":21}],23:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -2930,7 +2980,7 @@ var AttachInfo = (function () {
 }());
 exports.default = AttachInfo;
 
-},{"../util/Vector2D":55}],23:[function(require,module,exports){
+},{"../util/Vector2D":56}],24:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3025,7 +3075,7 @@ var BaseButton = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = BaseButton;
 
-},{"../events/GameEvent":20,"./InterfaceElement":26}],24:[function(require,module,exports){
+},{"../events/GameEvent":21,"./InterfaceElement":27}],25:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3185,7 +3235,7 @@ var ElementList = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = ElementList;
 
-},{"./InterfaceElement":26}],25:[function(require,module,exports){
+},{"./InterfaceElement":27}],26:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/jquery.d.ts"/>
@@ -3436,7 +3486,7 @@ var keyNames = {
     "39": "RIGHT"
 };
 
-},{"../Game":1,"../events/GameEvent":20,"../util/Vector2D":55}],26:[function(require,module,exports){
+},{"../Game":1,"../events/GameEvent":21,"../util/Vector2D":56}],27:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3864,7 +3914,7 @@ var InterfaceElement = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = InterfaceElement;
 
-},{"../Game":1,"../events/GameEventHandler":21,"../util/Vector2D":55,"./InputManager":25,"./ResizeInfo":29}],27:[function(require,module,exports){
+},{"../Game":1,"../events/GameEventHandler":22,"../util/Vector2D":56,"./InputManager":26,"./ResizeInfo":30}],28:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3902,7 +3952,7 @@ var MaskElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = MaskElement;
 
-},{"./InterfaceElement":26}],28:[function(require,module,exports){
+},{"./InterfaceElement":27}],29:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3974,7 +4024,7 @@ var Panel = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = Panel;
 
-},{"../textures/TextureGenerator":42,"./InterfaceElement":26}],29:[function(require,module,exports){
+},{"../textures/TextureGenerator":43,"./InterfaceElement":27}],30:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -4002,7 +4052,7 @@ var ResizeInfo = (function () {
 }());
 exports.default = ResizeInfo;
 
-},{"../util/AssetCache":48,"../util/Vector2D":55}],30:[function(require,module,exports){
+},{"../util/AssetCache":49,"../util/Vector2D":56}],31:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -4097,7 +4147,7 @@ var TextButton = (function (_super) {
 }(BaseButton_1.default));
 exports.default = TextButton;
 
-},{"../events/GameEvent":20,"../textures/TextureGenerator":42,"../util/AssetCache":48,"./AttachInfo":22,"./BaseButton":23,"./TextElement":31}],31:[function(require,module,exports){
+},{"../events/GameEvent":21,"../textures/TextureGenerator":43,"../util/AssetCache":49,"./AttachInfo":23,"./BaseButton":24,"./TextElement":32}],32:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4177,7 +4227,7 @@ var TextElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextElement;
 
-},{"./InterfaceElement":26}],32:[function(require,module,exports){
+},{"./InterfaceElement":27}],33:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -4350,7 +4400,7 @@ var TextField = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextField;
 
-},{"../events/GameEvent":20,"../util/Vector2D":55,"./AttachInfo":22,"./InterfaceElement":26,"./MaskElement":27,"./Panel":28,"./TextElement":31}],33:[function(require,module,exports){
+},{"../events/GameEvent":21,"../util/Vector2D":56,"./AttachInfo":23,"./InterfaceElement":27,"./MaskElement":28,"./Panel":29,"./TextElement":32}],34:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4531,7 +4581,7 @@ var GenericListDialog = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = GenericListDialog;
 
-},{"../../events/GameEvent":20,"../AttachInfo":22,"../ElementList":24,"../InterfaceElement":26,"../Panel":28,"../TextButton":30,"../TextElement":31,"../TextField":32,"./TextFieldListManager":35}],34:[function(require,module,exports){
+},{"../../events/GameEvent":21,"../AttachInfo":23,"../ElementList":25,"../InterfaceElement":27,"../Panel":29,"../TextButton":31,"../TextElement":32,"../TextField":33,"./TextFieldListManager":36}],35:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4645,7 +4695,7 @@ var InterfaceRoot = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = InterfaceRoot;
 
-},{"../AttachInfo":22,"../InputManager":25,"../InterfaceElement":26,"../TextButton":30,"./GenericListDialog":33}],35:[function(require,module,exports){
+},{"../AttachInfo":23,"../InputManager":26,"../InterfaceElement":27,"../TextButton":31,"./GenericListDialog":34}],36:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4710,7 +4760,7 @@ var TextFieldListManager = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = TextFieldListManager;
 
-},{"../../events/GameEvent":20,"../../events/GameEventHandler":21,"../InputManager":25}],36:[function(require,module,exports){
+},{"../../events/GameEvent":21,"../../events/GameEventHandler":22,"../InputManager":26}],37:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4738,7 +4788,7 @@ var DungeonScreen = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = DungeonScreen;
 
-},{"../../InterfaceElement":26,"../../TextElement":31}],37:[function(require,module,exports){
+},{"../../InterfaceElement":27,"../../TextElement":32}],38:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4808,7 +4858,7 @@ var MainMenu = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = MainMenu;
 
-},{"../../AttachInfo":22,"../../InterfaceElement":26,"./DungeonScreen":36,"./ScreenSelector":38,"./UnitScreen":39}],38:[function(require,module,exports){
+},{"../../AttachInfo":23,"../../InterfaceElement":27,"./DungeonScreen":37,"./ScreenSelector":39,"./UnitScreen":40}],39:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4858,7 +4908,7 @@ var ScreenSelector = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = ScreenSelector;
 
-},{"../../ElementList":24,"../../InterfaceElement":26,"../../TextButton":30}],39:[function(require,module,exports){
+},{"../../ElementList":25,"../../InterfaceElement":27,"../../TextButton":31}],40:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4886,7 +4936,7 @@ var UnitScreen = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = UnitScreen;
 
-},{"../../InterfaceElement":26,"../../TextElement":31}],40:[function(require,module,exports){
+},{"../../InterfaceElement":27,"../../TextElement":32}],41:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mainMenuMusic = [
@@ -4898,7 +4948,7 @@ exports.interfaceSounds = [
     ["ui/nope", "sound/ui/nope.ogg"]
 ];
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var SoundLoadRequest = (function () {
@@ -4991,7 +5041,7 @@ var SoundManager = (function () {
 }());
 exports.default = SoundManager;
 
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
@@ -5013,7 +5063,7 @@ function simpleRectangle(target, width, height, color, borderWidth, borderColor)
 }
 exports.simpleRectangle = simpleRectangle;
 
-},{"../Game":1}],43:[function(require,module,exports){
+},{"../Game":1}],44:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -5080,7 +5130,7 @@ var TextureLoader = (function () {
 }());
 exports.default = TextureLoader;
 
-},{}],44:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Battle_1 = require("../battle/Battle");
@@ -5144,8 +5194,8 @@ var BattleManager = (function () {
     };
     BattleManager.prototype.onStartBattle = function (data) {
         var battle = new Battle_1.default(true);
+        battle.init(data.battle);
         Game_1.default.instance.setCurrentBattle(battle);
-        battle.init(data);
     };
     //I'm not actually sure yet what all of these are supposed to mean
     BattleManager.STATE_AVAILABLE = 0;
@@ -5157,7 +5207,7 @@ var BattleManager = (function () {
 }());
 exports.default = BattleManager;
 
-},{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],45:[function(require,module,exports){
+},{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],46:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Hero = (function () {
@@ -5177,7 +5227,7 @@ var Hero = (function () {
 }());
 exports.default = Hero;
 
-},{}],46:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Hero_1 = require("./Hero");
@@ -5207,11 +5257,17 @@ var HeroManager = (function () {
         this.heroes.splice(index, 1);
         delete this.heroesById[hero.id];
     };
+    HeroManager.prototype.getHero = function (id) {
+        var hero = this.heroesById[id];
+        if (hero)
+            return hero;
+        return null;
+    };
     return HeroManager;
 }());
 exports.default = HeroManager;
 
-},{"./Hero":45}],47:[function(require,module,exports){
+},{"./Hero":46}],48:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var BattleManager_1 = require("./BattleManager");
@@ -5256,7 +5312,7 @@ var User = (function () {
 }());
 exports.default = User;
 
-},{"../util/Util":54,"./BattleManager":44,"./HeroManager":46}],48:[function(require,module,exports){
+},{"../util/Util":55,"./BattleManager":45,"./HeroManager":47}],49:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var AssetCache = (function () {
@@ -5307,7 +5363,7 @@ var AssetCache = (function () {
 }());
 exports.default = AssetCache;
 
-},{}],49:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var IDObjectGroup = (function () {
@@ -5363,7 +5419,7 @@ var IDObjectGroup = (function () {
 }());
 exports.default = IDObjectGroup;
 
-},{}],50:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /*
@@ -5415,7 +5471,7 @@ function log(typeName, msg) {
 }
 exports.log = log;
 
-},{}],51:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -5469,7 +5525,7 @@ var TextSprite = (function (_super) {
 }(PIXI.Sprite));
 exports.TextSprite = TextSprite;
 
-},{"../Game":1}],52:[function(require,module,exports){
+},{"../Game":1}],53:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -5552,7 +5608,7 @@ var Timer = (function () {
 }());
 exports.default = Timer;
 
-},{"../Game":1}],53:[function(require,module,exports){
+},{"../Game":1}],54:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -5723,7 +5779,7 @@ var Tween = (function () {
 }());
 exports.default = Tween;
 
-},{"../Game":1}],54:[function(require,module,exports){
+},{"../Game":1}],55:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function noop() { }
@@ -5840,7 +5896,7 @@ function isCoordinate(x) {
 }
 exports.isCoordinate = isCoordinate;
 
-},{}],55:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Util = require("./Util");
@@ -5960,4 +6016,4 @@ var Vector2D = (function () {
 }());
 exports.default = Vector2D;
 
-},{"./Util":54}]},{},[3]);
+},{"./Util":55}]},{},[3]);

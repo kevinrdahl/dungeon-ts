@@ -32,4 +32,10 @@ export default class HeroManager {
         this.heroes.splice(index, 1);
         delete this.heroesById[hero.id];
     }
+
+    public getHero(id) {
+        var hero:Hero = this.heroesById[id];
+        if (hero) return hero;
+        return null;
+    }
 }

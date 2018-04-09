@@ -43,6 +43,9 @@ var Unit = (function () {
         this.attackDamage = 2;
         this.health = 5;
         this.maxHealth = 5;
+        this.name = "?";
+        this.hero = null;
+        this.monster = null;
         this.pathableTiles = null;
         this.attackableTiles = null;
         this._id = Unit._nextID++;
@@ -73,6 +76,16 @@ var Unit = (function () {
         enumerable: true,
         configurable: true
     });
+    Unit.prototype.initAsHero = function (hero) {
+        this.monster = null;
+        this.hero = hero;
+        this.name = hero.name;
+    };
+    Unit.prototype.initAsMonster = function (monster) {
+        this.hero = null;
+        this.monster = monster;
+        this.name = monster.name;
+    };
     Unit.prototype.onAddToBattle = function () {
         if (this.battle.visible) {
             this.initDisplay();
@@ -395,7 +408,7 @@ var Unit = (function () {
         }
     };
     Unit.prototype.toString = function () {
-        return "Unit " + this.id;
+        return "Unit " + this.id + ' "' + this.name + '"';
     };
     Unit._nextID = 1;
     Unit.adjacentOffsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];

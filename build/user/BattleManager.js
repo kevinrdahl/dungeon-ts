@@ -61,8 +61,8 @@ var BattleManager = (function () {
     };
     BattleManager.prototype.onStartBattle = function (data) {
         var battle = new Battle_1.default(true);
+        battle.init(data.battle);
         Game_1.default.instance.setCurrentBattle(battle);
-        battle.init(data);
     };
     //I'm not actually sure yet what all of these are supposed to mean
     BattleManager.STATE_AVAILABLE = 0;

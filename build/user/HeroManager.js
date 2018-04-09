@@ -27,6 +27,12 @@ var HeroManager = (function () {
         this.heroes.splice(index, 1);
         delete this.heroesById[hero.id];
     };
+    HeroManager.prototype.getHero = function (id) {
+        var hero = this.heroesById[id];
+        if (hero)
+            return hero;
+        return null;
+    };
     return HeroManager;
 }());
 exports.default = HeroManager;

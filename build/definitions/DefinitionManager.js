@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Layout_1 = require("./Layout");
 var Dungeon_1 = require("./Dungeon");
+var Monster_1 = require("./Monster");
 var DefinitionManager = (function () {
     function DefinitionManager() {
         this.allDefinitions = {}; //by type, then by ID
@@ -69,7 +70,8 @@ var DefinitionManager = (function () {
     };
     DefinitionManager.classesByType = {
         "layout": Layout_1.default,
-        "dungeon": Dungeon_1.default
+        "dungeon": Dungeon_1.default,
+        "monster": Monster_1.default
     };
     return DefinitionManager;
 }());

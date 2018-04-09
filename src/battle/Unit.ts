@@ -5,6 +5,8 @@ import Tile from './Tile';
 import UnitDisplay from './display/UnitDisplay';
 import BinaryHeap from '../ds/BinaryHeap';
 import SparseGrid from '../ds/SparseGrid';
+import Hero from '../user/Hero';
+import Monster from '../definitions/Monster';
 
 class PathingNode {
 	public cost = Number.POSITIVE_INFINITY;
@@ -41,6 +43,9 @@ export default class Unit {
 	public attackDamage:number = 2;
 	public health:number = 5;
 	public maxHealth:number = 5;
+	public name:String = "?";
+	public hero:Hero = null;
+	public monster:Monster = null;
 
 	public pathableTiles: SparseGrid<boolean> = null;
 	public attackableTiles:SparseGrid<boolean> = null;
@@ -58,6 +63,18 @@ export default class Unit {
 
 	constructor() {
 		this._id = Unit._nextID++;
+	}
+
+	public initAsHero(hero:Hero) {
+		this.monster = null;
+		this.hero = hero;
+		this.name = hero.name;
+	}
+
+	public initAsMonster(monster:Monster) {
+		this.hero = null;
+		this.monster = monster;
+		this.name = monster.name;
 	}
 
 	public onAddToBattle() {
@@ -431,6 +448,6 @@ export default class Unit {
 	}
 
 	public toString():string {
-		return "Unit " + this.id;
+		return "Unit " + this.id + ' "' + this.name + '"';
 	}
 }

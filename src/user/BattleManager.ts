@@ -69,7 +69,7 @@ export default class BattleManager {
 
     private onStartBattle(data) {
         var battle = new Battle(true);
+        battle.init(data.battle);
         Game.instance.setCurrentBattle(battle);
-        battle.init(data);
     }
 }

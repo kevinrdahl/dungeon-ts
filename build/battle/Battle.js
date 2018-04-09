@@ -107,15 +107,34 @@ var Battle = (function (_super) {
             this.level.initDisplay();
             this.display.setLevelDisplay(this.level.display);
         }
-        //temp! add a couple players with a few units
+        //temp! add a couple players (for now, only the user and monsters)
         for (var i = 0; i < 2; i++) {
             var player = new Player_1.default();
             this.addPlayer(player);
-            for (var j = 0; j < 3; j++) {
+        }
+        //heroes
+        for (var _i = 0, _a = data.data.heroes; _i < _a.length; _i++) {
+            var heroData = _a[_i];
+            var hero = Game_1.default.instance.user.heroManager.getHero(heroData.id);
+            if (hero) {
                 var unit = new Unit_1.default();
-                unit.x = 1 + j;
-                unit.y = 1 + i * 2;
-                player.addUnit(unit);
+                unit.initAsHero(hero);
+                unit.x = heroData.position[0];
+                unit.y = heroData.position[1];
+                this.players.list[0].addUnit(unit);
+                this.addUnit(unit, false);
+            }
+        }
+        //monsters
+        for (var _b = 0, _c = data.data.monsters; _b < _c.length; _b++) {
+            var monsterData = _c[_b];
+            var monster = Game_1.default.instance.definitions.getDefinition("monster", monsterData.monster_id);
+            if (monster) {
+                var unit = new Unit_1.default();
+                unit.initAsMonster(monster);
+                unit.x = monsterData.position[0];
+                unit.y = monsterData.position[1];
+                this.players.list[1].addUnit(unit);
                 this.addUnit(unit, false);
             }
         }

@@ -1,12 +1,14 @@
 import Layout from "./Layout";
 import Dungeon from "./Dungeon";
+import Monster from "./Monster";
 
 export default class DefinitionManager {
 	private allDefinitions:object = {}; //by type, then by ID
 
 	private static classesByType = {
 		"layout": Layout,
-		"dungeon": Dungeon
+		"dungeon": Dungeon,
+		"monster": Monster
 	}
 
 	constructor() {

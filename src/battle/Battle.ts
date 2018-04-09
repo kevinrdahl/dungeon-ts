@@ -11,6 +11,8 @@ import Animation from './display/animation/Animation';
 import GameEvent from '../events/GameEvent';
 import GameEventHandler from '../events/GameEventHandler';
 import Layout from '../definitions/Layout';
+import Hero from '../user/Hero';
+import Monster from '../definitions/Monster';
 
 export default class Battle extends GameEventHandler {
 	public players:IDObjectGroup<Player> = new IDObjectGroup<Player>();
@@ -70,16 +72,34 @@ export default class Battle extends GameEventHandler {
 			this.display.setLevelDisplay(this.level.display);
 		}
 
-		//temp! add a couple players with a few units
+		//temp! add a couple players (for now, only the user and monsters)
 		for (var i = 0; i < 2; i++) {
 			var player:Player = new Player();
 			this.addPlayer(player);
+		}
 
-			for (var j = 0; j < 3; j++) {
+		//heroes
+		for (var heroData of data.data.heroes) {
+			var hero:Hero = Game.instance.user.heroManager.getHero(heroData.id);
+			if (hero) {
 				var unit:Unit = new Unit();
-				unit.x = 1 + j;
-				unit.y = 1 + i*2;
-				player.addUnit(unit);
+				unit.initAsHero(hero);
+				unit.x = heroData.position[0];
+				unit.y = heroData.position[1];
+				this.players.list[0].addUnit(unit);
+				this.addUnit(unit, false);
+			}
+		}
+
+		//monsters
+		for (var monsterData of data.data.monsters) {
+			var monster:Monster = Game.instance.definitions.getDefinition("monster", monsterData.monster_id);
+			if (monster) {
+				var unit: Unit = new Unit();
+				unit.initAsMonster(monster);
+				unit.x = monsterData.position[0];
+				unit.y = monsterData.position[1];
+				this.players.list[1].addUnit(unit);
 				this.addUnit(unit, false);
 			}
 		}
