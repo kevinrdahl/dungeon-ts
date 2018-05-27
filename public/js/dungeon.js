@@ -231,12 +231,12 @@ var Game = (function (_super) {
         });
     };
     Game.instance = null;
-    Game.useDebugGraphics = true;
+    Game.useDebugGraphics = false;
     return Game;
 }(GameEventHandler_1.default));
 exports.default = Game;
 
-},{"./RequestManager":4,"./Updater":5,"./definitions/DefinitionManager":15,"./events/GameEventHandler":22,"./interface/AttachInfo":23,"./interface/InputManager":26,"./interface/InterfaceElement":27,"./interface/TextElement":32,"./interface/prefabs/InterfaceRoot":35,"./interface/prefabs/mainmenu/MainMenu":38,"./sound/SoundAssets":41,"./sound/SoundManager":42,"./textures/TextureGenerator":43,"./textures/TextureLoader":44,"./user/User":48,"./util/Log":51}],2:[function(require,module,exports){
+},{"./RequestManager":4,"./Updater":5,"./definitions/DefinitionManager":15,"./events/GameEventHandler":22,"./interface/AttachInfo":23,"./interface/InputManager":26,"./interface/InterfaceElement":27,"./interface/TextElement":32,"./interface/prefabs/InterfaceRoot":35,"./interface/prefabs/mainmenu/MainMenu":38,"./sound/SoundAssets":41,"./sound/SoundManager":42,"./textures/TextureGenerator":44,"./textures/TextureLoader":45,"./user/User":49,"./util/Log":52}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals = (function () {
@@ -365,7 +365,7 @@ var RequestManager = (function () {
 }());
 exports.default = RequestManager;
 
-},{"./Game":1,"./util/Log":51}],5:[function(require,module,exports){
+},{"./Game":1,"./util/Log":52}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Updater = (function () {
@@ -921,7 +921,7 @@ var Battle = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Battle;
 
-},{"../Game":1,"../ds/SparseGrid":20,"../events/GameEvent":21,"../events/GameEventHandler":22,"../util/IDObjectGroup":50,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
+},{"../Game":1,"../ds/SparseGrid":20,"../events/GameEvent":21,"../events/GameEventHandler":22,"../util/IDObjectGroup":51,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
@@ -1008,7 +1008,7 @@ var Player = (function () {
 }());
 exports.default = Player;
 
-},{"../util/IDObjectGroup":50}],9:[function(require,module,exports){
+},{"../util/IDObjectGroup":51}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile = (function () {
@@ -1607,6 +1607,17 @@ var BattleDisplay = (function (_super) {
             this.mouseGridY = gridCoords.y;
             this.updateHover();
         }
+        //Move the camera with the arrow keys
+        //Moving the camera one way is the same as moving this the other way
+        var moveAmount = Math.round(500 * timeElapsed);
+        if (InputManager_1.default.instance.isKeyDown("LEFT"))
+            this.x += moveAmount;
+        if (InputManager_1.default.instance.isKeyDown("RIGHT"))
+            this.x -= moveAmount;
+        if (InputManager_1.default.instance.isKeyDown("UP"))
+            this.y += moveAmount;
+        if (InputManager_1.default.instance.isKeyDown("DOWN"))
+            this.y -= moveAmount;
     };
     BattleDisplay.prototype.onLeftClick = function (coords) {
         var unitClicked = false;
@@ -1775,7 +1786,7 @@ var BattleDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":21,"../../interface/AttachInfo":23,"../../interface/ElementList":25,"../../interface/InputManager":26,"../../interface/TextElement":32,"../../util/TextUtil":52,"../../util/Tween":54,"../../util/Vector2D":56}],12:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":21,"../../interface/AttachInfo":23,"../../interface/ElementList":25,"../../interface/InputManager":26,"../../interface/TextElement":32,"../../util/TextUtil":53,"../../util/Tween":55,"../../util/Vector2D":57}],12:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -2094,7 +2105,7 @@ var UnitDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = UnitDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":21,"../../util/TextUtil":52,"../../util/Tween":54}],14:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":21,"../../util/TextUtil":53,"../../util/Tween":55}],14:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Timer_1 = require("../../../util/Timer");
@@ -2356,7 +2367,7 @@ var Animation = (function () {
 }());
 exports.default = Animation;
 
-},{"../../../Globals":2,"../../../util/Timer":53,"../../../util/Tween":54}],15:[function(require,module,exports){
+},{"../../../Globals":2,"../../../util/Timer":54,"../../../util/Tween":55}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Layout_1 = require("./Layout");
@@ -2497,7 +2508,7 @@ var Monster = (function () {
         this.name = "Monster";
     }
     Monster.prototype.readData = function (data) {
-        this.id - data.id;
+        this.id = data.id;
         this.name = data.name;
     };
     return Monster;
@@ -2980,7 +2991,7 @@ var AttachInfo = (function () {
 }());
 exports.default = AttachInfo;
 
-},{"../util/Vector2D":56}],24:[function(require,module,exports){
+},{"../util/Vector2D":57}],24:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -2996,15 +3007,18 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("./InterfaceElement");
 var GameEvent_1 = require("../events/GameEvent");
+var NineSliceSprite_1 = require("../textures/NineSliceSprite");
 var BaseButton = (function (_super) {
     __extends(BaseButton, _super);
     /**
      * It's a button! Click it!
      * Use the LEFTMOUSECLICK event to listen for clicks.
-     * Can't assume it owns its textures, so it doesn't destroy them. Don't use this class directly.
      */
-    function BaseButton(normalTex, highlightTex, disabledTex) {
+    function BaseButton(width, height, appearance, scaleSprites) {
+        if (scaleSprites === void 0) { scaleSprites = false; }
         var _this = _super.call(this) || this;
+        _this._state = -1;
+        _this.scaleSprites = false;
         _this.onMouseOver = function (e) {
             if (_this.enabled) {
                 _this.setHighlight();
@@ -3021,16 +3035,26 @@ var BaseButton = (function (_super) {
         _this._className = "BaseButton";
         _this._debugColor = 0xff66ff;
         _this.clickable = true;
-        _this._state = BaseButton.STATE_NORMAL;
-        _this._normalTex = normalTex;
-        _this._highlightTex = highlightTex;
-        _this._disabledTex = disabledTex;
-        _this._sprite = new PIXI.Sprite(_this._normalTex);
-        _this._displayObject.addChild(_this._sprite);
-        _this.resize(_this._sprite.width, _this._sprite.height);
+        _this.scaleSprites = scaleSprites;
+        _this.sprites = [appearance.normal, appearance.highlight, appearance.disabled];
+        _this.setNormal();
+        _this.resize(width, height);
         _this.addEventListeners();
         return _this;
     }
+    BaseButton.prototype.resize = function (width, height) {
+        for (var _i = 0, _a = this.sprites; _i < _a.length; _i++) {
+            var sprite = _a[_i];
+            if (sprite instanceof NineSliceSprite_1.default) {
+                sprite.setSize(width, height);
+            }
+            else if (this.scaleSprites) {
+                sprite.width = width;
+                sprite.height = height;
+            }
+        }
+        _super.prototype.resize.call(this, width, height);
+    };
     Object.defineProperty(BaseButton.prototype, "enabled", {
         get: function () {
             return this._state != BaseButton.STATE_DISABLED;
@@ -3057,25 +3081,33 @@ var BaseButton = (function (_super) {
         this.removeEventListener(GameEvent_1.default.types.ui.LEFTMOUSECLICK, this.onLeftMouseClick);
     };
     BaseButton.prototype.setNormal = function () {
-        this._state = BaseButton.STATE_NORMAL;
-        this._sprite.texture = this._normalTex;
+        this.setState(BaseButton.STATE_NORMAL);
     };
     BaseButton.prototype.setHighlight = function () {
-        this._state = BaseButton.STATE_HIGHLIGHT;
-        this._sprite.texture = this._highlightTex;
+        this.setState(BaseButton.STATE_HIGHLIGHT);
     };
     BaseButton.prototype.setDisabled = function () {
-        this._state = BaseButton.STATE_DISABLED;
-        this._sprite.texture = this._disabledTex;
+        this.setState(BaseButton.STATE_DISABLED);
     };
-    BaseButton.STATE_NORMAL = 1;
-    BaseButton.STATE_HIGHLIGHT = 2;
-    BaseButton.STATE_DISABLED = 3;
+    BaseButton.prototype.setState = function (state) {
+        if (state === this._state)
+            return;
+        var currentSprite = this.sprites[this._state];
+        if (currentSprite && currentSprite.parent)
+            currentSprite.parent.removeChild(currentSprite);
+        this._state = state;
+        var newSprite = this.sprites[state];
+        if (newSprite)
+            this._displayObject.addChildAt(newSprite, 0);
+    };
+    BaseButton.STATE_NORMAL = 0;
+    BaseButton.STATE_HIGHLIGHT = 1;
+    BaseButton.STATE_DISABLED = 2;
     return BaseButton;
 }(InterfaceElement_1.default));
 exports.default = BaseButton;
 
-},{"../events/GameEvent":21,"./InterfaceElement":27}],25:[function(require,module,exports){
+},{"../events/GameEvent":21,"../textures/NineSliceSprite":43,"./InterfaceElement":27}],25:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3448,6 +3480,7 @@ var InputManager = (function () {
         }
     };
     InputManager.prototype.isKeyDown = function (key) {
+        key = key.toUpperCase();
         if (this._trackedKeys.hasOwnProperty(key) && this._trackedKeys[key])
             return true;
         return false;
@@ -3486,7 +3519,7 @@ var keyNames = {
     "39": "RIGHT"
 };
 
-},{"../Game":1,"../events/GameEvent":21,"../util/Vector2D":56}],27:[function(require,module,exports){
+},{"../Game":1,"../events/GameEvent":21,"../util/Vector2D":57}],27:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3914,7 +3947,7 @@ var InterfaceElement = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = InterfaceElement;
 
-},{"../Game":1,"../events/GameEventHandler":22,"../util/Vector2D":56,"./InputManager":26,"./ResizeInfo":30}],28:[function(require,module,exports){
+},{"../Game":1,"../events/GameEventHandler":22,"../util/Vector2D":57,"./InputManager":26,"./ResizeInfo":30}],28:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3969,49 +4002,43 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var InterfaceElement_1 = require("./InterfaceElement");
 //import TextureGenerator = require('../textures/TextureGenerator');
 var TextureGenerator = require("../textures/TextureGenerator");
+var NineSliceSprite_1 = require("../textures/NineSliceSprite");
 var Panel = (function (_super) {
     __extends(Panel, _super);
     function Panel(width, height, style) {
         var _this = _super.call(this) || this;
         _this._debugColor = 0x00ff00;
-        _this._needRedraw = true;
         _this._className = "Panel";
         _this._width = width;
         _this._height = height;
         _this._style = style;
-        _this._texture = null;
         _this.clickable = true;
-        _this.draw();
-        _this._sprite = new PIXI.Sprite(_this._texture);
-        _this._displayObject.addChild(_this._sprite);
+        var tex = Panel.scaleTextures[style];
+        if (!tex) {
+            switch (style) {
+                case Panel.HEADER:
+                    tex = TextureGenerator.simpleRectangle(null, 8, 8, 0x616161);
+                    break;
+                case Panel.FIELD:
+                    tex = TextureGenerator.simpleRectangle(null, 8, 8, 0x121212, 2, 0x616161);
+                    break;
+                default://BASIC
+                    tex = TextureGenerator.simpleRectangle(null, 8, 8, 0x2b2b2b, 2, 0x616161);
+            }
+            if (tex) {
+                Panel.scaleTextures[style] = tex;
+            }
+        }
+        if (tex) {
+            _this._sprite = NineSliceSprite_1.default.fromTexture(tex, new PIXI.Rectangle(3, 3, 2, 2));
+            _this._displayObject.addChild(_this._sprite);
+            _this._sprite.setSize(width, height);
+        }
         return _this;
     }
     Panel.prototype.resize = function (width, height) {
-        if (width != this._width || height != this._height)
-            this._needRedraw = true;
+        this._sprite.setSize(width, height);
         _super.prototype.resize.call(this, width, height);
-    };
-    Panel.prototype.draw = function () {
-        _super.prototype.draw.call(this);
-        if (this._needRedraw) {
-            this._needRedraw = false;
-            var hadTexture = false;
-            if (this._texture) {
-                hadTexture = true;
-                this._texture.resize(this._width, this._height, true);
-            }
-            //style check!
-            switch (this._style) {
-                case Panel.HEADER:
-                    this._texture = TextureGenerator.simpleRectangle(this._texture, this._width, this._height, 0x616161);
-                    break;
-                case Panel.FIELD:
-                    this._texture = TextureGenerator.simpleRectangle(this._texture, this._width, this._height, 0x121212, 2, 0x616161);
-                    break;
-                default://BASIC
-                    this._texture = TextureGenerator.simpleRectangle(this._texture, this._width, this._height, 0x2b2b2b, 2, 0x616161);
-            }
-        }
     };
     Panel.prototype.destroy = function () {
         _super.prototype.destroy.call(this);
@@ -4020,11 +4047,12 @@ var Panel = (function (_super) {
     Panel.BASIC = 0;
     Panel.HEADER = 1;
     Panel.FIELD = 2;
+    Panel.scaleTextures = {};
     return Panel;
 }(InterfaceElement_1.default));
 exports.default = Panel;
 
-},{"../textures/TextureGenerator":43,"./InterfaceElement":27}],30:[function(require,module,exports){
+},{"../textures/NineSliceSprite":43,"../textures/TextureGenerator":44,"./InterfaceElement":27}],30:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -4052,7 +4080,7 @@ var ResizeInfo = (function () {
 }());
 exports.default = ResizeInfo;
 
-},{"../util/AssetCache":49,"../util/Vector2D":56}],31:[function(require,module,exports){
+},{"../util/AssetCache":50,"../util/Vector2D":57}],31:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -4068,10 +4096,10 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("../events/GameEvent");
 var BaseButton_1 = require("./BaseButton");
-var AssetCache_1 = require("../util/AssetCache");
 var TextElement_1 = require("./TextElement");
 var AttachInfo_1 = require("./AttachInfo");
 var TextureGenerator = require("../textures/TextureGenerator");
+var NineSliceSprite_1 = require("../textures/NineSliceSprite");
 var TextButton = (function (_super) {
     __extends(TextButton, _super);
     function TextButton(text, colorScheme, width, height, textStyle) {
@@ -4084,7 +4112,12 @@ var TextButton = (function (_super) {
             colorScheme = TextButton.colorSchemes.blue;
         if (!textStyle)
             textStyle = TextElement_1.default.basicText;
-        _this = _super.call(this, TextButton.getOrCreateBg(width, height, colorScheme.normal), TextButton.getOrCreateBg(width, height, colorScheme.highlight), TextButton.getOrCreateBg(width, height, colorScheme.disabled)) || this;
+        var a;
+        _this = _super.call(this, width, height, {
+            normal: NineSliceSprite_1.default.fromTexture(TextButton.getScaleTexture(colorScheme.normal), new PIXI.Rectangle(3, 3, 2, 2)),
+            highlight: NineSliceSprite_1.default.fromTexture(TextButton.getScaleTexture(colorScheme.highlight), new PIXI.Rectangle(3, 3, 2, 2)),
+            disabled: NineSliceSprite_1.default.fromTexture(TextButton.getScaleTexture(colorScheme.disabled), new PIXI.Rectangle(3, 3, 2, 2))
+        }) || this;
         _this._className = "TextButton";
         _this._textElement = new TextElement_1.default(text, textStyle);
         _this.addChild(_this._textElement);
@@ -4092,12 +4125,12 @@ var TextButton = (function (_super) {
         return _this;
     }
     //Generates a key and checks the texture cache before creating. Inserts if created.
-    TextButton.getOrCreateBg = function (width, height, scheme) {
-        var key = JSON.stringify(scheme) + width + 'x' + height;
-        var tex = TextButton._bgCache.get(key);
+    TextButton.getScaleTexture = function (scheme) {
+        var key = JSON.stringify(scheme); //silly
+        var tex = this.scaleTextures[key];
         if (!tex) {
-            tex = TextureGenerator.simpleRectangle(null, width, height, scheme.bg, 2, scheme.border);
-            TextButton._bgCache.set(key, tex);
+            tex = TextureGenerator.simpleRectangle(null, 8, 8, scheme.bg, 2, scheme.border);
+            this.scaleTextures[key] = tex;
         }
         return tex;
     };
@@ -4121,7 +4154,7 @@ var TextButton = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    //note: use the gems in oryx 16 bit items
+    //note: use the gems in oryx 16 bit items as colour reference
     TextButton.colorSchemes = {
         green: {
             normal: { bg: 0x00852c, border: 0x00ba3e },
@@ -4139,15 +4172,13 @@ var TextButton = (function (_super) {
             disabled: { bg: 0x2b2b2b, border: 0x616161 }
         }
     };
-    //Caches background textures. When discarded, call destroy on them.
-    TextButton._bgCache = new AssetCache_1.default(10, function (deleted) {
-        deleted.destroy(true);
-    });
+    //Caches background textures. These can hang around for the whole program
+    TextButton.scaleTextures = {};
     return TextButton;
 }(BaseButton_1.default));
 exports.default = TextButton;
 
-},{"../events/GameEvent":21,"../textures/TextureGenerator":43,"../util/AssetCache":49,"./AttachInfo":23,"./BaseButton":24,"./TextElement":32}],32:[function(require,module,exports){
+},{"../events/GameEvent":21,"../textures/NineSliceSprite":43,"../textures/TextureGenerator":44,"./AttachInfo":23,"./BaseButton":24,"./TextElement":32}],32:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4400,7 +4431,7 @@ var TextField = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextField;
 
-},{"../events/GameEvent":21,"../util/Vector2D":56,"./AttachInfo":23,"./InterfaceElement":27,"./MaskElement":28,"./Panel":29,"./TextElement":32}],34:[function(require,module,exports){
+},{"../events/GameEvent":21,"../util/Vector2D":57,"./AttachInfo":23,"./InterfaceElement":27,"./MaskElement":28,"./Panel":29,"./TextElement":32}],34:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -5043,6 +5074,107 @@ exports.default = SoundManager;
 
 },{}],43:[function(require,module,exports){
 "use strict";
+/// <reference path="../declarations/pixi.js.d.ts"/>
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var NineSliceSprite = (function (_super) {
+    __extends(NineSliceSprite, _super);
+    /**
+     * It's a nine-sliced sprite! If you set it too small, don't expect it to look good.
+     * @param baseTexture Texture containing the image you want to scale.
+     * @param innerRect Defines the interior rectangle which is scaled. For a 16x16 image with a 2px border, this would be rect(2,2,12,12)
+     * @param outerRect Defines the region of the base texture to be used. If not provided, the whole texture will be used.
+     */
+    function NineSliceSprite(baseTexture, innerRect, outerRect) {
+        if (outerRect === void 0) { outerRect = null; }
+        var _this = _super.call(this) || this;
+        if (!outerRect)
+            outerRect = new PIXI.Rectangle(0, 0, baseTexture.width, baseTexture.height);
+        var leftWidth = innerRect.left - outerRect.left;
+        var rightWidth = outerRect.right - innerRect.right;
+        var topHeight = innerRect.top - outerRect.top;
+        var bottomHeight = outerRect.bottom - innerRect.bottom;
+        //Corners
+        _this.topLeft = new PIXI.Sprite(new PIXI.Texture(baseTexture, new PIXI.Rectangle(outerRect.left, outerRect.top, leftWidth, topHeight)));
+        _this.topRight = new PIXI.Sprite(new PIXI.Texture(baseTexture, new PIXI.Rectangle(innerRect.right, outerRect.top, rightWidth, topHeight)));
+        _this.bottomLeft = new PIXI.Sprite(new PIXI.Texture(baseTexture, new PIXI.Rectangle(outerRect.left, innerRect.bottom, leftWidth, bottomHeight)));
+        _this.bottomRight = new PIXI.Sprite(new PIXI.Texture(baseTexture, new PIXI.Rectangle(innerRect.right, innerRect.bottom, rightWidth, bottomHeight)));
+        //Edges
+        _this.top = new PIXI.Sprite(new PIXI.Texture(baseTexture, new PIXI.Rectangle(innerRect.left, outerRect.top, innerRect.width, topHeight)));
+        _this.bottom = new PIXI.Sprite(new PIXI.Texture(baseTexture, new PIXI.Rectangle(innerRect.left, innerRect.bottom, innerRect.width, bottomHeight)));
+        _this.left = new PIXI.Sprite(new PIXI.Texture(baseTexture, new PIXI.Rectangle(outerRect.left, innerRect.top, leftWidth, innerRect.height)));
+        _this.right = new PIXI.Sprite(new PIXI.Texture(baseTexture, new PIXI.Rectangle(innerRect.right, innerRect.top, rightWidth, innerRect.height)));
+        //Center
+        _this.center = new PIXI.Sprite(new PIXI.Texture(baseTexture, innerRect));
+        _this.addChild(_this.topLeft, _this.topRight, _this.bottomLeft, _this.bottomRight, _this.top, _this.bottom, _this.left, _this.right, _this.center);
+        //Set positions that don't need to change
+        _this.top.x = innerRect.left - outerRect.left;
+        _this.center.x = _this.top.x;
+        _this.bottom.x = _this.top.x;
+        _this.left.y = innerRect.top - outerRect.top;
+        _this.center.y = _this.left.y;
+        _this.right.y = _this.left.y;
+        //By default, be the normal size
+        _this.setSize(outerRect.width, outerRect.height);
+        return _this;
+    }
+    NineSliceSprite.fromTexture = function (tex, innerRect) {
+        var outerRect = tex.frame;
+        innerRect = innerRect.clone();
+        innerRect.x += outerRect.x;
+        innerRect.y += outerRect.y;
+        return new NineSliceSprite(tex.baseTexture, innerRect, outerRect);
+    };
+    NineSliceSprite.prototype.setWidth = function (width, round) {
+        if (round === void 0) { round = true; }
+        var innerWidth = width - this.topLeft.width - this.topRight.width;
+        if (round)
+            innerWidth = Math.round(innerWidth);
+        //Scale inner portions
+        this.top.width = innerWidth;
+        this.bottom.width = innerWidth;
+        this.center.width = innerWidth;
+        //Move right portions
+        var x = this.topLeft.width + innerWidth;
+        this.topRight.x = x;
+        this.right.x = x;
+        this.bottomRight.x = x;
+    };
+    NineSliceSprite.prototype.setHeight = function (height, round) {
+        if (round === void 0) { round = true; }
+        var innerHeight = height - this.topLeft.height - this.bottomLeft.height;
+        if (round)
+            innerHeight = Math.round(innerHeight);
+        //Scale inner portions
+        this.left.height = innerHeight;
+        this.right.height = innerHeight;
+        this.center.height = innerHeight;
+        //Move bottom portions
+        var y = this.topLeft.height + innerHeight;
+        this.bottomLeft.y = y;
+        this.bottom.y = y;
+        this.bottomRight.y = y;
+    };
+    NineSliceSprite.prototype.setSize = function (width, height, round) {
+        if (round === void 0) { round = true; }
+        this.setWidth(width, round);
+        this.setHeight(height, round);
+    };
+    return NineSliceSprite;
+}(PIXI.Container));
+exports.default = NineSliceSprite;
+
+},{}],44:[function(require,module,exports){
+"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var Game_1 = require("../Game");
@@ -5063,7 +5195,7 @@ function simpleRectangle(target, width, height, color, borderWidth, borderColor)
 }
 exports.simpleRectangle = simpleRectangle;
 
-},{"../Game":1}],44:[function(require,module,exports){
+},{"../Game":1}],45:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -5130,7 +5262,7 @@ var TextureLoader = (function () {
 }());
 exports.default = TextureLoader;
 
-},{}],45:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Battle_1 = require("../battle/Battle");
@@ -5207,7 +5339,7 @@ var BattleManager = (function () {
 }());
 exports.default = BattleManager;
 
-},{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],46:[function(require,module,exports){
+},{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],47:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Hero = (function () {
@@ -5227,7 +5359,7 @@ var Hero = (function () {
 }());
 exports.default = Hero;
 
-},{}],47:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Hero_1 = require("./Hero");
@@ -5267,7 +5399,7 @@ var HeroManager = (function () {
 }());
 exports.default = HeroManager;
 
-},{"./Hero":46}],48:[function(require,module,exports){
+},{"./Hero":47}],49:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var BattleManager_1 = require("./BattleManager");
@@ -5312,7 +5444,7 @@ var User = (function () {
 }());
 exports.default = User;
 
-},{"../util/Util":55,"./BattleManager":45,"./HeroManager":47}],49:[function(require,module,exports){
+},{"../util/Util":56,"./BattleManager":46,"./HeroManager":48}],50:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var AssetCache = (function () {
@@ -5363,7 +5495,7 @@ var AssetCache = (function () {
 }());
 exports.default = AssetCache;
 
-},{}],50:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var IDObjectGroup = (function () {
@@ -5419,7 +5551,7 @@ var IDObjectGroup = (function () {
 }());
 exports.default = IDObjectGroup;
 
-},{}],51:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /*
@@ -5471,7 +5603,7 @@ function log(typeName, msg) {
 }
 exports.log = log;
 
-},{}],52:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -5525,7 +5657,7 @@ var TextSprite = (function (_super) {
 }(PIXI.Sprite));
 exports.TextSprite = TextSprite;
 
-},{"../Game":1}],53:[function(require,module,exports){
+},{"../Game":1}],54:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -5608,7 +5740,7 @@ var Timer = (function () {
 }());
 exports.default = Timer;
 
-},{"../Game":1}],54:[function(require,module,exports){
+},{"../Game":1}],55:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -5779,7 +5911,7 @@ var Tween = (function () {
 }());
 exports.default = Tween;
 
-},{"../Game":1}],55:[function(require,module,exports){
+},{"../Game":1}],56:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function noop() { }
@@ -5896,7 +6028,7 @@ function isCoordinate(x) {
 }
 exports.isCoordinate = isCoordinate;
 
-},{}],56:[function(require,module,exports){
+},{}],57:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Util = require("./Util");
@@ -6016,4 +6148,4 @@ var Vector2D = (function () {
 }());
 exports.default = Vector2D;
 
-},{"./Util":55}]},{},[3]);
+},{"./Util":56}]},{},[3]);

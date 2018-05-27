@@ -7,9 +7,10 @@ import AssetCache from '../util/AssetCache';
 import TextElement from './TextElement';
 import AttachInfo from './AttachInfo';
 import * as TextureGenerator from '../textures/TextureGenerator';
+import NineSliceSprite from '../textures/NineSliceSprite';
 
 export default class TextButton extends BaseButton {
-	//note: use the gems in oryx 16 bit items
+	//note: use the gems in oryx 16 bit items as colour reference
 	public static colorSchemes = {
 		green: {
 			normal: {bg:0x00852c, border:0x00ba3e},
@@ -30,18 +31,16 @@ export default class TextButton extends BaseButton {
 		}
 	}
 
-	//Caches background textures. When discarded, call destroy on them.
-	private static _bgCache:AssetCache<PIXI.Texture> = new AssetCache<PIXI.Texture>(10, function(deleted:PIXI.Texture) {
-		deleted.destroy(true);
-	});
+	//Caches background textures. These can hang around for the whole program
+	private static scaleTextures = {};
 
 	//Generates a key and checks the texture cache before creating. Inserts if created.
-	private static getOrCreateBg(width:number, height:number, scheme):PIXI.Texture {
-		var key:string = JSON.stringify(scheme) + width + 'x' + height;
-		var tex:PIXI.Texture = TextButton._bgCache.get(key);
+	private static getScaleTexture(scheme:any):PIXI.Texture {
+		var key = JSON.stringify(scheme); //silly
+		var tex:PIXI.Texture = this.scaleTextures[key];
 		if (!tex) {
-			tex = TextureGenerator.simpleRectangle(null, width, height, scheme.bg, 2, scheme.border);
-			TextButton._bgCache.set(key, tex);
+			tex = TextureGenerator.simpleRectangle(null, 8, 8, scheme.bg, 2, scheme.border);
+			this.scaleTextures[key] = tex;
 		}
 		return tex;
 	}
@@ -66,12 +65,13 @@ export default class TextButton extends BaseButton {
 	constructor(text:string, colorScheme=null, width:number = 100, height:number = 30, textStyle:PIXI.TextStyle=null) {
 		if (!colorScheme) colorScheme = TextButton.colorSchemes.blue;
 		if (!textStyle) textStyle = TextElement.basicText;
+		var a:NineSliceSprite
 
-		super(
-			TextButton.getOrCreateBg(width, height, colorScheme.normal),
-			TextButton.getOrCreateBg(width, height, colorScheme.highlight),
-			TextButton.getOrCreateBg(width, height, colorScheme.disabled)
-		);
+		super(width, height, {
+			normal: NineSliceSprite.fromTexture(TextButton.getScaleTexture(colorScheme.normal), new PIXI.Rectangle(3, 3, 2, 2)),
+			highlight:NineSliceSprite.fromTexture(TextButton.getScaleTexture(colorScheme.highlight), new PIXI.Rectangle(3, 3, 2, 2)),
+			disabled: NineSliceSprite.fromTexture(TextButton.getScaleTexture(colorScheme.disabled), new PIXI.Rectangle(3, 3, 2, 2))
+		});
 		this._className = "TextButton";
 
 		this._textElement = new TextElement(text, textStyle);

@@ -230,7 +230,7 @@ var Game = (function (_super) {
         });
     };
     Game.instance = null;
-    Game.useDebugGraphics = true;
+    Game.useDebugGraphics = false;
     return Game;
 }(GameEventHandler_1.default));
 exports.default = Game;

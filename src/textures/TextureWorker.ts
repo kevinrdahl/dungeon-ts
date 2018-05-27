@@ -2,6 +2,8 @@
 import * as ColorUtil from '../util/ColorUtil';
 
 /**
+ * IGNORE THIS I'M NOT USING IT, NOT WORTH THE HASSLE
+ *
  * Wraps a Worker, and provides async functions for getting recolored sprites.
  * TODO: create sprite sheets, as per previous implementation
  *

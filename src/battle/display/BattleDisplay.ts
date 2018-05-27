@@ -100,6 +100,14 @@ export default class BattleDisplay extends PIXI.Container {
 			this.mouseGridY = gridCoords.y;
 			this.updateHover();
 		}
+
+		//Move the camera with the arrow keys
+		//Moving the camera one way is the same as moving this the other way
+		var moveAmount = Math.round(500 * timeElapsed);
+		if (InputManager.instance.isKeyDown("LEFT")) this.x += moveAmount;
+		if (InputManager.instance.isKeyDown("RIGHT")) this.x -= moveAmount;
+		if (InputManager.instance.isKeyDown("UP")) this.y += moveAmount;
+		if (InputManager.instance.isKeyDown("DOWN")) this.y -= moveAmount;
 	}
 
 	public onLeftClick(coords:Vector2D) {

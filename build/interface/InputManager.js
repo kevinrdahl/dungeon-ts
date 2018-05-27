@@ -210,6 +210,7 @@ var InputManager = (function () {
         }
     };
     InputManager.prototype.isKeyDown = function (key) {
+        key = key.toUpperCase();
         if (this._trackedKeys.hasOwnProperty(key) && this._trackedKeys[key])
             return true;
         return false;

@@ -6,7 +6,7 @@ var Monster = (function () {
         this.name = "Monster";
     }
     Monster.prototype.readData = function (data) {
-        this.id - data.id;
+        this.id = data.id;
         this.name = data.name;
     };
     return Monster;

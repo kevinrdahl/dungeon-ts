@@ -13,10 +13,10 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("../events/GameEvent");
 var BaseButton_1 = require("./BaseButton");
-var AssetCache_1 = require("../util/AssetCache");
 var TextElement_1 = require("./TextElement");
 var AttachInfo_1 = require("./AttachInfo");
 var TextureGenerator = require("../textures/TextureGenerator");
+var NineSliceSprite_1 = require("../textures/NineSliceSprite");
 var TextButton = (function (_super) {
     __extends(TextButton, _super);
     function TextButton(text, colorScheme, width, height, textStyle) {
@@ -29,7 +29,12 @@ var TextButton = (function (_super) {
             colorScheme = TextButton.colorSchemes.blue;
         if (!textStyle)
             textStyle = TextElement_1.default.basicText;
-        _this = _super.call(this, TextButton.getOrCreateBg(width, height, colorScheme.normal), TextButton.getOrCreateBg(width, height, colorScheme.highlight), TextButton.getOrCreateBg(width, height, colorScheme.disabled)) || this;
+        var a;
+        _this = _super.call(this, width, height, {
+            normal: NineSliceSprite_1.default.fromTexture(TextButton.getScaleTexture(colorScheme.normal), new PIXI.Rectangle(3, 3, 2, 2)),
+            highlight: NineSliceSprite_1.default.fromTexture(TextButton.getScaleTexture(colorScheme.highlight), new PIXI.Rectangle(3, 3, 2, 2)),
+            disabled: NineSliceSprite_1.default.fromTexture(TextButton.getScaleTexture(colorScheme.disabled), new PIXI.Rectangle(3, 3, 2, 2))
+        }) || this;
         _this._className = "TextButton";
         _this._textElement = new TextElement_1.default(text, textStyle);
         _this.addChild(_this._textElement);
@@ -37,12 +42,12 @@ var TextButton = (function (_super) {
         return _this;
     }
     //Generates a key and checks the texture cache before creating. Inserts if created.
-    TextButton.getOrCreateBg = function (width, height, scheme) {
-        var key = JSON.stringify(scheme) + width + 'x' + height;
-        var tex = TextButton._bgCache.get(key);
+    TextButton.getScaleTexture = function (scheme) {
+        var key = JSON.stringify(scheme); //silly
+        var tex = this.scaleTextures[key];
         if (!tex) {
-            tex = TextureGenerator.simpleRectangle(null, width, height, scheme.bg, 2, scheme.border);
-            TextButton._bgCache.set(key, tex);
+            tex = TextureGenerator.simpleRectangle(null, 8, 8, scheme.bg, 2, scheme.border);
+            this.scaleTextures[key] = tex;
         }
         return tex;
     };
@@ -66,7 +71,7 @@ var TextButton = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    //note: use the gems in oryx 16 bit items
+    //note: use the gems in oryx 16 bit items as colour reference
     TextButton.colorSchemes = {
         green: {
             normal: { bg: 0x00852c, border: 0x00ba3e },
@@ -84,10 +89,8 @@ var TextButton = (function (_super) {
             disabled: { bg: 0x2b2b2b, border: 0x616161 }
         }
     };
-    //Caches background textures. When discarded, call destroy on them.
-    TextButton._bgCache = new AssetCache_1.default(10, function (deleted) {
-        deleted.destroy(true);
-    });
+    //Caches background textures. These can hang around for the whole program
+    TextButton.scaleTextures = {};
     return TextButton;
 }(BaseButton_1.default));
 exports.default = TextButton;

@@ -89,6 +89,7 @@ export default class InputManager {
 	}
 
 	public isKeyDown(key:string):boolean {
+		key = key.toUpperCase();
 		if (this._trackedKeys.hasOwnProperty(key) && this._trackedKeys[key]) return true;
 		return false;
 	}

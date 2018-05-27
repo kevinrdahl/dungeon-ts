@@ -39,7 +39,7 @@ import DefinitionManager from './definitions/DefinitionManager';
 
 export default class Game extends GameEventHandler {
 	public static instance: Game = null;
-	public static useDebugGraphics: boolean = true;
+	public static useDebugGraphics: boolean = false;
 
 	/*=== PUBLIC ===*/
 	public stage: PIXI.Container = null;

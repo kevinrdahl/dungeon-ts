@@ -3,42 +3,51 @@
 import InterfaceElement from './InterfaceElement';
 import GameEvent from '../events/GameEvent';
 import Game from '../Game';
+import NineSliceSprite from '../textures/NineSliceSprite';
+
+export interface ButtonAppearance {
+	normal: PIXI.Container,
+	highlight: PIXI.Container,
+	disabled: PIXI.Container
+}
 
 export default class BaseButton extends InterfaceElement {
+	private sprites:PIXI.Container[];
+	private _state = -1;
+	private scaleSprites = false;
 
-	private _normalTex:PIXI.Texture;
-	private _highlightTex:PIXI.Texture;
-	private _disabledTex:PIXI.Texture;
-
-	private _sprite:PIXI.Sprite;
-	private _state;
-
-	private static STATE_NORMAL = 1;
-	private static STATE_HIGHLIGHT = 2;
-	private static STATE_DISABLED = 3;
+	private static STATE_NORMAL = 0;
+	private static STATE_HIGHLIGHT = 1;
+	private static STATE_DISABLED = 2;
 
 	/**
 	 * It's a button! Click it!
 	 * Use the LEFTMOUSECLICK event to listen for clicks.
-	 * Can't assume it owns its textures, so it doesn't destroy them. Don't use this class directly.
 	 */
-	constructor(normalTex:PIXI.Texture, highlightTex:PIXI.Texture, disabledTex:PIXI.Texture) {
+	constructor(width:number, height:number, appearance:ButtonAppearance, scaleSprites = false) {
 		super();
 		this._className = "BaseButton";
 		this._debugColor = 0xff66ff;
 		this.clickable = true;
 
-		this._state = BaseButton.STATE_NORMAL;
+		this.scaleSprites = scaleSprites;
+		this.sprites = [appearance.normal, appearance.highlight, appearance.disabled];
 
-		this._normalTex = normalTex;
-		this._highlightTex = highlightTex;
-		this._disabledTex = disabledTex;
-
-		this._sprite = new PIXI.Sprite(this._normalTex);
-		this._displayObject.addChild(this._sprite);
-		this.resize(this._sprite.width, this._sprite.height);
-
+		this.setNormal();
+		this.resize(width, height);
 		this.addEventListeners();
+	}
+
+	public resize(width:number, height:number) {
+		for (var sprite of this.sprites) {
+			if (sprite instanceof NineSliceSprite) {
+				sprite.setSize(width, height);
+			} else if (this.scaleSprites) {
+				sprite.width = width;
+				sprite.height = height;
+			}
+		}
+		super.resize(width, height);
 	}
 
 	public set enabled(enabled:boolean) {
@@ -66,18 +75,25 @@ export default class BaseButton extends InterfaceElement {
 	}
 
 	protected setNormal() {
-		this._state = BaseButton.STATE_NORMAL;
-		this._sprite.texture = this._normalTex;
+		this.setState(BaseButton.STATE_NORMAL);
 	}
 
 	protected setHighlight() {
-		this._state = BaseButton.STATE_HIGHLIGHT;
-		this._sprite.texture = this._highlightTex;
+		this.setState(BaseButton.STATE_HIGHLIGHT);
 	}
 
 	protected setDisabled() {
-		this._state = BaseButton.STATE_DISABLED;
-		this._sprite.texture = this._disabledTex;
+		this.setState(BaseButton.STATE_DISABLED);
+	}
+
+	protected setState(state) {
+		if (state === this._state) return;
+
+		var currentSprite = this.sprites[this._state];
+		if (currentSprite && currentSprite.parent) currentSprite.parent.removeChild(currentSprite);
+		this._state = state;
+		var newSprite = this.sprites[state];
+		if (newSprite) this._displayObject.addChildAt(newSprite, 0);
 	}
 
 	private onMouseOver = (e:GameEvent) => {
