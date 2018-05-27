@@ -43,7 +43,7 @@ export default class Unit {
 	public attackDamage:number = 2;
 	public health:number = 5;
 	public maxHealth:number = 5;
-	public name:String = "?";
+	public name:string = "?";
 	public hero:Hero = null;
 	public monster:Monster = null;
 

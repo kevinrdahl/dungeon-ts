@@ -1,7 +1,9 @@
 import GameEvent from './GameEvent';
+import * as Util from '../util/Util';
 
 export default class GameEventHandler {
 	private _listenersByType:Object = {};
+	private subscribers: GameEventHandler[] = [];
 
 	public addEventListener(eventType:string, listener:(e:GameEvent)=>void) {
 		var listeners:Array<(e:GameEvent)=>void> = this._listenersByType[eventType];
@@ -50,14 +52,27 @@ export default class GameEventHandler {
 	public sendEvent(event:GameEvent) {
 		var listeners:Array<(e:GameEvent)=>void> = this._listenersByType[event.type];
 
-		if (!listeners) {
-			return;
+		if (listeners) {
+			for (var listener of listeners) {
+				listener(event);
+			}
 		}
 
-		for (var listener of listeners) {
-			listener(event);
+		for (var subscriber of this.subscribers) {
+			subscriber.sendEvent(event);
 		}
 
 		GameEvent.releaseInstance(event);
+	}
+
+	/**
+	 * Causes all events sent by the other GameEventHandler to be propagated by this one.
+	 */
+	public subscribeTo(other:GameEventHandler) {
+		Util.ArrayAdd(other.subscribers, this);
+	}
+
+	public unsubscribeFrom(other:GameEventHandler) {
+		Util.ArrayRemove(other.subscribers, this);
 	}
 }

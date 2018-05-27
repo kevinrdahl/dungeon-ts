@@ -13,6 +13,7 @@ import GameEventHandler from '../events/GameEventHandler';
 import Layout from '../definitions/Layout';
 import Hero from '../user/Hero';
 import Monster from '../definitions/Monster';
+import Tile from './Tile';
 
 export default class Battle extends GameEventHandler {
 	public players:IDObjectGroup<Player> = new IDObjectGroup<Player>();
@@ -49,7 +50,7 @@ export default class Battle extends GameEventHandler {
 
 	/**
 	 * It's a battle!
-	 * @param visible Determines whether this Battle should be displayed. False for peer authentication if I ever get around to it.
+	 * @param visible Determines whether this Battle should be displayed. False for peer authentication if I ever get around to it. (lol)
 	 */
 	constructor(visible:boolean = true) {
 		super();
@@ -435,6 +436,16 @@ export default class Battle extends GameEventHandler {
 		return ret;
 	}
 
+	public getHoveredUnit():Unit {
+		var coords = this._display.hoverCoords;
+		return this.getUnitAtPosition(coords.x, coords.y);
+	}
+
+	public getHoveredTile():Tile {
+		var coords = this._display.hoverCoords;
+		return this.level.getTile(coords.x, coords.y);
+	}
+
 	public getDebugPanelStrings():Array<string> {
 		var ret:Array<string> = [
 			"Current player: " + this._currentPlayer.id,
@@ -443,12 +454,12 @@ export default class Battle extends GameEventHandler {
 
 		var coords = this.display.hoverCoords;
 		var hoverStrings: Array<string> = [coords.toString()];
-		var tile = this.level.getTile(coords.x, coords.y);
+		var tile = this.getHoveredTile();
 		if (tile) {
 			hoverStrings.push(tile.name);
 		}
 
-		var unit = this.getUnitAtPosition(coords.x, coords.y);
+		var unit = this.getHoveredUnit();
 		if (unit) {
 			hoverStrings.push(unit.toString());
 		}

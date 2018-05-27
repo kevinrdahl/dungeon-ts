@@ -31,7 +31,7 @@ export default class InterfaceElement extends GameEventHandler {
 	public onKeyUp:(which:string)=>void;
 	public onKeyPress:(which:string)=>void; //See jQuery documentation for how these differ*/
 
-	protected _displayObject:PIXI.Container = new PIXI.Container();
+	protected _displayObject:PIXI.Container;
 	protected _parent:InterfaceElement = null;
 	protected _children:Array<InterfaceElement> = [];
 	protected _position:Vector2D = new Vector2D(0,0);
@@ -40,7 +40,7 @@ export default class InterfaceElement extends GameEventHandler {
 	protected _attach:AttachInfo = null;
 	protected _resize:ResizeInfo = null;
 	protected _className:string = "InterfaceElement";
-	protected _debugColor:number = 0x0000ff;
+	protected _debugColor:number = 0xffffff;
 
 	/**
 	 * Updated every frame by the root UI element.
@@ -49,10 +49,18 @@ export default class InterfaceElement extends GameEventHandler {
 
 	/**
 	 * Base class for anything in the UI. Has a parent and can have children, like DOM elements.
-	 * Wraps a PIXI DisplayObjectContainer
+	 * Wraps a PIXI DisplayObjectContainer.
+	 *
+	 * @param fromContainer If provided, fromContainer is used instead of a new Container. Whatever it contains has no bearing on the InterfaceElement's concept of having children.
 	 */
-	constructor () {
+	constructor (fromContainer:PIXI.Container = null) {
 		super();
+		if (fromContainer) {
+			this._displayObject = fromContainer;
+			this.resize(fromContainer.width, fromContainer.height);
+		} else {
+			this._displayObject = new PIXI.Container();
+		}
 	}
 
 	// === GET ===
@@ -76,6 +84,7 @@ export default class InterfaceElement extends GameEventHandler {
 	get isRoot():boolean { return this._parent == null && this._displayObject.parent != null; }
 	get isFocused():boolean { return InputManager.instance.focusedElement == this; }
 	get visible():boolean { return this._displayObject.visible; }
+	get parent():InterfaceElement { return this._parent; }
 
 	//=== SET ===
 	set position(pos:Vector2D) { this._position.set(pos); this.updateDisplayObjectPosition(); }
@@ -87,7 +96,7 @@ export default class InterfaceElement extends GameEventHandler {
 	public getBounds():PIXI.Rectangle {
 		return new PIXI.Rectangle(this.x, this.y, this.width, this.height);
 	}
-	
+
 	public getElementAtPoint(point:Vector2D):InterfaceElement {
 		var element:InterfaceElement = null;
 		var checkChildren:boolean = this.isRoot;
@@ -323,8 +332,8 @@ export default class InterfaceElement extends GameEventHandler {
 	}
 
 	public positionRelativeTo(other:InterfaceElement, info:AttachInfo) {
-		this._position.x = (other._width * info.to.x) - (this.width * info.from.x) + info.offset.x;
-		this._position.y = (other._height * info.to.y) - (this.height * info.from.y) + info.offset.y;
+		this._position.x = (other._width * info.to.x) - (this.width * info.from.x) + info.offset.x + other.x;
+		this._position.y = (other._height * info.to.y) - (this.height * info.from.y) + info.offset.y + other.y;
 
 		if (other != this._parent && other._parent != this._parent)
 		{

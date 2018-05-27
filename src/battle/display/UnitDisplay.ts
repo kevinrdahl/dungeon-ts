@@ -15,9 +15,8 @@ class TracePathInfo {
 }
 
 export default class UnitDisplay extends PIXI.Container {
-	private sprite:PIXI.Sprite = null;
+	public sprite:PIXI.Sprite = null;
 	private shadowSprite:PIXI.Sprite = null;
-	private idText:PIXI.Text = null;
 	private hover:boolean = false;
 	private selected:boolean = false;
 	private tracePathInfo:TracePathInfo = null;
@@ -45,11 +44,6 @@ export default class UnitDisplay extends PIXI.Container {
 			this.sprite.destroy();
 		}
 
-		if (this.idText) {
-			if (this.idText.parent) this.idText.parent.removeChild(this.sprite);
-			this.idText.destroy();
-		}
-
 		var texName;
 		switch (unit.player.id) {
 			case 1: texName = "character/rogue"; break;
@@ -60,17 +54,14 @@ export default class UnitDisplay extends PIXI.Container {
 		if (!this.shadowSprite) {
 			this.shadowSprite = new PIXI.Sprite(Game.instance.textureLoader.get("character/shadow"));
 			this.addChildAt(this.shadowSprite, 0);
-			this.shadowSprite.y = -5;
+			this.shadowSprite.y = -3;
 		}
 
 		var tex = Game.instance.textureLoader.get(texName);
 		this.sprite = new PIXI.Sprite(tex);
-		this.sprite.x = -1;
-		this.sprite.y = -9;
+		this.sprite.x = 0;
+		this.sprite.y = -7;
 		this.addChild(this.sprite);
-
-		this.idText = new PIXI.Text(unit.id.toString(), TextUtil.styles.unitID);
-		this.addChild(this.idText);
 
 		this.updatePosition();
 		Game.instance.updater.add(this, true);

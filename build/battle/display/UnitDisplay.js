@@ -12,7 +12,6 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../../Game");
-var TextUtil = require("../../util/TextUtil");
 var Globals_1 = require("../../Globals");
 var Tween_1 = require("../../util/Tween");
 var GameEvent_1 = require("../../events/GameEvent");
@@ -30,7 +29,6 @@ var UnitDisplay = (function (_super) {
         var _this = _super.call(this) || this;
         _this.sprite = null;
         _this.shadowSprite = null;
-        _this.idText = null;
         _this.hover = false;
         _this.selected = false;
         _this.tracePathInfo = null;
@@ -61,11 +59,6 @@ var UnitDisplay = (function (_super) {
                 this.sprite.parent.removeChild(this.sprite);
             this.sprite.destroy();
         }
-        if (this.idText) {
-            if (this.idText.parent)
-                this.idText.parent.removeChild(this.sprite);
-            this.idText.destroy();
-        }
         var texName;
         switch (unit.player.id) {
             case 1:
@@ -79,15 +72,13 @@ var UnitDisplay = (function (_super) {
         if (!this.shadowSprite) {
             this.shadowSprite = new PIXI.Sprite(Game_1.default.instance.textureLoader.get("character/shadow"));
             this.addChildAt(this.shadowSprite, 0);
-            this.shadowSprite.y = -5;
+            this.shadowSprite.y = -3;
         }
         var tex = Game_1.default.instance.textureLoader.get(texName);
         this.sprite = new PIXI.Sprite(tex);
-        this.sprite.x = -1;
-        this.sprite.y = -9;
+        this.sprite.x = 0;
+        this.sprite.y = -7;
         this.addChild(this.sprite);
-        this.idText = new PIXI.Text(unit.id.toString(), TextUtil.styles.unitID);
-        this.addChild(this.idText);
         this.updatePosition();
         Game_1.default.instance.updater.add(this, true);
         this.addListeners();

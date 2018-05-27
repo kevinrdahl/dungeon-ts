@@ -19,7 +19,8 @@ export default class GameEvent {
 		battle: {
 			ANIMATIONSTART:"animation start",
 			ANIMATIONCOMPLETE:"animation complete",
-			UNITSELECTIONCHANGED:"unit selection changed"
+			UNITSELECTIONCHANGED:"unit selection changed",
+			HOVERCHANGED:"tile hover changed"
 		}
 	}
 

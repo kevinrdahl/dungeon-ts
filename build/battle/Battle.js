@@ -24,7 +24,7 @@ var Battle = (function (_super) {
     __extends(Battle, _super);
     /**
      * It's a battle!
-     * @param visible Determines whether this Battle should be displayed. False for peer authentication if I ever get around to it.
+     * @param visible Determines whether this Battle should be displayed. False for peer authentication if I ever get around to it. (lol)
      */
     function Battle(visible) {
         if (visible === void 0) { visible = true; }
@@ -428,6 +428,14 @@ var Battle = (function (_super) {
         }
         return ret;
     };
+    Battle.prototype.getHoveredUnit = function () {
+        var coords = this._display.hoverCoords;
+        return this.getUnitAtPosition(coords.x, coords.y);
+    };
+    Battle.prototype.getHoveredTile = function () {
+        var coords = this._display.hoverCoords;
+        return this.level.getTile(coords.x, coords.y);
+    };
     Battle.prototype.getDebugPanelStrings = function () {
         var ret = [
             "Current player: " + this._currentPlayer.id,
@@ -435,11 +443,11 @@ var Battle = (function (_super) {
         ];
         var coords = this.display.hoverCoords;
         var hoverStrings = [coords.toString()];
-        var tile = this.level.getTile(coords.x, coords.y);
+        var tile = this.getHoveredTile();
         if (tile) {
             hoverStrings.push(tile.name);
         }
-        var unit = this.getUnitAtPosition(coords.x, coords.y);
+        var unit = this.getHoveredUnit();
         if (unit) {
             hoverStrings.push(unit.toString());
         }

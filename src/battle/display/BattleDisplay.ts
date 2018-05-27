@@ -164,6 +164,7 @@ export default class BattleDisplay extends PIXI.Container {
 
 		this.updatePathingHover();
 		this.updateDebugPanel();
+		this.battle.sendNewEvent(GameEvent.types.battle.HOVERCHANGED);
 	}
 
 	public updateDebugPanel() {

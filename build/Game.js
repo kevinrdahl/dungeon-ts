@@ -33,6 +33,7 @@ var Updater_1 = require("./Updater");
 var RequestManager_1 = require("./RequestManager");
 var MainMenu_1 = require("./interface/prefabs/mainmenu/MainMenu");
 var DefinitionManager_1 = require("./definitions/DefinitionManager");
+var BattleUI_1 = require("./interface/prefabs/battle/BattleUI");
 var Game = (function (_super) {
     __extends(Game, _super);
     function Game(viewDiv) {
@@ -207,6 +208,12 @@ var Game = (function (_super) {
     };
     Game.prototype.setCurrentBattle = function (battle) {
         this._currentBattle = battle;
+        if (!this.battleUI) {
+            this.battleUI = new BattleUI_1.default();
+        }
+        this.interfaceRoot.addUI(this.battleUI);
+        this.battleUI.subscribeTo(this._currentBattle);
+        this.battleUI.resizeToParent();
     };
     Game.prototype.gotoMainMenu = function () {
         var battle = this._currentBattle;
@@ -214,6 +221,9 @@ var Game = (function (_super) {
             if (battle.display)
                 battle.display.cleanup();
             this._currentBattle = null;
+        }
+        if (this.battleUI) {
+            this.battleUI.removeSelf();
         }
         this.initMainMenu();
     };

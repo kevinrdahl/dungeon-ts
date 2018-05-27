@@ -51,6 +51,29 @@ function pickRandomSet(array, amount) {
     return array.slice(0, amount);
 }
 exports.pickRandomSet = pickRandomSet;
+/**
+ * Adds value to the array, if it's not already in the array. Returns whether it did anything.
+ */
+function ArrayAdd(array, value) {
+    if (array.indexOf(value) == -1) {
+        array.push(value);
+        return true;
+    }
+    return false;
+}
+exports.ArrayAdd = ArrayAdd;
+/**
+ * Removes value from array, if it exists. Returns whether it did anything.
+ */
+function ArrayRemove(array, value) {
+    var index = array.indexOf(value);
+    if (index != -1) {
+        array.splice(index, 1);
+        return true;
+    }
+    return false;
+}
+exports.ArrayRemove = ArrayRemove;
 ////////////////////////////////////////
 // Strings
 ////////////////////////////////////////

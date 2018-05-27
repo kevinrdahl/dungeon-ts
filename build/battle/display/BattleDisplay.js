@@ -169,6 +169,7 @@ var BattleDisplay = (function (_super) {
         }
         this.updatePathingHover();
         this.updateDebugPanel();
+        this.battle.sendNewEvent(GameEvent_1.default.types.battle.HOVERCHANGED);
     };
     BattleDisplay.prototype.updateDebugPanel = function () {
         var items = this.battle.getDebugPanelStrings();

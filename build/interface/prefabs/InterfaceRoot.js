@@ -57,6 +57,8 @@ var InterfaceRoot = (function (_super) {
             return null;
         return layer;
     };
+    //Note there isn't really a need for remove* functions.
+    //Use removeSelf instead.
     InterfaceRoot.prototype.addUI = function (element) {
         this.getLayer(InterfaceRoot.LayerNames.gameUI).addChild(element);
     };

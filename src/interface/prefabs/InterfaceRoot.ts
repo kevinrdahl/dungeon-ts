@@ -59,6 +59,9 @@ export default class InterfaceRoot extends InterfaceElement {
         return layer;
     }
 
+    //Note there isn't really a need for remove* functions.
+    //Use removeSelf instead.
+
     public addUI(element:InterfaceElement) {
         this.getLayer(InterfaceRoot.LayerNames.gameUI).addChild(element);
     }

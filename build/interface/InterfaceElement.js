@@ -20,9 +20,12 @@ var InterfaceElement = (function (_super) {
     __extends(InterfaceElement, _super);
     /**
      * Base class for anything in the UI. Has a parent and can have children, like DOM elements.
-     * Wraps a PIXI DisplayObjectContainer
+     * Wraps a PIXI DisplayObjectContainer.
+     *
+     * @param fromContainer If provided, fromContainer is used instead of a new Container. Whatever it contains has no bearing on the InterfaceElement's concept of having children.
      */
-    function InterfaceElement() {
+    function InterfaceElement(fromContainer) {
+        if (fromContainer === void 0) { fromContainer = null; }
         var _this = _super.call(this) || this;
         _this.id = "";
         _this.name = "";
@@ -32,18 +35,6 @@ var InterfaceElement = (function (_super) {
         _this.ignoreChildrenForClick = false; //don't click the kids, click me
         _this.dragElement = null;
         _this.useDebugRect = true;
-        /*public onMouseDown:(coords:Vector2D)=>void;
-        public onMouseUp:(coords:Vector2D)=>void;
-        public onClick:(coords:Vector2D)=>void;
-        public onHoverStart:(coords:Vector2D)=>void;
-        public onHoverEnd:(coords:Vector2D)=>void;
-        public onFocus:()=>void;
-        public onUnfocus:()=>void;
-        public onChange:()=>void;
-        public onKeyDown:(which:string)=>void;
-        public onKeyUp:(which:string)=>void;
-        public onKeyPress:(which:string)=>void; //See jQuery documentation for how these differ*/
-        _this._displayObject = new PIXI.Container();
         _this._parent = null;
         _this._children = [];
         _this._position = new Vector2D_1.default(0, 0);
@@ -52,7 +43,14 @@ var InterfaceElement = (function (_super) {
         _this._attach = null;
         _this._resize = null;
         _this._className = "InterfaceElement";
-        _this._debugColor = 0x0000ff;
+        _this._debugColor = 0xffffff;
+        if (fromContainer) {
+            _this._displayObject = fromContainer;
+            _this.resize(fromContainer.width, fromContainer.height);
+        }
+        else {
+            _this._displayObject = new PIXI.Container();
+        }
         return _this;
     }
     Object.defineProperty(InterfaceElement.prototype, "x", {
@@ -129,6 +127,11 @@ var InterfaceElement = (function (_super) {
     Object.defineProperty(InterfaceElement.prototype, "visible", {
         get: function () { return this._displayObject.visible; },
         set: function (v) { this._displayObject.visible = v; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(InterfaceElement.prototype, "parent", {
+        get: function () { return this._parent; },
         enumerable: true,
         configurable: true
     });
@@ -349,8 +352,8 @@ var InterfaceElement = (function (_super) {
         this._resize = null;
     };
     InterfaceElement.prototype.positionRelativeTo = function (other, info) {
-        this._position.x = (other._width * info.to.x) - (this.width * info.from.x) + info.offset.x;
-        this._position.y = (other._height * info.to.y) - (this.height * info.from.y) + info.offset.y;
+        this._position.x = (other._width * info.to.x) - (this.width * info.from.x) + info.offset.x + other.x;
+        this._position.y = (other._height * info.to.y) - (this.height * info.from.y) + info.offset.y + other.y;
         if (other != this._parent && other._parent != this._parent) {
             //need to account for different contexts
             var thisGlobal = this.getGlobalPosition();

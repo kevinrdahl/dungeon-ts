@@ -36,6 +36,7 @@ import Vector2D from './util/Vector2D';
 import RequestManager from './RequestManager';
 import MainMenu from './interface/prefabs/mainmenu/MainMenu';
 import DefinitionManager from './definitions/DefinitionManager';
+import BattleUI from './interface/prefabs/battle/BattleUI';
 
 export default class Game extends GameEventHandler {
 	public static instance: Game = null;
@@ -48,6 +49,7 @@ export default class Game extends GameEventHandler {
 	public viewWidth: number = 500;
 	public viewHeight: number = 500;
 	public interfaceRoot: InterfaceRoot;
+	public battleUI: BattleUI;
 	public textureLoader: TextureLoader;
 	public debugGraphics: PIXI.Graphics;
 	//public textureWorker: TextureWorker;
@@ -237,6 +239,12 @@ export default class Game extends GameEventHandler {
 
 	public setCurrentBattle(battle:Battle) {
 		this._currentBattle = battle;
+		if (!this.battleUI) {
+			this.battleUI = new BattleUI();
+		}
+		this.interfaceRoot.addUI(this.battleUI);
+		this.battleUI.subscribeTo(this._currentBattle);
+		this.battleUI.resizeToParent();
 	}
 
 	public gotoMainMenu() {
@@ -244,6 +252,10 @@ export default class Game extends GameEventHandler {
 		if (battle) {
 			if (battle.display) battle.display.cleanup();
 			this._currentBattle = null;
+		}
+
+		if (this.battleUI) {
+			this.battleUI.removeSelf();
 		}
 
 		this.initMainMenu();
