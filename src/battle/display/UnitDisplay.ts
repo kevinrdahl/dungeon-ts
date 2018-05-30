@@ -151,13 +151,13 @@ export default class UnitDisplay extends PIXI.Container {
 		var noActions = (this.unit.actionsRemaining == 0);
 
 		if (this.selected && !noActions) {
-			this.sprite.tint = 0x00ff00;
+			this.sprite.tint = 0x9999ff;
 		} else {
 			if (noActions) {
 				this.sprite.tint = 0x666666;
 			}
 			else if (this.hover && !this.battleIsAnimating) {
-				this.sprite.tint = 0xaaffaa;
+				this.sprite.tint = 0xccccff;
 			} else {
 				this.sprite.tint = 0xffffff;
 			}

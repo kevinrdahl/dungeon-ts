@@ -141,7 +141,6 @@ var Battle = (function (_super) {
         this.beginTurn(this.players.list[0]);
         this.updateAllUnitPathing();
         this.display.updatePathingDisplay();
-        this.display.updatePathingHover();
         Game_1.default.instance.addEventListener(GameEvent_1.default.types.ui.KEY, function (e) {
             if (e.data == '`') {
                 var playerUnit = _this.currentPlayer.units.list[0];
@@ -180,20 +179,34 @@ var Battle = (function (_super) {
         }
         this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
     };
-    Battle.prototype.deselectUnit = function (sendEvent) {
+    Battle.prototype.deselectUnit = function (sendEvent, automatic) {
+        var _this = this;
         if (sendEvent === void 0) { sendEvent = true; }
+        if (automatic === void 0) { automatic = false; }
         if (!this._selectedUnit)
             return;
         var unit = this._selectedUnit;
         this._selectedUnit = null;
-        unit.onDeselect();
-        if (sendEvent)
-            this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
+        if (automatic) {
+            var anim = new Animation_1.default(function (finished) {
+                unit.onDeselect();
+                if (sendEvent)
+                    _this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
+                finished();
+            });
+            this.queueAnimation(anim);
+        }
+        else {
+            unit.onDeselect();
+            if (sendEvent)
+                this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
+        }
     };
     Battle.prototype.moveUnit = function (unit, x, y, path) {
-        if (path === void 0) { path = null; }
         //This is going to have to step through the whole path and see what triggers
         //(once that sort of thing is implemented, anyway)
+        if (path === void 0) { path = null; }
+        var numActions = unit.actionsToReachTile(x, y);
         this.unitPositions.unset(unit.x, unit.y);
         this.unitPositions.set(x, y, unit);
         unit.x = x;
@@ -203,7 +216,7 @@ var Battle = (function (_super) {
             var animation = Animation_1.default.moveUnit(unit, path);
             this.queueAnimation(animation);
         }
-        this.onUnitAction(unit);
+        this.onUnitAction(unit, numActions);
         this.updateAllUnitPathing();
     };
     Battle.prototype.attackUnit = function (attacker, target) {
@@ -275,12 +288,15 @@ var Battle = (function (_super) {
         }
     };
     /** The unit has just completed an action */
-    Battle.prototype.onUnitAction = function (unit) {
-        unit.actionsRemaining -= 1;
+    Battle.prototype.onUnitAction = function (unit, actionCost) {
+        if (actionCost === void 0) { actionCost = 1; }
+        unit.actionsRemaining -= actionCost;
+        if (unit.actionsRemaining < 0)
+            unit.actionsRemaining = 0;
         if (unit.actionsRemaining <= 0) {
             //update the unit display somehow
             if (unit.selected) {
-                this.deselectUnit();
+                this.deselectUnit(true, true);
             }
         }
         this.checkEndBattle();
@@ -472,7 +488,7 @@ var Battle = (function (_super) {
                 if (unit.inRangeToAttack(tileUnit)) {
                     this.attackUnit(unit, tileUnit);
                 }
-                else if (unit.actionsRemaining > 1) {
+                else if (unit.actionsRemaining > 0) {
                     var pos = unit.getPositionToAttackUnit(tileUnit);
                     if (pos) {
                         this.moveUnit(unit, pos[0], pos[1], unit.getPathToPosition(pos[0], pos[1]));

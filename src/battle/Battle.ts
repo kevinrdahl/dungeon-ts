@@ -108,7 +108,6 @@ export default class Battle extends GameEventHandler {
 		this.beginTurn(this.players.list[0]);
 		this.updateAllUnitPathing();
 		this.display.updatePathingDisplay();
-		this.display.updatePathingHover();
 
 		Game.instance.addEventListener(GameEvent.types.ui.KEY, (e:GameEvent) => {
 			if (e.data == '`') {
@@ -151,19 +150,31 @@ export default class Battle extends GameEventHandler {
 		this.sendNewEvent(GameEvent.types.battle.UNITSELECTIONCHANGED);
 	}
 
-	public deselectUnit(sendEvent = true) {
+	public deselectUnit(sendEvent = true, automatic = false) {
 		if (!this._selectedUnit) return;
 
 		var unit = this._selectedUnit;
 		this._selectedUnit = null;
-		unit.onDeselect();
 
-		if (sendEvent) this.sendNewEvent(GameEvent.types.battle.UNITSELECTIONCHANGED);
+		if (automatic) {
+			var anim = new Animation((finished: () => void) => {
+				unit.onDeselect();
+				if (sendEvent) this.sendNewEvent(GameEvent.types.battle.UNITSELECTIONCHANGED);
+				finished();
+			});
+			this.queueAnimation(anim);
+		} else {
+			unit.onDeselect();
+			if (sendEvent) this.sendNewEvent(GameEvent.types.battle.UNITSELECTIONCHANGED);
+		}
 	}
 
 	public moveUnit(unit:Unit, x:number, y:number, path:number[][] = null) {
 		//This is going to have to step through the whole path and see what triggers
 		//(once that sort of thing is implemented, anyway)
+
+		var numActions = unit.actionsToReachTile(x, y);
+
 		this.unitPositions.unset(unit.x, unit.y);
 		this.unitPositions.set(x, y, unit);
 		unit.x = x;
@@ -175,7 +186,7 @@ export default class Battle extends GameEventHandler {
 			this.queueAnimation(animation);
 		}
 
-		this.onUnitAction(unit);
+		this.onUnitAction(unit, numActions);
 		this.updateAllUnitPathing();
 	}
 
@@ -260,12 +271,14 @@ export default class Battle extends GameEventHandler {
 	}
 
 	/** The unit has just completed an action */
-	public onUnitAction(unit:Unit) {
-		unit.actionsRemaining -= 1;
+	public onUnitAction(unit:Unit, actionCost:number = 1) {
+		unit.actionsRemaining -= actionCost;
+		if (unit.actionsRemaining < 0) unit.actionsRemaining = 0;
+
 		if (unit.actionsRemaining <= 0) {
 			//update the unit display somehow
 			if (unit.selected) {
-				this.deselectUnit();
+				this.deselectUnit(true, true);
 			}
 		}
 
@@ -478,6 +491,7 @@ export default class Battle extends GameEventHandler {
 		if (this.animating) return;
 
 		var unit = this._selectedUnit;
+
 		if (this.ownUnitSelected() && unit.canAct()) {
 			this.initAnimation();
 
@@ -488,7 +502,7 @@ export default class Battle extends GameEventHandler {
 			else if (tileUnit && unit.isHostileToUnit(tileUnit)) {
 				if (unit.inRangeToAttack(tileUnit)) {
 					this.attackUnit(unit, tileUnit);
-				} else if (unit.actionsRemaining > 1) {
+				} else if (unit.actionsRemaining > 0) {
 					var pos = unit.getPositionToAttackUnit(tileUnit);
 					if (pos) {
 						this.moveUnit(unit, pos[0], pos[1], unit.getPathToPosition(pos[0], pos[1]));

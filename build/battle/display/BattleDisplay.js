@@ -21,6 +21,7 @@ var Tween_1 = require("../../util/Tween");
 var ElementList_1 = require("../../interface/ElementList");
 var AttachInfo_1 = require("../../interface/AttachInfo");
 var TextElement_1 = require("../../interface/TextElement");
+var PathingDisplay_1 = require("./PathingDisplay");
 var BattleDisplay = (function (_super) {
     __extends(BattleDisplay, _super);
     function BattleDisplay() {
@@ -31,13 +32,12 @@ var BattleDisplay = (function (_super) {
         _this.mouseGridX = Number.NEGATIVE_INFINITY;
         _this.mouseGridY = Number.NEGATIVE_INFINITY;
         _this.hoveredUnitDisplay = null;
+        _this.pathingDisplay = new PathingDisplay_1.default();
         _this.onAnimation = function (e) {
             _this.updatePathingDisplay();
-            _this.updatePathingHover();
         };
         _this.onUnitSelectionChanged = function (e) {
             _this.updatePathingDisplay();
-            _this.updatePathingHover();
         };
         return _this;
     }
@@ -58,11 +58,13 @@ var BattleDisplay = (function (_super) {
     });
     BattleDisplay.prototype.init = function (battle) {
         this._battle = battle;
+        this.addChild(this.pathingDisplay);
         this.addChild(this._unitContainer);
         Game_1.default.instance.updater.add(this);
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+        Game_1.default.instance.updater.add(this.pathingDisplay);
     };
     BattleDisplay.prototype.cleanup = function () {
         for (var _i = 0, _a = this._unitDisplays; _i < _a.length; _i++) {
@@ -80,6 +82,8 @@ var BattleDisplay = (function (_super) {
         this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
         this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         this._battle.removeEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+        Game_1.default.instance.updater.remove(this.pathingDisplay);
+        this.pathingDisplay.destroy();
     };
     BattleDisplay.prototype.setLevelDisplay = function (display) {
         if (this._levelDisplay) {
@@ -167,7 +171,7 @@ var BattleDisplay = (function (_super) {
                 break;
             }
         }
-        this.updatePathingHover();
+        this.updatePathingDisplay();
         this.updateDebugPanel();
         this.battle.sendNewEvent(GameEvent_1.default.types.battle.HOVERCHANGED);
     };
@@ -195,50 +199,92 @@ var BattleDisplay = (function (_super) {
         this.debugPanel.endBatchChange();
     };
     BattleDisplay.prototype.updatePathingDisplay = function () {
-        this.levelDisplay.clearPathing();
-        if (this._battle.animating)
+        var _this = this;
+        if (this._battle.animating) {
+            this.pathingDisplay.clear();
             return;
+        }
         var unit = this.battle.selectedUnit;
-        if (unit && (unit.canAct() || !this.battle.ownUnitSelected())) {
-            if (this.battle.ownUnitSelected()) {
-                if (unit.actionsRemaining == 1) {
-                    //show pathing in a different color, and only show red on tiles attackable from current position
-                    this.levelDisplay.showPathing(unit.pathableTiles, 0xffff00);
-                    var attackable = unit.getAttackableTiles(unit.x, unit.y).getComplement(unit.pathableTiles);
-                    this.levelDisplay.showPathing(attackable, 0xff0000);
+        if (!unit)
+            unit = this.battle.getHoveredUnit();
+        if (!unit) {
+            this.pathingDisplay.clear();
+            return;
+        }
+        var isOwnUnit = this.battle.currentPlayer == unit.player;
+        var pathable1 = 0x107cca; //blue
+        var highlight1 = 0xd4edff; //light blue
+        var pathable2 = 0xcaa710; //yellow
+        var highlight2 = 0xfff7d4; //light yellow
+        var hostile = 0xca1010; //red
+        if (isOwnUnit && unit.canAct()) {
+            //Show everywhere they could reach, coloured based on how many actions it takes them to get there
+            this.pathingDisplay.clear();
+            unit.pathableTiles.foreach(function (x, y, cost) {
+                var diff = unit.actionsRemaining - cost;
+                if (diff == 0 || unit.actionsRemaining == 1) {
+                    _this.pathingDisplay.setTile(x, y, pathable2);
                 }
-                else {
-                    //show everywhere the unit could move, and attackable tiles outside that range
-                    this.levelDisplay.showPathing(unit.pathableTiles, 0x0000ff);
-                    this.levelDisplay.showPathing(unit.getAttackableNonWalkableTiles(), 0xff0000);
+                else if (diff >= 1) {
+                    _this.pathingDisplay.setTile(x, y, pathable1);
                 }
+            });
+            //Highlight attackable enemies in red
+            var attackable;
+            if (unit.actionsRemaining == 1) {
+                //Show tiles they can attack without moving
+                attackable = unit.getAttackableTiles(unit.x, unit.y);
             }
             else {
-                //show everywhere this unit could attack
-                this.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
+                attackable = unit.getAttackableNonWalkableTiles();
             }
+            attackable.foreach(function (x, y, v) {
+                var otherUnit = _this.battle.getUnitAtPosition(x, y);
+                if (otherUnit && unit.isHostileToUnit(otherUnit)) {
+                    _this.pathingDisplay.setTile(x, y, hostile);
+                }
+            });
         }
-    };
-    BattleDisplay.prototype.updatePathingHover = function () {
-        this.levelDisplay.clearPath();
-        if (this._battle.animating)
-            return;
-        var x = this.mouseGridX;
-        var y = this.mouseGridY;
-        if (this.battle.ownUnitSelected()) {
-            var unit = this.battle.selectedUnit;
-            if (unit.canAct() && (unit.x != x || unit.y != y)) {
+        else if (!isOwnUnit) {
+            //show everywhere this unit could attack
+            this.pathingDisplay.setCoordsToColor(unit.attackableTiles.getAllCoordinates(), hostile, true);
+        }
+        else {
+            //Nothing to see here
+            this.pathingDisplay.clear();
+        }
+        //Show the route the unit would take to this tile
+        if (isOwnUnit && unit.selected && unit.canAct()) {
+            var x = this.mouseGridX;
+            var y = this.mouseGridY;
+            if (x != unit.x || y != unit.y) {
+                var color = (unit.actionsRemaining == 1) ? highlight2 : highlight1;
+                var path;
                 if (unit.canReachTile(x, y)) {
-                    this.levelDisplay.showPath(unit.getPathToPosition(x, y));
+                    path = unit.getPathToPosition(x, y);
                 }
                 else {
-                    var tileUnit = this.battle.getUnitAtPosition(x, y);
-                    if (tileUnit && unit.isHostileToUnit(tileUnit)) {
-                        if (!unit.inRangeToAttack(tileUnit) && unit.actionsRemaining > 1) {
-                            var pos = unit.getPositionToAttackUnit(tileUnit);
+                    //If there's an enemy unit there, show the path to where this unit would attack that one
+                    var hoveredUnit = this.battle.getHoveredUnit();
+                    if (hoveredUnit && hoveredUnit.isHostileToUnit(unit)) {
+                        if (!unit.inRangeToAttack(hoveredUnit) && unit.actionsRemaining > 1) {
+                            var pos = unit.getPositionToAttackUnit(hoveredUnit);
                             if (pos) {
-                                this.levelDisplay.showPath(unit.getPathToPosition(pos[0], pos[1]));
+                                path = unit.getPathToPosition(pos[0], pos[1]);
                             }
+                        }
+                    }
+                }
+                if (path) {
+                    for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
+                        var coords = path_1[_i];
+                        var cost = unit.actionsToReachTile(coords[0], coords[1]);
+                        var diff = unit.actionsRemaining - cost;
+                        if (diff == 0 || unit.actionsRemaining == 1) {
+                            this.pathingDisplay.setTile(coords[0], coords[1], highlight2);
+                        }
+                        else if (diff >= 1) {
+                            this.pathingDisplay.setTile(coords[0], coords[1], highlight1);
                         }
                     }
                 }

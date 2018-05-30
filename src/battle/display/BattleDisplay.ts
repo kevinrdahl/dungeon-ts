@@ -16,6 +16,8 @@ import LevelDisplay from './LevelDisplay';
 import ElementList from '../../interface/ElementList';
 import AttachInfo from '../../interface/AttachInfo';
 import TextElement from '../../interface/TextElement';
+import PathingDisplay from './PathingDisplay';
+import SparseGrid from '../../ds/SparseGrid';
 
 export default class BattleDisplay extends PIXI.Container {
 	private _unitContainer:PIXI.Container = new PIXI.Container();
@@ -27,6 +29,8 @@ export default class BattleDisplay extends PIXI.Container {
 	private _battle:Battle;
 	private debugPanel:ElementList;
 
+	public pathingDisplay = new PathingDisplay();
+
 	get battle():Battle { return this._battle;}
 	get levelDisplay():LevelDisplay { return this._levelDisplay; }
 	get hoverCoords():Vector2D { return new Vector2D(this.mouseGridX, this.mouseGridY); }
@@ -37,11 +41,15 @@ export default class BattleDisplay extends PIXI.Container {
 
 	public init(battle:Battle) {
 		this._battle = battle;
+		this.addChild(this.pathingDisplay);
 		this.addChild(this._unitContainer);
 		Game.instance.updater.add(this);
+
 		battle.addEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
 		battle.addEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
 		battle.addEventListener(GameEvent.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+
+		Game.instance.updater.add(this.pathingDisplay);
 	}
 
 	public cleanup() {
@@ -61,6 +69,9 @@ export default class BattleDisplay extends PIXI.Container {
 		this._battle.removeEventListener(GameEvent.types.battle.ANIMATIONSTART, this.onAnimation);
 		this._battle.removeEventListener(GameEvent.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
 		this._battle.removeEventListener(GameEvent.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+
+		Game.instance.updater.remove(this.pathingDisplay);
+		this.pathingDisplay.destroy();
 	}
 
 	public setLevelDisplay(display:LevelDisplay) {
@@ -162,7 +173,7 @@ export default class BattleDisplay extends PIXI.Container {
 			}
 		}
 
-		this.updatePathingHover();
+		this.updatePathingDisplay();
 		this.updateDebugPanel();
 		this.battle.sendNewEvent(GameEvent.types.battle.HOVERCHANGED);
 	}
@@ -198,49 +209,94 @@ export default class BattleDisplay extends PIXI.Container {
 	}
 
 	public updatePathingDisplay() {
-		this.levelDisplay.clearPathing();
-		if (this._battle.animating) return;
+		if (this._battle.animating) {
+			this.pathingDisplay.clear();
+			return;
+		}
 
 		var unit = this.battle.selectedUnit;
-		if (unit && (unit.canAct() || !this.battle.ownUnitSelected())) {
-			if (this.battle.ownUnitSelected()) {
-				if (unit.actionsRemaining == 1) {
-					//show pathing in a different color, and only show red on tiles attackable from current position
-					this.levelDisplay.showPathing(unit.pathableTiles, 0xffff00);
-					var attackable = unit.getAttackableTiles(unit.x, unit.y).getComplement(unit.pathableTiles);
-					this.levelDisplay.showPathing(attackable, 0xff0000);
-				} else {
-					//show everywhere the unit could move, and attackable tiles outside that range
-					this.levelDisplay.showPathing(unit.pathableTiles, 0x0000ff);
-					this.levelDisplay.showPathing(unit.getAttackableNonWalkableTiles(), 0xff0000);
-				}
-			} else {
-				//show everywhere this unit could attack
-				this.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
-			}
+		if (!unit) unit = this.battle.getHoveredUnit();
+
+		if (!unit) {
+			this.pathingDisplay.clear();
+			return;
 		}
-	}
 
-	public updatePathingHover() {
-		this.levelDisplay.clearPath();
-		if (this._battle.animating) return;
+		var isOwnUnit = this.battle.currentPlayer == unit.player;
 
-		var x = this.mouseGridX;
-		var y = this.mouseGridY;
+		var pathable1 = 0x107cca; //blue
+		var highlight1 = 0xd4edff; //light blue
+		var pathable2 = 0xcaa710; //yellow
+		var highlight2 = 0xfff7d4; //light yellow
+		var hostile = 0xca1010; //red
 
-		if (this.battle.ownUnitSelected()) {
-			var unit: Unit = this.battle.selectedUnit;
-			if (unit.canAct() && (unit.x != x || unit.y != y)) {
+		if (isOwnUnit && unit.canAct()) {
+			//Show everywhere they could reach, coloured based on how many actions it takes them to get there
+			this.pathingDisplay.clear();
+			unit.pathableTiles.foreach((x, y, cost:number) => {
+				var diff = unit.actionsRemaining - cost;
+
+				if (diff == 0 || unit.actionsRemaining == 1) {
+					this.pathingDisplay.setTile(x, y, pathable2);
+				} else if (diff >= 1) {
+					this.pathingDisplay.setTile(x, y, pathable1);
+				}
+			});
+
+			//Highlight attackable enemies in red
+			var attackable:SparseGrid<number>;
+			if (unit.actionsRemaining == 1) {
+				//Show tiles they can attack without moving
+				attackable = unit.getAttackableTiles(unit.x, unit.y);
+			} else {
+				attackable = unit.getAttackableNonWalkableTiles();
+			}
+			attackable.foreach((x, y, v) => {
+				var otherUnit = this.battle.getUnitAtPosition(x, y);
+				if (otherUnit && unit.isHostileToUnit(otherUnit)) {
+					this.pathingDisplay.setTile(x, y, hostile);
+				}
+			});
+
+		} else if (!isOwnUnit) {
+			//show everywhere this unit could attack
+			this.pathingDisplay.setCoordsToColor(unit.attackableTiles.getAllCoordinates(), hostile, true);
+		} else {
+			//Nothing to see here
+			this.pathingDisplay.clear();
+		}
+
+		//Show the route the unit would take to this tile
+		if (isOwnUnit && unit.selected && unit.canAct()) {
+			var x = this.mouseGridX;
+			var y = this.mouseGridY;
+			if (x != unit.x || y != unit.y) {
+				var color = (unit.actionsRemaining == 1) ? highlight2 : highlight1;
+
+				var path:number[][];
 				if (unit.canReachTile(x, y)) {
-					this.levelDisplay.showPath(unit.getPathToPosition(x, y));
+					path = unit.getPathToPosition(x, y);
 				} else {
-					var tileUnit = this.battle.getUnitAtPosition(x, y);
-					if (tileUnit && unit.isHostileToUnit(tileUnit)) {
-						if (!unit.inRangeToAttack(tileUnit) && unit.actionsRemaining > 1) {
-							var pos = unit.getPositionToAttackUnit(tileUnit);
+					//If there's an enemy unit there, show the path to where this unit would attack that one
+					var hoveredUnit = this.battle.getHoveredUnit();
+					if (hoveredUnit && hoveredUnit.isHostileToUnit(unit)) {
+						if (!unit.inRangeToAttack(hoveredUnit) && unit.actionsRemaining > 1) {
+							var pos = unit.getPositionToAttackUnit(hoveredUnit);
 							if (pos) {
-								this.levelDisplay.showPath(unit.getPathToPosition(pos[0], pos[1]));
+								path = unit.getPathToPosition(pos[0], pos[1]);
 							}
+						}
+					}
+				}
+
+				if (path) {
+					for (var coords of path) {
+						var cost = unit.actionsToReachTile(coords[0], coords[1]);
+						var diff = unit.actionsRemaining - cost;
+						if (diff == 0 || unit.actionsRemaining == 1) {
+							this.pathingDisplay.setTile(coords[0], coords[1], highlight2);
+						} else if (diff >= 1) {
+							this.pathingDisplay.setTile(coords[0], coords[1], highlight1);
 						}
 					}
 				}
@@ -299,11 +355,9 @@ export default class BattleDisplay extends PIXI.Container {
 
 	private onAnimation = (e:GameEvent) => {
 		this.updatePathingDisplay();
-		this.updatePathingHover();
 	}
 
 	private onUnitSelectionChanged = (e:GameEvent) => {
 		this.updatePathingDisplay();
-		this.updatePathingHover();
 	}
 }

@@ -34,7 +34,7 @@ var Unit = (function () {
         this.display = null;
         this.x = 0;
         this.y = 0;
-        this.moveSpeed = 5;
+        this.moveSpeed = 3;
         this.actionsRemaining = 2;
         this.actionsPerTurn = 2;
         this.isFlying = false;
@@ -46,8 +46,8 @@ var Unit = (function () {
         this.name = "?";
         this.hero = null;
         this.monster = null;
-        this.pathableTiles = null;
-        this.attackableTiles = null;
+        this.pathableTiles = null; //x,y is the number of actions required to get to x,y
+        this.attackableTiles = null; //0 or 1
         this._id = Unit._nextID++;
     }
     Object.defineProperty(Unit.prototype, "id", {
@@ -145,17 +145,20 @@ var Unit = (function () {
         var level = this.battle.level;
         var width = level.width;
         var height = level.height;
+        var maxDist = this.moveSpeed * this.actionsRemaining; //sprint!
         var source = this.getNewPathingNode(this.x, this.y);
         source.cost = 0;
         var queue = new BinaryHeap_1.default(PathingNode.scoreFunc, [source]);
         var nodes = new SparseGrid_1.default();
-        this.pathableTiles = new SparseGrid_1.default(false);
-        this.attackableTiles = new SparseGrid_1.default(false);
+        this.pathableTiles = new SparseGrid_1.default(Number.POSITIVE_INFINITY);
+        this.attackableTiles = new SparseGrid_1.default(0);
         nodes.set(source.x, source.y, source);
         while (!queue.empty) {
             var node = queue.pop();
-            this.pathableTiles.set(node.x, node.y, true);
-            this.getAttackableTiles(node.x, node.y, this.attackableTiles);
+            var actionsRequired = Math.ceil(node.cost / this.moveSpeed);
+            this.pathableTiles.set(node.x, node.y, actionsRequired);
+            if (actionsRequired == 1)
+                this.getAttackableTiles(node.x, node.y, this.attackableTiles);
             node.visited = true;
             //console.log(node.x + "," + node.y);
             //check the 4 adjacent tiles
@@ -183,7 +186,7 @@ var Unit = (function () {
                     continue;
                 }
                 var cost = node.cost + this.getCostToTraverseTile(neighbour.tile);
-                if (cost > this.moveSpeed)
+                if (cost > maxDist)
                     continue;
                 if (cost < neighbour.cost) {
                     neighbour.cost = cost;
@@ -221,7 +224,7 @@ var Unit = (function () {
                     continue;
                 dist = Math.abs(xOffset) + Math.abs(yOffset);
                 if (dist >= minRange && dist <= maxRange) {
-                    toGrid.set(x, y, true);
+                    toGrid.set(x, y, 1);
                 }
             }
         }
@@ -235,7 +238,11 @@ var Unit = (function () {
         var grid = this.pathableTiles.filter(function (x, y, val) {
             var dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
             if (dist >= _this.attackRangeMin && dist <= _this.attackRangeMax) {
-                return !_this.battle.getUnitAtPosition(x, y);
+                var cost = _this.actionsToReachTile(x, y);
+                //need at least 1 action to attack
+                if (_this.actionsRemaining - cost > 0) {
+                    return !_this.battle.getUnitAtPosition(x, y);
+                }
             }
             return false;
         });
@@ -252,9 +259,15 @@ var Unit = (function () {
         }
         return closestCoords;
     };
-    Unit.prototype.getPathToPosition = function (targetX, targetY, fromX, fromY) {
+    Unit.prototype.actionsToReachTile = function (x, y) {
+        if (!this.pathableTiles)
+            this.updatePathing();
+        return this.pathableTiles.get(x, y);
+    };
+    Unit.prototype.getPathToPosition = function (targetX, targetY, maxDist, fromX, fromY) {
         //A*
         //todo: add additional heuristic cost based on environment hazards
+        if (maxDist === void 0) { maxDist = 100000; }
         if (fromX === void 0) { fromX = Number.NEGATIVE_INFINITY; }
         if (fromY === void 0) { fromY = Number.NEGATIVE_INFINITY; }
         //var startTime = performance.now();
@@ -279,7 +292,7 @@ var Unit = (function () {
                 //console.log("Computed path from " + fromX + "," + fromY + " to " + targetX + "," + targetY + " in " + (endTime - startTime) + "ms");
                 return route;
             }
-            this.pathableTiles.set(node.x, node.y, true);
+            //this.pathableTiles.set(node.x, node.y, true);
             node.visited = true;
             //check the 4 adjacent tiles
             for (var i = 0; i < 4; i++) {
@@ -296,7 +309,7 @@ var Unit = (function () {
                     //hCost is the line distance...
                     neighbour.hCost = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
                     //...but favour moving along the longest axis
-                    if (xIsLongest) {
+                    if (!xIsLongest) {
                         neighbour.hCost += Math.abs(neighbour.x - targetX);
                     }
                     else {
@@ -315,8 +328,7 @@ var Unit = (function () {
                     continue;
                 }
                 var cost = node.cost + this.getCostToTraverseTile(neighbour.tile);
-                if (cost > this.moveSpeed)
-                    continue;
+                //if (cost > this.moveSpeed) continue;
                 if (cost < neighbour.cost) {
                     neighbour.cost = cost;
                     neighbour.fromNode = node;
@@ -357,13 +369,7 @@ var Unit = (function () {
         if (this.pathableTiles == null) {
             this.updatePathing();
         }
-        return this.pathableTiles.get(x, y) === true;
-    };
-    Unit.prototype.canAttackTile = function (x, y) {
-        if (this.attackableTiles == null) {
-            this.updatePathing();
-        }
-        return this.pathableTiles.get(x, y) === true;
+        return this.pathableTiles.get(x, y) <= this.actionsRemaining;
     };
     /** Irrespective of actions, range and such. Currently "belongs to a different player from" */
     Unit.prototype.isHostileToUnit = function (unit) {

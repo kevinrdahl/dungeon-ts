@@ -54,8 +54,27 @@ export default class SparseGrid<T> {
 		return allCoords;
 	}
 
+	public foreach(func:(x, y, value:T)=>void) {
+		for (var y in this.rows) {
+			for (var x in this.rows[y]) {
+				func(x, y, this.rows[y][x]);
+			}
+		}
+	}
+
 	public clone():SparseGrid<T> {
 		return this.getUnion(this);
+	}
+
+	/**
+	 * Copies all the other grid's value to this one, WITHOUT CLEARING THIS ONE
+	 */
+	public copyFrom(other:SparseGrid<T>) {
+		for (var y in other.rows) {
+			for (var x in other.rows[y]) {
+				this.set(x, y, other.rows[y][x]);
+			}
+		}
 	}
 
 	/** Get a grid containing all the cells from this grid which aren't set in the other grid */

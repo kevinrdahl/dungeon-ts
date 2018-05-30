@@ -46,8 +46,25 @@ var SparseGrid = (function () {
         }
         return allCoords;
     };
+    SparseGrid.prototype.foreach = function (func) {
+        for (var y in this.rows) {
+            for (var x in this.rows[y]) {
+                func(x, y, this.rows[y][x]);
+            }
+        }
+    };
     SparseGrid.prototype.clone = function () {
         return this.getUnion(this);
+    };
+    /**
+     * Copies all the other grid's value to this one, WITHOUT CLEARING THIS ONE
+     */
+    SparseGrid.prototype.copyFrom = function (other) {
+        for (var y in other.rows) {
+            for (var x in other.rows[y]) {
+                this.set(x, y, other.rows[y][x]);
+            }
+        }
     };
     /** Get a grid containing all the cells from this grid which aren't set in the other grid */
     SparseGrid.prototype.getComplement = function (other) {

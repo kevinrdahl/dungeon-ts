@@ -34,7 +34,7 @@ export default class Unit {
 
 	public x:number = 0;
 	public y:number = 0;
-	public moveSpeed:number = 5;
+	public moveSpeed:number = 3;
 	public actionsRemaining:number = 2;
 	public actionsPerTurn:number = 2;
 	public isFlying:boolean = false;
@@ -47,8 +47,8 @@ export default class Unit {
 	public hero:Hero = null;
 	public monster:Monster = null;
 
-	public pathableTiles: SparseGrid<boolean> = null;
-	public attackableTiles:SparseGrid<boolean> = null;
+	public pathableTiles: SparseGrid<number> = null; //x,y is the number of actions required to get to x,y
+	public attackableTiles:SparseGrid<number> = null; //0 or 1
 
 	get id(): number { return this._id; }
 	get selected():boolean {
@@ -143,21 +143,23 @@ export default class Unit {
 		var level = this.battle.level;
 		var width = level.width;
 		var height = level.height;
+		var maxDist = this.moveSpeed * this.actionsRemaining; //sprint!
 
 		var source:PathingNode = this.getNewPathingNode(this.x, this.y);
 		source.cost = 0;
 
 		var queue: BinaryHeap<PathingNode> = new BinaryHeap<PathingNode>(PathingNode.scoreFunc, [source]);
 		var nodes: SparseGrid<PathingNode> = new SparseGrid<PathingNode>();
-		this.pathableTiles = new SparseGrid<boolean>(false);
-		this.attackableTiles = new SparseGrid<boolean>(false);
+		this.pathableTiles = new SparseGrid<number>(Number.POSITIVE_INFINITY);
+		this.attackableTiles = new SparseGrid<number>(0);
 
 		nodes.set(source.x, source.y, source);
 
 		while (!queue.empty) {
 			var node = queue.pop();
-			this.pathableTiles.set(node.x, node.y, true);
-			this.getAttackableTiles(node.x, node.y, this.attackableTiles);
+			var actionsRequired = Math.ceil(node.cost / this.moveSpeed);
+			this.pathableTiles.set(node.x, node.y, actionsRequired);
+			if (actionsRequired == 1) this.getAttackableTiles(node.x, node.y, this.attackableTiles);
 			node.visited = true;
 			//console.log(node.x + "," + node.y);
 
@@ -188,7 +190,7 @@ export default class Unit {
 				}
 
 				var cost = node.cost + this.getCostToTraverseTile(neighbour.tile);
-				if (cost > this.moveSpeed) continue;
+				if (cost > maxDist) continue;
 				if (cost < neighbour.cost) {
 					neighbour.cost = cost;
 					if (!justDiscoveredNeighbour) {
@@ -204,7 +206,7 @@ export default class Unit {
 	}
 
 	/** For each tile that can be attacked from the given position, writes them to the provided grid, and returns it */
-	public getAttackableTiles(fromX, fromY, toGrid:SparseGrid<boolean>=null):SparseGrid<boolean> {
+	public getAttackableTiles(fromX, fromY, toGrid:SparseGrid<number>=null):SparseGrid<number> {
 		var minRange = this.attackRangeMin;
 		var maxRange = this.attackRangeMax;
 		var dist = 0;
@@ -214,7 +216,7 @@ export default class Unit {
 		var tile:Tile;
 
 		if (toGrid == null) {
-			toGrid = new SparseGrid<boolean>();
+			toGrid = new SparseGrid<number>();
 		}
 
 		for (var yOffset = -maxRange; yOffset <= maxRange; yOffset++) {
@@ -227,7 +229,7 @@ export default class Unit {
 
 				dist = Math.abs(xOffset) + Math.abs(yOffset);
 				if (dist >= minRange && dist <= maxRange) {
-					toGrid.set(x, y, true);
+					toGrid.set(x, y, 1);
 				}
 			}
 		}
@@ -239,10 +241,15 @@ export default class Unit {
 	 * Gets the coordinates from which this unit should attack the other unit. Assumes it can get there.
 	 */
 	public getPositionToAttackUnit(unit: Unit): Array<number> {
-		var grid = this.pathableTiles.filter((x, y, val:boolean)=>{
+		var grid = this.pathableTiles.filter((x, y, val:number)=>{
 			var dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
 			if (dist >= this.attackRangeMin && dist <= this.attackRangeMax) {
-				return !this.battle.getUnitAtPosition(x, y);
+				var cost = this.actionsToReachTile(x, y);
+
+				//need at least 1 action to attack
+				if (this.actionsRemaining - cost > 0) {
+					return !this.battle.getUnitAtPosition(x, y);
+				}
 			}
 			return false;
 		});
@@ -262,12 +269,16 @@ export default class Unit {
 		return closestCoords;
 	}
 
-	public getPathToPosition(targetX:number, targetY:number, fromX = Number.NEGATIVE_INFINITY, fromY = Number.NEGATIVE_INFINITY):number[][] {
+	public actionsToReachTile(x:number, y:number) {
+		if (!this.pathableTiles) this.updatePathing();
+		return this.pathableTiles.get(x, y);
+	}
+
+	public getPathToPosition(targetX:number, targetY:number, maxDist:number = 100000, fromX = Number.NEGATIVE_INFINITY, fromY = Number.NEGATIVE_INFINITY):number[][] {
 		//A*
 		//todo: add additional heuristic cost based on environment hazards
 
 		//var startTime = performance.now();
-
 		if (fromX == Number.NEGATIVE_INFINITY) fromX = this.x;
 		if (fromY == Number.NEGATIVE_INFINITY) fromY = this.y;
 
@@ -293,7 +304,7 @@ export default class Unit {
 				return route;
 			}
 
-			this.pathableTiles.set(node.x, node.y, true);
+			//this.pathableTiles.set(node.x, node.y, true);
 			node.visited = true;
 
 			//check the 4 adjacent tiles
@@ -313,7 +324,7 @@ export default class Unit {
 					neighbour.hCost = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
 
 					//...but favour moving along the longest axis
-					if (xIsLongest) {
+					if (!xIsLongest) {
 						neighbour.hCost += Math.abs(neighbour.x - targetX);
 					} else {
 						neighbour.hCost += Math.abs(neighbour.y - targetY);
@@ -333,7 +344,7 @@ export default class Unit {
 				}
 
 				var cost = node.cost + this.getCostToTraverseTile(neighbour.tile);
-				if (cost > this.moveSpeed) continue;
+				//if (cost > this.moveSpeed) continue;
 				if (cost < neighbour.cost) {
 					neighbour.cost = cost;
 					neighbour.fromNode = node;
@@ -384,15 +395,7 @@ export default class Unit {
 			this.updatePathing();
 		}
 
-		return this.pathableTiles.get(x, y) === true;
-	}
-
-	public canAttackTile(x:number, y:number):boolean {
-		if (this.attackableTiles == null) {
-			this.updatePathing();
-		}
-
-		return this.pathableTiles.get(x, y) === true;
+		return this.pathableTiles.get(x, y) <= this.actionsRemaining;
 	}
 
 	/** Irrespective of actions, range and such. Currently "belongs to a different player from" */
@@ -408,7 +411,7 @@ export default class Unit {
 		return false;
 	}
 
-	public getAttackableNonWalkableTiles():SparseGrid<boolean> {
+	public getAttackableNonWalkableTiles():SparseGrid<number> {
 		if (this.pathableTiles == null) {
 			this.updatePathing();
 		}

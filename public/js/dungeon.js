@@ -246,14 +246,14 @@ var Game = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Game;
 
-},{"./RequestManager":4,"./Updater":5,"./definitions/DefinitionManager":15,"./events/GameEventHandler":22,"./interface/AttachInfo":23,"./interface/InputManager":26,"./interface/InterfaceElement":27,"./interface/TextElement":32,"./interface/prefabs/InterfaceRoot":35,"./interface/prefabs/battle/BattleUI":37,"./interface/prefabs/mainmenu/MainMenu":40,"./sound/SoundAssets":43,"./sound/SoundManager":44,"./textures/TextureGenerator":46,"./textures/TextureLoader":47,"./user/User":51,"./util/Log":54}],2:[function(require,module,exports){
+},{"./RequestManager":4,"./Updater":5,"./definitions/DefinitionManager":16,"./events/GameEventHandler":23,"./interface/AttachInfo":24,"./interface/InputManager":27,"./interface/InterfaceElement":28,"./interface/TextElement":33,"./interface/prefabs/InterfaceRoot":36,"./interface/prefabs/battle/BattleUI":38,"./interface/prefabs/mainmenu/MainMenu":41,"./sound/SoundAssets":44,"./sound/SoundManager":45,"./textures/TextureGenerator":47,"./textures/TextureLoader":48,"./user/User":52,"./util/Log":55}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Globals = (function () {
     function Globals() {
     }
     Globals.gridSize = 24;
-    Globals.timeToTraverseTile = 0.075;
+    Globals.timeToTraverseTile = 0.06;
     return Globals;
 }());
 exports.default = Globals;
@@ -375,7 +375,7 @@ var RequestManager = (function () {
 }());
 exports.default = RequestManager;
 
-},{"./Game":1,"./util/Log":54}],5:[function(require,module,exports){
+},{"./Game":1,"./util/Log":55}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Updater = (function () {
@@ -579,7 +579,6 @@ var Battle = (function (_super) {
         this.beginTurn(this.players.list[0]);
         this.updateAllUnitPathing();
         this.display.updatePathingDisplay();
-        this.display.updatePathingHover();
         Game_1.default.instance.addEventListener(GameEvent_1.default.types.ui.KEY, function (e) {
             if (e.data == '`') {
                 var playerUnit = _this.currentPlayer.units.list[0];
@@ -618,20 +617,34 @@ var Battle = (function (_super) {
         }
         this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
     };
-    Battle.prototype.deselectUnit = function (sendEvent) {
+    Battle.prototype.deselectUnit = function (sendEvent, automatic) {
+        var _this = this;
         if (sendEvent === void 0) { sendEvent = true; }
+        if (automatic === void 0) { automatic = false; }
         if (!this._selectedUnit)
             return;
         var unit = this._selectedUnit;
         this._selectedUnit = null;
-        unit.onDeselect();
-        if (sendEvent)
-            this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
+        if (automatic) {
+            var anim = new Animation_1.default(function (finished) {
+                unit.onDeselect();
+                if (sendEvent)
+                    _this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
+                finished();
+            });
+            this.queueAnimation(anim);
+        }
+        else {
+            unit.onDeselect();
+            if (sendEvent)
+                this.sendNewEvent(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED);
+        }
     };
     Battle.prototype.moveUnit = function (unit, x, y, path) {
-        if (path === void 0) { path = null; }
         //This is going to have to step through the whole path and see what triggers
         //(once that sort of thing is implemented, anyway)
+        if (path === void 0) { path = null; }
+        var numActions = unit.actionsToReachTile(x, y);
         this.unitPositions.unset(unit.x, unit.y);
         this.unitPositions.set(x, y, unit);
         unit.x = x;
@@ -641,7 +654,7 @@ var Battle = (function (_super) {
             var animation = Animation_1.default.moveUnit(unit, path);
             this.queueAnimation(animation);
         }
-        this.onUnitAction(unit);
+        this.onUnitAction(unit, numActions);
         this.updateAllUnitPathing();
     };
     Battle.prototype.attackUnit = function (attacker, target) {
@@ -713,12 +726,15 @@ var Battle = (function (_super) {
         }
     };
     /** The unit has just completed an action */
-    Battle.prototype.onUnitAction = function (unit) {
-        unit.actionsRemaining -= 1;
+    Battle.prototype.onUnitAction = function (unit, actionCost) {
+        if (actionCost === void 0) { actionCost = 1; }
+        unit.actionsRemaining -= actionCost;
+        if (unit.actionsRemaining < 0)
+            unit.actionsRemaining = 0;
         if (unit.actionsRemaining <= 0) {
             //update the unit display somehow
             if (unit.selected) {
-                this.deselectUnit();
+                this.deselectUnit(true, true);
             }
         }
         this.checkEndBattle();
@@ -910,7 +926,7 @@ var Battle = (function (_super) {
                 if (unit.inRangeToAttack(tileUnit)) {
                     this.attackUnit(unit, tileUnit);
                 }
-                else if (unit.actionsRemaining > 1) {
+                else if (unit.actionsRemaining > 0) {
                     var pos = unit.getPositionToAttackUnit(tileUnit);
                     if (pos) {
                         this.moveUnit(unit, pos[0], pos[1], unit.getPathToPosition(pos[0], pos[1]));
@@ -939,7 +955,7 @@ var Battle = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = Battle;
 
-},{"../Game":1,"../ds/SparseGrid":20,"../events/GameEvent":21,"../events/GameEventHandler":22,"../util/IDObjectGroup":53,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":14}],7:[function(require,module,exports){
+},{"../Game":1,"../ds/SparseGrid":21,"../events/GameEvent":22,"../events/GameEventHandler":23,"../util/IDObjectGroup":54,"./Level":7,"./Player":8,"./Unit":10,"./display/BattleDisplay":11,"./display/animation/Animation":15}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile_1 = require("./Tile");
@@ -1026,7 +1042,7 @@ var Player = (function () {
 }());
 exports.default = Player;
 
-},{"../util/IDObjectGroup":53}],9:[function(require,module,exports){
+},{"../util/IDObjectGroup":54}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Tile = (function () {
@@ -1128,7 +1144,7 @@ var Unit = (function () {
         this.display = null;
         this.x = 0;
         this.y = 0;
-        this.moveSpeed = 5;
+        this.moveSpeed = 3;
         this.actionsRemaining = 2;
         this.actionsPerTurn = 2;
         this.isFlying = false;
@@ -1140,8 +1156,8 @@ var Unit = (function () {
         this.name = "?";
         this.hero = null;
         this.monster = null;
-        this.pathableTiles = null;
-        this.attackableTiles = null;
+        this.pathableTiles = null; //x,y is the number of actions required to get to x,y
+        this.attackableTiles = null; //0 or 1
         this._id = Unit._nextID++;
     }
     Object.defineProperty(Unit.prototype, "id", {
@@ -1239,17 +1255,20 @@ var Unit = (function () {
         var level = this.battle.level;
         var width = level.width;
         var height = level.height;
+        var maxDist = this.moveSpeed * this.actionsRemaining; //sprint!
         var source = this.getNewPathingNode(this.x, this.y);
         source.cost = 0;
         var queue = new BinaryHeap_1.default(PathingNode.scoreFunc, [source]);
         var nodes = new SparseGrid_1.default();
-        this.pathableTiles = new SparseGrid_1.default(false);
-        this.attackableTiles = new SparseGrid_1.default(false);
+        this.pathableTiles = new SparseGrid_1.default(Number.POSITIVE_INFINITY);
+        this.attackableTiles = new SparseGrid_1.default(0);
         nodes.set(source.x, source.y, source);
         while (!queue.empty) {
             var node = queue.pop();
-            this.pathableTiles.set(node.x, node.y, true);
-            this.getAttackableTiles(node.x, node.y, this.attackableTiles);
+            var actionsRequired = Math.ceil(node.cost / this.moveSpeed);
+            this.pathableTiles.set(node.x, node.y, actionsRequired);
+            if (actionsRequired == 1)
+                this.getAttackableTiles(node.x, node.y, this.attackableTiles);
             node.visited = true;
             //console.log(node.x + "," + node.y);
             //check the 4 adjacent tiles
@@ -1277,7 +1296,7 @@ var Unit = (function () {
                     continue;
                 }
                 var cost = node.cost + this.getCostToTraverseTile(neighbour.tile);
-                if (cost > this.moveSpeed)
+                if (cost > maxDist)
                     continue;
                 if (cost < neighbour.cost) {
                     neighbour.cost = cost;
@@ -1315,7 +1334,7 @@ var Unit = (function () {
                     continue;
                 dist = Math.abs(xOffset) + Math.abs(yOffset);
                 if (dist >= minRange && dist <= maxRange) {
-                    toGrid.set(x, y, true);
+                    toGrid.set(x, y, 1);
                 }
             }
         }
@@ -1329,7 +1348,11 @@ var Unit = (function () {
         var grid = this.pathableTiles.filter(function (x, y, val) {
             var dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
             if (dist >= _this.attackRangeMin && dist <= _this.attackRangeMax) {
-                return !_this.battle.getUnitAtPosition(x, y);
+                var cost = _this.actionsToReachTile(x, y);
+                //need at least 1 action to attack
+                if (_this.actionsRemaining - cost > 0) {
+                    return !_this.battle.getUnitAtPosition(x, y);
+                }
             }
             return false;
         });
@@ -1346,9 +1369,15 @@ var Unit = (function () {
         }
         return closestCoords;
     };
-    Unit.prototype.getPathToPosition = function (targetX, targetY, fromX, fromY) {
+    Unit.prototype.actionsToReachTile = function (x, y) {
+        if (!this.pathableTiles)
+            this.updatePathing();
+        return this.pathableTiles.get(x, y);
+    };
+    Unit.prototype.getPathToPosition = function (targetX, targetY, maxDist, fromX, fromY) {
         //A*
         //todo: add additional heuristic cost based on environment hazards
+        if (maxDist === void 0) { maxDist = 100000; }
         if (fromX === void 0) { fromX = Number.NEGATIVE_INFINITY; }
         if (fromY === void 0) { fromY = Number.NEGATIVE_INFINITY; }
         //var startTime = performance.now();
@@ -1373,7 +1402,7 @@ var Unit = (function () {
                 //console.log("Computed path from " + fromX + "," + fromY + " to " + targetX + "," + targetY + " in " + (endTime - startTime) + "ms");
                 return route;
             }
-            this.pathableTiles.set(node.x, node.y, true);
+            //this.pathableTiles.set(node.x, node.y, true);
             node.visited = true;
             //check the 4 adjacent tiles
             for (var i = 0; i < 4; i++) {
@@ -1390,7 +1419,7 @@ var Unit = (function () {
                     //hCost is the line distance...
                     neighbour.hCost = Math.sqrt(Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2));
                     //...but favour moving along the longest axis
-                    if (xIsLongest) {
+                    if (!xIsLongest) {
                         neighbour.hCost += Math.abs(neighbour.x - targetX);
                     }
                     else {
@@ -1409,8 +1438,7 @@ var Unit = (function () {
                     continue;
                 }
                 var cost = node.cost + this.getCostToTraverseTile(neighbour.tile);
-                if (cost > this.moveSpeed)
-                    continue;
+                //if (cost > this.moveSpeed) continue;
                 if (cost < neighbour.cost) {
                     neighbour.cost = cost;
                     neighbour.fromNode = node;
@@ -1451,13 +1479,7 @@ var Unit = (function () {
         if (this.pathableTiles == null) {
             this.updatePathing();
         }
-        return this.pathableTiles.get(x, y) === true;
-    };
-    Unit.prototype.canAttackTile = function (x, y) {
-        if (this.attackableTiles == null) {
-            this.updatePathing();
-        }
-        return this.pathableTiles.get(x, y) === true;
+        return this.pathableTiles.get(x, y) <= this.actionsRemaining;
     };
     /** Irrespective of actions, range and such. Currently "belongs to a different player from" */
     Unit.prototype.isHostileToUnit = function (unit) {
@@ -1510,7 +1532,7 @@ var Unit = (function () {
 }());
 exports.default = Unit;
 
-},{"../ds/BinaryHeap":19,"../ds/SparseGrid":20,"./display/UnitDisplay":13}],11:[function(require,module,exports){
+},{"../ds/BinaryHeap":20,"../ds/SparseGrid":21,"./display/UnitDisplay":14}],11:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1534,6 +1556,7 @@ var Tween_1 = require("../../util/Tween");
 var ElementList_1 = require("../../interface/ElementList");
 var AttachInfo_1 = require("../../interface/AttachInfo");
 var TextElement_1 = require("../../interface/TextElement");
+var PathingDisplay_1 = require("./PathingDisplay");
 var BattleDisplay = (function (_super) {
     __extends(BattleDisplay, _super);
     function BattleDisplay() {
@@ -1544,13 +1567,12 @@ var BattleDisplay = (function (_super) {
         _this.mouseGridX = Number.NEGATIVE_INFINITY;
         _this.mouseGridY = Number.NEGATIVE_INFINITY;
         _this.hoveredUnitDisplay = null;
+        _this.pathingDisplay = new PathingDisplay_1.default();
         _this.onAnimation = function (e) {
             _this.updatePathingDisplay();
-            _this.updatePathingHover();
         };
         _this.onUnitSelectionChanged = function (e) {
             _this.updatePathingDisplay();
-            _this.updatePathingHover();
         };
         return _this;
     }
@@ -1571,11 +1593,13 @@ var BattleDisplay = (function (_super) {
     });
     BattleDisplay.prototype.init = function (battle) {
         this._battle = battle;
+        this.addChild(this.pathingDisplay);
         this.addChild(this._unitContainer);
         Game_1.default.instance.updater.add(this);
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         battle.addEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+        Game_1.default.instance.updater.add(this.pathingDisplay);
     };
     BattleDisplay.prototype.cleanup = function () {
         for (var _i = 0, _a = this._unitDisplays; _i < _a.length; _i++) {
@@ -1593,6 +1617,8 @@ var BattleDisplay = (function (_super) {
         this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONSTART, this.onAnimation);
         this._battle.removeEventListener(GameEvent_1.default.types.battle.ANIMATIONCOMPLETE, this.onAnimation);
         this._battle.removeEventListener(GameEvent_1.default.types.battle.UNITSELECTIONCHANGED, this.onUnitSelectionChanged);
+        Game_1.default.instance.updater.remove(this.pathingDisplay);
+        this.pathingDisplay.destroy();
     };
     BattleDisplay.prototype.setLevelDisplay = function (display) {
         if (this._levelDisplay) {
@@ -1680,7 +1706,7 @@ var BattleDisplay = (function (_super) {
                 break;
             }
         }
-        this.updatePathingHover();
+        this.updatePathingDisplay();
         this.updateDebugPanel();
         this.battle.sendNewEvent(GameEvent_1.default.types.battle.HOVERCHANGED);
     };
@@ -1708,50 +1734,92 @@ var BattleDisplay = (function (_super) {
         this.debugPanel.endBatchChange();
     };
     BattleDisplay.prototype.updatePathingDisplay = function () {
-        this.levelDisplay.clearPathing();
-        if (this._battle.animating)
+        var _this = this;
+        if (this._battle.animating) {
+            this.pathingDisplay.clear();
             return;
+        }
         var unit = this.battle.selectedUnit;
-        if (unit && (unit.canAct() || !this.battle.ownUnitSelected())) {
-            if (this.battle.ownUnitSelected()) {
-                if (unit.actionsRemaining == 1) {
-                    //show pathing in a different color, and only show red on tiles attackable from current position
-                    this.levelDisplay.showPathing(unit.pathableTiles, 0xffff00);
-                    var attackable = unit.getAttackableTiles(unit.x, unit.y).getComplement(unit.pathableTiles);
-                    this.levelDisplay.showPathing(attackable, 0xff0000);
+        if (!unit)
+            unit = this.battle.getHoveredUnit();
+        if (!unit) {
+            this.pathingDisplay.clear();
+            return;
+        }
+        var isOwnUnit = this.battle.currentPlayer == unit.player;
+        var pathable1 = 0x107cca; //blue
+        var highlight1 = 0xd4edff; //light blue
+        var pathable2 = 0xcaa710; //yellow
+        var highlight2 = 0xfff7d4; //light yellow
+        var hostile = 0xca1010; //red
+        if (isOwnUnit && unit.canAct()) {
+            //Show everywhere they could reach, coloured based on how many actions it takes them to get there
+            this.pathingDisplay.clear();
+            unit.pathableTiles.foreach(function (x, y, cost) {
+                var diff = unit.actionsRemaining - cost;
+                if (diff == 0 || unit.actionsRemaining == 1) {
+                    _this.pathingDisplay.setTile(x, y, pathable2);
                 }
-                else {
-                    //show everywhere the unit could move, and attackable tiles outside that range
-                    this.levelDisplay.showPathing(unit.pathableTiles, 0x0000ff);
-                    this.levelDisplay.showPathing(unit.getAttackableNonWalkableTiles(), 0xff0000);
+                else if (diff >= 1) {
+                    _this.pathingDisplay.setTile(x, y, pathable1);
                 }
+            });
+            //Highlight attackable enemies in red
+            var attackable;
+            if (unit.actionsRemaining == 1) {
+                //Show tiles they can attack without moving
+                attackable = unit.getAttackableTiles(unit.x, unit.y);
             }
             else {
-                //show everywhere this unit could attack
-                this.levelDisplay.showPathing(unit.attackableTiles, 0xff0000);
+                attackable = unit.getAttackableNonWalkableTiles();
             }
+            attackable.foreach(function (x, y, v) {
+                var otherUnit = _this.battle.getUnitAtPosition(x, y);
+                if (otherUnit && unit.isHostileToUnit(otherUnit)) {
+                    _this.pathingDisplay.setTile(x, y, hostile);
+                }
+            });
         }
-    };
-    BattleDisplay.prototype.updatePathingHover = function () {
-        this.levelDisplay.clearPath();
-        if (this._battle.animating)
-            return;
-        var x = this.mouseGridX;
-        var y = this.mouseGridY;
-        if (this.battle.ownUnitSelected()) {
-            var unit = this.battle.selectedUnit;
-            if (unit.canAct() && (unit.x != x || unit.y != y)) {
+        else if (!isOwnUnit) {
+            //show everywhere this unit could attack
+            this.pathingDisplay.setCoordsToColor(unit.attackableTiles.getAllCoordinates(), hostile, true);
+        }
+        else {
+            //Nothing to see here
+            this.pathingDisplay.clear();
+        }
+        //Show the route the unit would take to this tile
+        if (isOwnUnit && unit.selected && unit.canAct()) {
+            var x = this.mouseGridX;
+            var y = this.mouseGridY;
+            if (x != unit.x || y != unit.y) {
+                var color = (unit.actionsRemaining == 1) ? highlight2 : highlight1;
+                var path;
                 if (unit.canReachTile(x, y)) {
-                    this.levelDisplay.showPath(unit.getPathToPosition(x, y));
+                    path = unit.getPathToPosition(x, y);
                 }
                 else {
-                    var tileUnit = this.battle.getUnitAtPosition(x, y);
-                    if (tileUnit && unit.isHostileToUnit(tileUnit)) {
-                        if (!unit.inRangeToAttack(tileUnit) && unit.actionsRemaining > 1) {
-                            var pos = unit.getPositionToAttackUnit(tileUnit);
+                    //If there's an enemy unit there, show the path to where this unit would attack that one
+                    var hoveredUnit = this.battle.getHoveredUnit();
+                    if (hoveredUnit && hoveredUnit.isHostileToUnit(unit)) {
+                        if (!unit.inRangeToAttack(hoveredUnit) && unit.actionsRemaining > 1) {
+                            var pos = unit.getPositionToAttackUnit(hoveredUnit);
                             if (pos) {
-                                this.levelDisplay.showPath(unit.getPathToPosition(pos[0], pos[1]));
+                                path = unit.getPathToPosition(pos[0], pos[1]);
                             }
+                        }
+                    }
+                }
+                if (path) {
+                    for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
+                        var coords = path_1[_i];
+                        var cost = unit.actionsToReachTile(coords[0], coords[1]);
+                        var diff = unit.actionsRemaining - cost;
+                        if (diff == 0 || unit.actionsRemaining == 1) {
+                            this.pathingDisplay.setTile(coords[0], coords[1], highlight2);
+                        }
+                        else if (diff >= 1) {
+                            this.pathingDisplay.setTile(coords[0], coords[1], highlight1);
                         }
                     }
                 }
@@ -1805,7 +1873,7 @@ var BattleDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = BattleDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":21,"../../interface/AttachInfo":23,"../../interface/ElementList":25,"../../interface/InputManager":26,"../../interface/TextElement":32,"../../util/TextUtil":55,"../../util/Tween":57,"../../util/Vector2D":59}],12:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":22,"../../interface/AttachInfo":24,"../../interface/ElementList":26,"../../interface/InputManager":27,"../../interface/TextElement":33,"../../util/TextUtil":56,"../../util/Tween":58,"../../util/Vector2D":60,"./PathingDisplay":13}],12:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -1850,7 +1918,7 @@ var LevelDisplay = (function (_super) {
         var allCoords = tiles.getAllCoordinates();
         for (var _i = 0, allCoords_1 = allCoords; _i < allCoords_1.length; _i++) {
             var coords = allCoords_1[_i];
-            this.pathingGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+            this.pathingGraphics.drawRect(coords[0] * size + 3, coords[1] * size + 3, size - 6, size - 6);
         }
         this.pathingGraphics.endFill();
     };
@@ -1858,13 +1926,13 @@ var LevelDisplay = (function (_super) {
         this.pathingGraphics.clear();
     };
     LevelDisplay.prototype.showPath = function (path, color, alpha) {
-        if (color === void 0) { color = 0x000000; }
+        if (color === void 0) { color = 0xffffff; }
         if (alpha === void 0) { alpha = 0.3; }
         this.routeGraphics.beginFill(color, alpha);
         var size = Globals_1.default.gridSize;
         for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
             var coords = path_1[_i];
-            this.routeGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+            this.routeGraphics.drawRect(coords[0] * size + 3, coords[1] * size + 3, size - 6, size - 6);
         }
         this.routeGraphics.endFill();
     };
@@ -1898,6 +1966,99 @@ var LevelDisplay = (function (_super) {
 exports.default = LevelDisplay;
 
 },{"../../Game":1,"../../Globals":2}],13:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var SparseGrid_1 = require("../../ds/SparseGrid");
+var Globals_1 = require("../../Globals");
+var PathingDisplay = (function (_super) {
+    __extends(PathingDisplay, _super);
+    function PathingDisplay() {
+        var _this = _super.call(this) || this;
+        _this._alpha = 1;
+        _this.padding = 1;
+        _this.graphics = new PIXI.Graphics();
+        _this.colors = new SparseGrid_1.default();
+        _this.dirty = false;
+        _this.isClear = true;
+        _this.addChild(_this.graphics);
+        return _this;
+    }
+    PathingDisplay.prototype.update = function (timeElapsed) {
+        if (this.dirty) {
+            this.drawTiles();
+        }
+    };
+    PathingDisplay.prototype.setCoordsToColor = function (coords, color, clear) {
+        if (clear === void 0) { clear = true; }
+        if (clear)
+            this.clear();
+        for (var _i = 0, coords_1 = coords; _i < coords_1.length; _i++) {
+            var c = coords_1[_i];
+            this.colors.set(c[0], c[1], color);
+        }
+        this.dirty = true;
+        this.isClear = false;
+    };
+    PathingDisplay.prototype.setTiles = function (colors, clear) {
+        if (clear === void 0) { clear = true; }
+        if (clear)
+            this.colors = colors;
+        else
+            this.colors.copyFrom(colors);
+        this.dirty = true;
+        this.isClear = false;
+    };
+    PathingDisplay.prototype.setTile = function (x, y, color, clear) {
+        if (clear === void 0) { clear = false; }
+        if (clear)
+            this.clear();
+        this.colors.set(x, y, color);
+        this.dirty = true;
+        this.isClear = false;
+    };
+    PathingDisplay.prototype.clear = function () {
+        if (this.isClear)
+            return;
+        this.colors = new SparseGrid_1.default();
+        this.dirty = true;
+        this.isClear = true;
+    };
+    PathingDisplay.prototype.drawTiles = function () {
+        this.graphics.clear();
+        var allCoords = this.colors.getAllCoordinates();
+        var prevColor = -1;
+        var size = Globals_1.default.gridSize;
+        for (var _i = 0, allCoords_1 = allCoords; _i < allCoords_1.length; _i++) {
+            var coords = allCoords_1[_i];
+            var color = this.colors.get(coords[0], coords[1]);
+            if (color != prevColor) {
+                if (prevColor != -1)
+                    this.graphics.endFill();
+                //this.graphics.beginFill(color, this._alpha);
+                this.graphics.lineStyle(1, color, this._alpha);
+                prevColor = color;
+            }
+            this.graphics.drawRect(coords[0] * size + this.padding, coords[1] * size + this.padding, size - this.padding * 2, size - this.padding * 2);
+        }
+        //If there are no colors at all, there won't be a fill to end.
+        //if (prevColor != -1) this.graphics.endFill();
+        this.dirty = false;
+    };
+    return PathingDisplay;
+}(PIXI.Container));
+exports.default = PathingDisplay;
+
+},{"../../Globals":2,"../../ds/SparseGrid":21}],14:[function(require,module,exports){
 "use strict";
 /// <reference path="../../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -2053,14 +2214,14 @@ var UnitDisplay = (function (_super) {
     UnitDisplay.prototype.updateState = function () {
         var noActions = (this.unit.actionsRemaining == 0);
         if (this.selected && !noActions) {
-            this.sprite.tint = 0x00ff00;
+            this.sprite.tint = 0x9999ff;
         }
         else {
             if (noActions) {
                 this.sprite.tint = 0x666666;
             }
             else if (this.hover && !this.battleIsAnimating) {
-                this.sprite.tint = 0xaaffaa;
+                this.sprite.tint = 0xccccff;
             }
             else {
                 this.sprite.tint = 0xffffff;
@@ -2115,7 +2276,7 @@ var UnitDisplay = (function (_super) {
 }(PIXI.Container));
 exports.default = UnitDisplay;
 
-},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":21,"../../util/Tween":57}],14:[function(require,module,exports){
+},{"../../Game":1,"../../Globals":2,"../../events/GameEvent":22,"../../util/Tween":58}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Timer_1 = require("../../../util/Timer");
@@ -2377,7 +2538,7 @@ var Animation = (function () {
 }());
 exports.default = Animation;
 
-},{"../../../Globals":2,"../../../util/Timer":56,"../../../util/Tween":57}],15:[function(require,module,exports){
+},{"../../../Globals":2,"../../../util/Timer":57,"../../../util/Tween":58}],16:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Layout_1 = require("./Layout");
@@ -2457,7 +2618,7 @@ var DefinitionManager = (function () {
 }());
 exports.default = DefinitionManager;
 
-},{"./Dungeon":16,"./Layout":17,"./Monster":18}],16:[function(require,module,exports){
+},{"./Dungeon":17,"./Layout":18,"./Monster":19}],17:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Dungeon = (function () {
@@ -2473,7 +2634,7 @@ var Dungeon = (function () {
 }());
 exports.default = Dungeon;
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Layout = (function () {
@@ -2509,7 +2670,7 @@ var Layout = (function () {
 }());
 exports.default = Layout;
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Monster = (function () {
@@ -2525,7 +2686,7 @@ var Monster = (function () {
 }());
 exports.default = Monster;
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2735,7 +2896,7 @@ var BinaryHeap = (function () {
 }());
 exports.default = BinaryHeap;
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -2784,8 +2945,25 @@ var SparseGrid = (function () {
         }
         return allCoords;
     };
+    SparseGrid.prototype.foreach = function (func) {
+        for (var y in this.rows) {
+            for (var x in this.rows[y]) {
+                func(x, y, this.rows[y][x]);
+            }
+        }
+    };
     SparseGrid.prototype.clone = function () {
         return this.getUnion(this);
+    };
+    /**
+     * Copies all the other grid's value to this one, WITHOUT CLEARING THIS ONE
+     */
+    SparseGrid.prototype.copyFrom = function (other) {
+        for (var y in other.rows) {
+            for (var x in other.rows[y]) {
+                this.set(x, y, other.rows[y][x]);
+            }
+        }
     };
     /** Get a grid containing all the cells from this grid which aren't set in the other grid */
     SparseGrid.prototype.getComplement = function (other) {
@@ -2852,7 +3030,7 @@ var SparseGrid = (function () {
 }());
 exports.default = SparseGrid;
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent = (function () {
@@ -2914,7 +3092,7 @@ var GameEvent = (function () {
 }());
 exports.default = GameEvent;
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var GameEvent_1 = require("./GameEvent");
@@ -2990,7 +3168,7 @@ var GameEventHandler = (function () {
 }());
 exports.default = GameEventHandler;
 
-},{"../util/Util":58,"./GameEvent":21}],23:[function(require,module,exports){
+},{"../util/Util":59,"./GameEvent":22}],24:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -3035,7 +3213,7 @@ var AttachInfo = (function () {
 }());
 exports.default = AttachInfo;
 
-},{"../util/Vector2D":59}],24:[function(require,module,exports){
+},{"../util/Vector2D":60}],25:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -3151,7 +3329,7 @@ var BaseButton = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = BaseButton;
 
-},{"../events/GameEvent":21,"../textures/NineSliceSprite":45,"./InterfaceElement":27}],25:[function(require,module,exports){
+},{"../events/GameEvent":22,"../textures/NineSliceSprite":46,"./InterfaceElement":28}],26:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3311,7 +3489,7 @@ var ElementList = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = ElementList;
 
-},{"./InterfaceElement":27}],26:[function(require,module,exports){
+},{"./InterfaceElement":28}],27:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/jquery.d.ts"/>
@@ -3563,7 +3741,7 @@ var keyNames = {
     "39": "RIGHT"
 };
 
-},{"../Game":1,"../events/GameEvent":21,"../util/Vector2D":59}],27:[function(require,module,exports){
+},{"../Game":1,"../events/GameEvent":22,"../util/Vector2D":60}],28:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -3994,7 +4172,7 @@ var InterfaceElement = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = InterfaceElement;
 
-},{"../Game":1,"../events/GameEventHandler":22,"../util/Vector2D":59,"./InputManager":26,"./ResizeInfo":30}],28:[function(require,module,exports){
+},{"../Game":1,"../events/GameEventHandler":23,"../util/Vector2D":60,"./InputManager":27,"./ResizeInfo":31}],29:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4032,7 +4210,7 @@ var MaskElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = MaskElement;
 
-},{"./InterfaceElement":27}],29:[function(require,module,exports){
+},{"./InterfaceElement":28}],30:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4099,7 +4277,7 @@ var Panel = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = Panel;
 
-},{"../textures/NineSliceSprite":45,"../textures/TextureGenerator":46,"./InterfaceElement":27}],30:[function(require,module,exports){
+},{"../textures/NineSliceSprite":46,"../textures/TextureGenerator":47,"./InterfaceElement":28}],31:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Vector2D_1 = require("../util/Vector2D");
@@ -4127,7 +4305,7 @@ var ResizeInfo = (function () {
 }());
 exports.default = ResizeInfo;
 
-},{"../util/AssetCache":52,"../util/Vector2D":59}],31:[function(require,module,exports){
+},{"../util/AssetCache":53,"../util/Vector2D":60}],32:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -4225,7 +4403,7 @@ var TextButton = (function (_super) {
 }(BaseButton_1.default));
 exports.default = TextButton;
 
-},{"../events/GameEvent":21,"../textures/NineSliceSprite":45,"../textures/TextureGenerator":46,"./AttachInfo":23,"./BaseButton":24,"./TextElement":32}],32:[function(require,module,exports){
+},{"../events/GameEvent":22,"../textures/NineSliceSprite":46,"../textures/TextureGenerator":47,"./AttachInfo":24,"./BaseButton":25,"./TextElement":33}],33:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4305,7 +4483,7 @@ var TextElement = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextElement;
 
-},{"./InterfaceElement":27}],33:[function(require,module,exports){
+},{"./InterfaceElement":28}],34:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -4478,7 +4656,7 @@ var TextField = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = TextField;
 
-},{"../events/GameEvent":21,"../util/Vector2D":59,"./AttachInfo":23,"./InterfaceElement":27,"./MaskElement":28,"./Panel":29,"./TextElement":32}],34:[function(require,module,exports){
+},{"../events/GameEvent":22,"../util/Vector2D":60,"./AttachInfo":24,"./InterfaceElement":28,"./MaskElement":29,"./Panel":30,"./TextElement":33}],35:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4659,7 +4837,7 @@ var GenericListDialog = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = GenericListDialog;
 
-},{"../../events/GameEvent":21,"../AttachInfo":23,"../ElementList":25,"../InterfaceElement":27,"../Panel":29,"../TextButton":31,"../TextElement":32,"../TextField":33,"./TextFieldListManager":36}],35:[function(require,module,exports){
+},{"../../events/GameEvent":22,"../AttachInfo":24,"../ElementList":26,"../InterfaceElement":28,"../Panel":30,"../TextButton":32,"../TextElement":33,"../TextField":34,"./TextFieldListManager":37}],36:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4775,7 +4953,7 @@ var InterfaceRoot = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = InterfaceRoot;
 
-},{"../AttachInfo":23,"../InputManager":26,"../InterfaceElement":27,"../TextButton":31,"./GenericListDialog":34}],36:[function(require,module,exports){
+},{"../AttachInfo":24,"../InputManager":27,"../InterfaceElement":28,"../TextButton":32,"./GenericListDialog":35}],37:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4840,7 +5018,7 @@ var TextFieldListManager = (function (_super) {
 }(GameEventHandler_1.default));
 exports.default = TextFieldListManager;
 
-},{"../../events/GameEvent":21,"../../events/GameEventHandler":22,"../InputManager":26}],37:[function(require,module,exports){
+},{"../../events/GameEvent":22,"../../events/GameEventHandler":23,"../InputManager":27}],38:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4880,7 +5058,7 @@ var BattleUI = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = BattleUI;
 
-},{"../../AttachInfo":23,"../../InterfaceElement":27,"./SelectionDisplay":38}],38:[function(require,module,exports){
+},{"../../AttachInfo":24,"../../InterfaceElement":28,"./SelectionDisplay":39}],39:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4970,7 +5148,7 @@ var SelectionDisplay = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = SelectionDisplay;
 
-},{"../../../Game":1,"../../../events/GameEvent":21,"../../AttachInfo":23,"../../InterfaceElement":27,"../../Panel":29,"../../TextElement":32}],39:[function(require,module,exports){
+},{"../../../Game":1,"../../../events/GameEvent":22,"../../AttachInfo":24,"../../InterfaceElement":28,"../../Panel":30,"../../TextElement":33}],40:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -4998,7 +5176,7 @@ var DungeonScreen = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = DungeonScreen;
 
-},{"../../InterfaceElement":27,"../../TextElement":32}],40:[function(require,module,exports){
+},{"../../InterfaceElement":28,"../../TextElement":33}],41:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -5068,7 +5246,7 @@ var MainMenu = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = MainMenu;
 
-},{"../../AttachInfo":23,"../../InterfaceElement":27,"./DungeonScreen":39,"./ScreenSelector":41,"./UnitScreen":42}],41:[function(require,module,exports){
+},{"../../AttachInfo":24,"../../InterfaceElement":28,"./DungeonScreen":40,"./ScreenSelector":42,"./UnitScreen":43}],42:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -5118,7 +5296,7 @@ var ScreenSelector = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = ScreenSelector;
 
-},{"../../ElementList":25,"../../InterfaceElement":27,"../../TextButton":31}],42:[function(require,module,exports){
+},{"../../ElementList":26,"../../InterfaceElement":28,"../../TextButton":32}],43:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -5146,7 +5324,7 @@ var UnitScreen = (function (_super) {
 }(InterfaceElement_1.default));
 exports.default = UnitScreen;
 
-},{"../../InterfaceElement":27,"../../TextElement":32}],43:[function(require,module,exports){
+},{"../../InterfaceElement":28,"../../TextElement":33}],44:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mainMenuMusic = [
@@ -5158,7 +5336,7 @@ exports.interfaceSounds = [
     ["ui/nope", "sound/ui/nope.ogg"]
 ];
 
-},{}],44:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var SoundLoadRequest = (function () {
@@ -5251,7 +5429,7 @@ var SoundManager = (function () {
 }());
 exports.default = SoundManager;
 
-},{}],45:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 var __extends = (this && this.__extends) || (function () {
@@ -5352,7 +5530,7 @@ var NineSliceSprite = (function (_super) {
 }(PIXI.Container));
 exports.default = NineSliceSprite;
 
-},{}],46:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference path="../declarations/pixi.js.d.ts"/>
@@ -5374,7 +5552,7 @@ function simpleRectangle(target, width, height, color, borderWidth, borderColor)
 }
 exports.simpleRectangle = simpleRectangle;
 
-},{"../Game":1}],47:[function(require,module,exports){
+},{"../Game":1}],48:[function(require,module,exports){
 "use strict";
 /// <reference path="../declarations/pixi.js.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -5441,7 +5619,7 @@ var TextureLoader = (function () {
 }());
 exports.default = TextureLoader;
 
-},{}],48:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Battle_1 = require("../battle/Battle");
@@ -5518,7 +5696,7 @@ var BattleManager = (function () {
 }());
 exports.default = BattleManager;
 
-},{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],49:[function(require,module,exports){
+},{"../Game":1,"../RequestManager":4,"../battle/Battle":6}],50:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Hero = (function () {
@@ -5538,7 +5716,7 @@ var Hero = (function () {
 }());
 exports.default = Hero;
 
-},{}],50:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Hero_1 = require("./Hero");
@@ -5578,7 +5756,7 @@ var HeroManager = (function () {
 }());
 exports.default = HeroManager;
 
-},{"./Hero":49}],51:[function(require,module,exports){
+},{"./Hero":50}],52:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var BattleManager_1 = require("./BattleManager");
@@ -5623,7 +5801,7 @@ var User = (function () {
 }());
 exports.default = User;
 
-},{"../util/Util":58,"./BattleManager":48,"./HeroManager":50}],52:[function(require,module,exports){
+},{"../util/Util":59,"./BattleManager":49,"./HeroManager":51}],53:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var AssetCache = (function () {
@@ -5674,7 +5852,7 @@ var AssetCache = (function () {
 }());
 exports.default = AssetCache;
 
-},{}],53:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var IDObjectGroup = (function () {
@@ -5730,7 +5908,7 @@ var IDObjectGroup = (function () {
 }());
 exports.default = IDObjectGroup;
 
-},{}],54:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /*
@@ -5782,7 +5960,7 @@ function log(typeName, msg) {
 }
 exports.log = log;
 
-},{}],55:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -5836,7 +6014,7 @@ var TextSprite = (function (_super) {
 }(PIXI.Sprite));
 exports.TextSprite = TextSprite;
 
-},{"../Game":1}],56:[function(require,module,exports){
+},{"../Game":1}],57:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -5919,7 +6097,7 @@ var Timer = (function () {
 }());
 exports.default = Timer;
 
-},{"../Game":1}],57:[function(require,module,exports){
+},{"../Game":1}],58:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Game_1 = require("../Game");
@@ -6090,7 +6268,7 @@ var Tween = (function () {
 }());
 exports.default = Tween;
 
-},{"../Game":1}],58:[function(require,module,exports){
+},{"../Game":1}],59:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function noop() { }
@@ -6230,7 +6408,7 @@ function isCoordinate(x) {
 }
 exports.isCoordinate = isCoordinate;
 
-},{}],59:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Util = require("./Util");
@@ -6350,4 +6528,4 @@ var Vector2D = (function () {
 }());
 exports.default = Vector2D;
 
-},{"./Util":58}]},{},[3]);
+},{"./Util":59}]},{},[3]);

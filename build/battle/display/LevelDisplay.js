@@ -42,7 +42,7 @@ var LevelDisplay = (function (_super) {
         var allCoords = tiles.getAllCoordinates();
         for (var _i = 0, allCoords_1 = allCoords; _i < allCoords_1.length; _i++) {
             var coords = allCoords_1[_i];
-            this.pathingGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+            this.pathingGraphics.drawRect(coords[0] * size + 3, coords[1] * size + 3, size - 6, size - 6);
         }
         this.pathingGraphics.endFill();
     };
@@ -50,13 +50,13 @@ var LevelDisplay = (function (_super) {
         this.pathingGraphics.clear();
     };
     LevelDisplay.prototype.showPath = function (path, color, alpha) {
-        if (color === void 0) { color = 0x000000; }
+        if (color === void 0) { color = 0xffffff; }
         if (alpha === void 0) { alpha = 0.3; }
         this.routeGraphics.beginFill(color, alpha);
         var size = Globals_1.default.gridSize;
         for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
             var coords = path_1[_i];
-            this.routeGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+            this.routeGraphics.drawRect(coords[0] * size + 3, coords[1] * size + 3, size - 6, size - 6);
         }
         this.routeGraphics.endFill();
     };

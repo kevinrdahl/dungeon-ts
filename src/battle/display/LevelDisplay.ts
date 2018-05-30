@@ -33,7 +33,7 @@ export default class LevelDisplay extends PIXI.Container {
 		var size = Globals.gridSize;
 		var allCoords = tiles.getAllCoordinates();
 		for (var coords of allCoords) {
-			this.pathingGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+			this.pathingGraphics.drawRect(coords[0] * size + 3, coords[1] * size + 3, size - 6, size - 6);
 		}
 
 		this.pathingGraphics.endFill();
@@ -43,12 +43,12 @@ export default class LevelDisplay extends PIXI.Container {
 		this.pathingGraphics.clear();
 	}
 
-	public showPath(path:number[][], color:number = 0x000000, alpha:number = 0.3) {
+	public showPath(path:number[][], color:number = 0xffffff, alpha:number = 0.3) {
 		this.routeGraphics.beginFill(color, alpha);
 
 		var size = Globals.gridSize;
 		for (var coords of path) {
-			this.routeGraphics.drawRect(coords[0] * size, coords[1] * size, size, size);
+			this.routeGraphics.drawRect(coords[0] * size + 3, coords[1] * size + 3, size - 6, size - 6);
 		}
 
 		this.routeGraphics.endFill();
