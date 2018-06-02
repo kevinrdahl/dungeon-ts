@@ -153,14 +153,14 @@ var UnitDisplay = (function (_super) {
     UnitDisplay.prototype.updateState = function () {
         var noActions = (this.unit.actionsRemaining == 0);
         if (this.selected && !noActions) {
-            this.sprite.tint = 0x9999ff;
+            this.sprite.tint = 0x00ff00;
         }
         else {
             if (noActions) {
                 this.sprite.tint = 0x666666;
             }
             else if (this.hover && !this.battleIsAnimating) {
-                this.sprite.tint = 0xccccff;
+                this.sprite.tint = 0xaaffaa;
             }
             else {
                 this.sprite.tint = 0xffffff;

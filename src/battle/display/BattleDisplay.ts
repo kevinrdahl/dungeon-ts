@@ -271,8 +271,6 @@ export default class BattleDisplay extends PIXI.Container {
 			var x = this.mouseGridX;
 			var y = this.mouseGridY;
 			if (x != unit.x || y != unit.y) {
-				var color = (unit.actionsRemaining == 1) ? highlight2 : highlight1;
-
 				var path:number[][];
 				if (unit.canReachTile(x, y)) {
 					path = unit.getPathToPosition(x, y);
@@ -291,7 +289,7 @@ export default class BattleDisplay extends PIXI.Container {
 
 				if (path) {
 					for (var coords of path) {
-						var cost = unit.actionsToReachTile(coords[0], coords[1]);
+						var cost = unit.actionsToReachTile(coords[0], coords[1]); //note this is cheap
 						var diff = unit.actionsRemaining - cost;
 						if (diff == 0 || unit.actionsRemaining == 1) {
 							this.pathingDisplay.setTile(coords[0], coords[1], highlight2);
@@ -334,23 +332,6 @@ export default class BattleDisplay extends PIXI.Container {
 		var str = "Player " + winner.id + " wins!";
 
 		Game.instance.interfaceRoot.showWarningPopup(str, "Battle Over", callback);
-
-		/*var text = new PIXI.Text(str, TextUtil.styles.unitID);
-
-		this.addChild(text);
-		var width = Game.instance.stage.width / this.scale.x;
-		var height = Game.instance.stage.height / this.scale.y;
-		var targetX = width / 2 - text.width / 2;
-		var targetY = height / 2 - text.height / 2;
-
-		text.y = targetY;
-
-		var tween1 = new Tween().init(text, "x", -text.height, targetX, 0.5, Tween.easingFunctions.quartEaseOut);
-		tween1.onFinish = () => {
-			if (text.parent) text.parent.removeChild(text);
-			callback();
-		}
-		tween1.start();*/
 	}
 
 	private onAnimation = (e:GameEvent) => {
